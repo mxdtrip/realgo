@@ -44,7 +44,9 @@ export default function CabinetLayout({
         <div className="cabinet-main">
           <header className="cabinet-topbar">
             <CabinetMobileNav
+              accountCopy={copy.account}
               ariaLabel={copy.navAria}
+              backLabel={copy.backToMarketing}
               brand={copy.brand}
               groups={copy.navGroups}
               interviewCopy={copy.profile.interview}
