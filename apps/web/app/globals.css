@@ -48,12 +48,25 @@ html {
   scroll-padding-top: 90px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* iOS inflates text when the device rotates to landscape unless pinned. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* In an installed PWA the rubber-band overscroll (and Android pull-to-refresh)
+   makes the shell feel like a web page rather than an app. */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
 }
 
 body {
   counter-reset: section;
   margin: 0;
-  min-height: 100vh;
+  min-height: 100vh; /* fallback for browsers without dvh */
+  min-height: 100dvh;
   color: var(--text);
   font-family: var(--font-stack-sans);
   font-size: 16px;
@@ -221,6 +234,10 @@ h3 {
 .site-auth--authenticated {
   gap: 20px;
   margin-left: auto;
+  /* Stay above the absolutely-positioned .site-nav so the account controls are
+     never swallowed by it (fallback for browsers without :has()). */
+  position: relative;
+  z-index: 1;
 }
 
 .site-auth > button,
@@ -1720,7 +1737,10 @@ h3 {
   display: grid;
   grid-template-columns: 264px minmax(0, 1fr);
   overflow-x: hidden;
-  min-height: 100vh;
+  /* dvh, not vh: in an installed PWA / mobile Safari the collapsing URL bar
+     makes 100vh taller than the visible area, which adds phantom scroll. */
+  min-height: 100vh; /* fallback for browsers without dvh */
+  min-height: 100dvh;
   background:
     radial-gradient(880px 500px at 78% -12%, rgba(56, 139, 253, 0.09), transparent 65%),
     radial-gradient(700px 400px at 8% 8%, rgba(56, 139, 253, 0.04), transparent 70%),
@@ -1732,12 +1752,17 @@ h3 {
 .cabinet-sidebar {
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100vh; /* fallback for browsers without dvh */
+  height: 100dvh;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 26px;
-  padding: 24px 18px 18px;
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    18px
+    calc(18px + env(safe-area-inset-bottom))
+    calc(18px + env(safe-area-inset-left));
   border-right: 1px solid var(--border);
   background: rgba(1, 4, 9, 0.56);
   backdrop-filter: blur(16px);
@@ -2090,6 +2115,10 @@ h3 {
 
 /* ---------- topbar: breadcrumb path + live status ---------- */
 
+/* Sticky at top:0 — in an installed PWA (display: standalone + viewport-fit:
+   cover) the status bar / notch overlays this strip, so the top inset has to be
+   part of the padding rather than a margin, otherwise the blurred background
+   stops short of the screen edge. Side insets cover landscape notches. */
 .cabinet-topbar {
   position: sticky;
   top: 0;
@@ -2099,7 +2128,11 @@ h3 {
   justify-content: space-between;
   gap: 18px;
   min-height: 52px;
-  padding: 10px clamp(20px, 4vw, 44px);
+  padding:
+    calc(10px + env(safe-area-inset-top))
+    calc(clamp(20px, 4vw, 44px) + env(safe-area-inset-right))
+    10px
+    calc(clamp(20px, 4vw, 44px) + env(safe-area-inset-left));
   border-bottom: 1px solid var(--border);
   background: rgba(13, 17, 23, 0.78);
   backdrop-filter: blur(14px) saturate(120%);
@@ -2234,7 +2267,11 @@ h3 {
 .cabinet-page {
   width: min(100%, 1240px);
   margin: 0 auto;
-  padding: clamp(24px, 3vw, 36px) clamp(20px, 4vw, 44px) clamp(32px, 4vw, 48px);
+  padding:
+    clamp(24px, 3vw, 36px)
+    calc(clamp(20px, 4vw, 44px) + env(safe-area-inset-right))
+    calc(clamp(32px, 4vw, 48px) + env(safe-area-inset-bottom))
+    calc(clamp(20px, 4vw, 44px) + env(safe-area-inset-left));
 }
 
 .cabinet-page-head {
@@ -4594,8 +4631,9 @@ a.roadmap-step__practice-card:hover {
   overflow: clip;
   padding:
     calc(20px + env(safe-area-inset-top))
-    clamp(18px, 4vw, 56px)
-    calc(18px + env(safe-area-inset-bottom));
+    calc(clamp(18px, 4vw, 56px) + env(safe-area-inset-right))
+    calc(18px + env(safe-area-inset-bottom))
+    calc(clamp(18px, 4vw, 56px) + env(safe-area-inset-left));
   background:
     radial-gradient(1000px 720px at 16% 12%, rgba(56, 139, 253, 0.12), transparent 66%),
     radial-gradient(900px 680px at 86% 82%, rgba(46, 160, 67, 0.1), transparent 66%),
@@ -5852,6 +5890,18 @@ a.roadmap-step__practice-card:hover {
     display: none;
   }
 
+  /* .site-nav is absolutely centred, so it does not reserve flex space and
+     silently slides under the authenticated cluster (chip + Dashboard), which
+     is ~350px wide on tablets. Anchor links stay reachable by scrolling; the
+     account controls must not be covered. */
+  .site-strip:has(.site-auth--authenticated) .site-nav {
+    display: none;
+  }
+
+  .site-strip {
+    gap: 16px;
+  }
+
   .section-grid,
   .pricing-grid,
   .onboarding-body {
@@ -5938,15 +5988,58 @@ a.roadmap-step__practice-card:hover {
 
   .site-auth--authenticated {
     gap: 8px;
+    min-width: 0;
   }
 
+  /* The authenticated strip used to be brand (~102px) + a 220px user chip +
+     the Dashboard CTA (~92px) + gaps ≈ 416px of content inside ~350px of
+     usable width at 390px — it simply did not fit. On phones the chip collapses
+     to an avatar-only tap target and the name/plan move into the popup. */
   .site-auth .site-user-panel {
-    flex-basis: min(220px, 52vw);
-    width: min(220px, 52vw);
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .site-auth .site-user-panel .user-chip {
+    grid-template-columns: auto;
+    justify-items: center;
+    gap: 0;
+    width: 40px;
+    height: 40px;
+    padding: 4px;
+  }
+
+  /* Not display:none — the chip button would lose its accessible name, since
+     the avatar itself is aria-hidden. Visually hidden keeps it for AT. */
+  .site-auth .site-user-panel .user-chip__id {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  .site-auth .site-user-panel .user-chip__caret {
+    display: none;
+  }
+
+  /* The popup is normally pinned to both edges of the panel; with a 40px panel
+     it has to detach and hang off the right edge instead. */
+  .site-auth .site-user-panel .user-menu {
+    inset: calc(100% + 10px) 0 auto auto;
+    width: min(260px, calc(100vw - 28px));
+  }
+
+  .site-brand {
+    min-width: 0;
   }
 
   .site-auth .site-auth__dashboard {
-    padding: 8px 12px;
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    white-space: nowrap;
   }
 
   .hero-tagline {
@@ -5968,7 +6061,11 @@ a.roadmap-step__practice-card:hover {
   }
 
   .cabinet-page {
-    padding: 22px 14px calc(28px + env(safe-area-inset-bottom));
+    padding:
+      22px
+      calc(14px + env(safe-area-inset-right))
+      calc(28px + env(safe-area-inset-bottom))
+      calc(14px + env(safe-area-inset-left));
   }
 
   .cabinet-page-head h1 {
@@ -6047,9 +6144,40 @@ a.roadmap-step__practice-card:hover {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* Fixed 22px cells + 7px gaps need 14*22 + 13*7 + 32 of padding = 431px,
+     but a 390px phone only offers ~362px inside .cabinet-page, so the grid was
+     clipped by the panel's overflow:hidden. Cells go fluid and stay square via
+     aspect-ratio; max-width freezes the original size on wider screens. */
+  .heatmap {
+    width: 100%;
+    max-width: 431px;
+    align-items: stretch;
+    gap: clamp(3px, 1.4vw, 7px);
+  }
+
+  .heatmap__week {
+    grid-template-columns: repeat(14, minmax(0, 1fr));
+    gap: clamp(3px, 1.4vw, 7px);
+  }
+
+  .heatmap__cell {
+    width: auto;
+    height: auto;
+    aspect-ratio: 1;
+    border-radius: 4px;
+  }
+
+  /* Legend + scale sit on one line with ~5px to spare at 360px; let them wrap
+     instead of pushing the panel wider. */
+  .heatmap-foot {
+    flex-wrap: wrap;
+    gap: 6px 16px;
+  }
+
   .heatmap-stats {
     grid-template-columns: repeat(3, auto);
     justify-content: space-between;
+    gap: 12px;
     border-top: 1px solid var(--line);
     padding: 12px 16px 14px;
   }
@@ -6124,8 +6252,9 @@ a.roadmap-step__practice-card:hover {
   .focus-session {
     padding:
       calc(14px + env(safe-area-inset-top))
-      12px
-      calc(12px + env(safe-area-inset-bottom));
+      calc(12px + env(safe-area-inset-right))
+      calc(12px + env(safe-area-inset-bottom))
+      calc(12px + env(safe-area-inset-left));
   }
 
   .focus-header {
@@ -7517,52 +7646,83 @@ a.roadmap-step__practice-card:hover {
   text-transform: lowercase;
 }
 
-.cabinet-mobile-nav__account-actions {
+/* Horizontal action row: four equal columns instead of stacked list rows —
+   saves ~150px of vertical space so the nav list stays above the fold. */
+.cabinet-mobile-nav__actions {
   display: grid;
-  gap: 2px;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 6px;
 }
 
-.cabinet-mobile-nav__account-actions a,
-.cabinet-mobile-nav__account-actions button {
-  display: flex;
-  align-items: center;
-  min-height: 46px;
-  padding: 0 10px;
-  margin: 0 -10px;
-  border: 0;
-  border-radius: 10px;
-  background: none;
+.cabinet-mobile-nav__action {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 5px;
+  min-height: 62px;
+  padding: 8px 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
   color: var(--text-dim);
   font-family: var(--font-stack-mono);
-  font-size: 13px;
-  text-align: left;
+  font-size: 10.5px;
+  line-height: 1.1;
+  text-align: center;
   cursor: pointer;
   transition:
     background 0.16s ease,
+    border-color 0.16s ease,
     color 0.16s ease;
 }
 
-.cabinet-mobile-nav__account-actions a:hover,
-.cabinet-mobile-nav__account-actions a:focus-visible,
-.cabinet-mobile-nav__account-actions button:hover,
-.cabinet-mobile-nav__account-actions button:focus-visible {
-  background: rgba(255, 255, 255, 0.05);
+.cabinet-mobile-nav__action span {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cabinet-mobile-nav__action svg {
+  width: 19px;
+  height: 19px;
+}
+
+.cabinet-mobile-nav__action:hover,
+.cabinet-mobile-nav__action:focus-visible {
+  border-color: rgba(201, 209, 217, 0.32);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text);
 }
 
-.cabinet-mobile-nav__logout {
+.cabinet-mobile-nav__action:active {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.cabinet-mobile-nav__action--danger {
+  color: var(--danger-bright);
+  border-color: rgba(248, 81, 73, 0.26);
+}
+
+.cabinet-mobile-nav__action--danger:hover,
+.cabinet-mobile-nav__action--danger:focus-visible {
+  border-color: rgba(248, 81, 73, 0.5);
+  background: rgba(248, 81, 73, 0.1);
   color: var(--danger-bright);
 }
 
-.cabinet-mobile-nav__account-actions .cabinet-mobile-nav__logout:hover,
-.cabinet-mobile-nav__account-actions .cabinet-mobile-nav__logout:focus-visible {
-  color: var(--danger-bright);
-  background: rgba(248, 81, 73, 0.09);
-}
-
-.cabinet-mobile-nav__logout:disabled {
+.cabinet-mobile-nav__action:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+/* Very narrow phones: 4 columns would squeeze labels below legibility. */
+@media (max-width: 359px) {
+  .cabinet-mobile-nav__actions {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .cabinet-mobile-nav__back {
@@ -8232,12 +8392,16 @@ a.roadmap-step__practice-card:hover {
 
   .shell-overlay:not(.shell-overlay--tour) .shell-dialog {
     width: 100%;
-    max-height: calc(100dvh - 40px);
+    max-height: calc(100dvh - 40px - env(safe-area-inset-top));
     border-left: 0;
     border-right: 0;
     border-bottom: 0;
     border-radius: 18px 18px 0 0;
-    padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+    padding:
+      18px
+      calc(18px + env(safe-area-inset-right))
+      calc(18px + env(safe-area-inset-bottom))
+      calc(18px + env(safe-area-inset-left));
     animation: shell-sheet-in 0.22s cubic-bezier(0.32, 0.72, 0.22, 1) both;
   }
 

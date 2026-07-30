@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { CabinetIcon } from "../(cabinet)/_icons";
 import { CabinetInterviewCountdown } from "../(cabinet)/CabinetInterviewCountdown";
 import { CabinetNav, type CabinetNavGroup } from "../(cabinet)/CabinetNav";
 import { openReportProblemDialog } from "../(cabinet)/ReportProblemDialog";
@@ -47,16 +48,32 @@ function focusableElements(root: HTMLElement) {
   );
 }
 
+// Short glyph captions for the horizontal action row. The full wording from the
+// dictionary stays on `aria-label`/`title`, so screen readers and tooltips keep
+// the descriptive text while the visible label stays one word wide.
+const ACTION_LABELS = {
+  settings: "настройки",
+  site: "на сайт",
+  report: "ошибка",
+  logout: "выход",
+} as const;
+
 /**
- * Flat account section inside the full-screen menu. On mobile the sidebar (and
- * with it the user popup menu) is hidden, so settings / report / logout must be
- * reachable from here. Rendered inline — no popup — per mobile best practices.
+ * Account section inside the full-screen menu. On mobile the sidebar (and with
+ * it the user popup menu) is hidden, so settings / site / report / logout must
+ * be reachable from here. Laid out as one horizontal row of icon buttons: four
+ * stacked list rows used to eat ~200px of vertical space, which pushed the nav
+ * itself off screen on short devices.
  */
 function CabinetMobileAccount({
+  backHref,
+  backLabel,
   copy,
   onClose,
   onNavigate,
 }: Readonly<{
+  backHref: string;
+  backLabel?: string;
   copy: AccountMenuCopy;
   onClose: () => void;
   onNavigate: () => void;
@@ -88,26 +105,56 @@ function CabinetMobileAccount({
           <span>{displayPlan}</span>
         </span>
       </div>
-      <div className="cabinet-mobile-nav__account-actions">
-        <Link href="/settings" onClick={onNavigate}>
-          {copy.menuSettings}
+
+      <div className="cabinet-mobile-nav__actions">
+        <Link
+          className="cabinet-mobile-nav__action"
+          href="/settings"
+          onClick={onNavigate}
+          aria-label={copy.menuSettings}
+          title={copy.menuSettings}
+        >
+          <CabinetIcon name="settings" />
+          <span>{ACTION_LABELS.settings}</span>
         </Link>
+
+        {backLabel ? (
+          <Link
+            className="cabinet-mobile-nav__action"
+            href={backHref}
+            onClick={onNavigate}
+            aria-label={backLabel}
+            title={backLabel}
+          >
+            <CabinetIcon name="arrow" />
+            <span>{ACTION_LABELS.site}</span>
+          </Link>
+        ) : null}
+
         <button
+          className="cabinet-mobile-nav__action"
           type="button"
+          aria-label={copy.menuReport}
+          title={copy.menuReport}
           onClick={() => {
             onClose();
             openReportProblemDialog();
           }}
         >
-          {copy.menuReport}
+          <CabinetIcon name="megaphone" />
+          <span>{ACTION_LABELS.report}</span>
         </button>
+
         <button
-          className="cabinet-mobile-nav__logout"
+          className="cabinet-mobile-nav__action cabinet-mobile-nav__action--danger"
           type="button"
+          aria-label={copy.menuLogout}
+          title={copy.menuLogout}
           onClick={handleLogout}
           disabled={pending}
         >
-          {pending ? copy.logoutPending : copy.menuLogout}
+          <CabinetIcon name="logout" />
+          <span>{pending ? "…" : ACTION_LABELS.logout}</span>
         </button>
       </div>
     </div>
@@ -300,24 +347,25 @@ export function CabinetMobileNav({
               <CabinetNav groups={groups} ariaLabel={ariaLabel} onNavigate={closeAfterNavigation} />
             </div>
 
-            {accountCopy || backLabel ? (
+            {accountCopy ? (
               <div className="cabinet-mobile-nav__footer">
-                {accountCopy ? (
-                  <CabinetMobileAccount
-                    copy={accountCopy}
-                    onClose={closeMenu}
-                    onNavigate={closeAfterNavigation}
-                  />
-                ) : null}
-                {backLabel ? (
-                  <Link
-                    className="cabinet-mobile-nav__back"
-                    href={backHref}
-                    onClick={closeAfterNavigation}
-                  >
-                    {backLabel}
-                  </Link>
-                ) : null}
+                <CabinetMobileAccount
+                  backHref={backHref}
+                  backLabel={backLabel}
+                  copy={accountCopy}
+                  onClose={closeMenu}
+                  onNavigate={closeAfterNavigation}
+                />
+              </div>
+            ) : backLabel ? (
+              <div className="cabinet-mobile-nav__footer">
+                <Link
+                  className="cabinet-mobile-nav__back"
+                  href={backHref}
+                  onClick={closeAfterNavigation}
+                >
+                  {backLabel}
+                </Link>
               </div>
             ) : null}
           </div>
