@@ -29,9 +29,20 @@ reverse tunnel через `deploy/vps`.
 cp .env.example .env
 # заменить AUTH_JWT_SECRET на случайную строку 32+ символа
 docker compose up -d --build
-curl -fsS http://localhost:8080/healthz
-curl -fsS http://localhost:8080/readyz
+docker compose logs ready
 ```
+
+Ручные `curl` по `/healthz` и `/readyz` больше не нужны как первый шаг: их уже
+делает сервис `ready`. Он стартует последним в графе (после миграций и всех
+seed-джобов), дожидается ответов от `/healthz`, `/readyz`, лендинга и
+`/presentation/` — и печатает рамку `REALGO — СТЕК ПОЛНОСТЬЮ ЗАПУЩЕН`,
+отделённую пустыми строками от остальных логов. Если ответа нет, он вместо
+рамки сообщает, какой эндпоинт молчит, и выходит с кодом 1 — в
+`docker compose ps` это видно как `Exited (1)`. Таймаут задаётся
+`READY_TIMEOUT` (по умолчанию 180 с).
+
+`docker compose up -d --wait` держит команду до появления баннера, что удобно
+в скриптах: код возврата тогда отражает готовность всего стека.
 
 `FRP_VPS_HOST`, `FRP_TOKEN` и `VPN_SUB_URL` для dev-запуска не нужны.
 

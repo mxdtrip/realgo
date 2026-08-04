@@ -83,6 +83,36 @@ services:
   presentation:
     pull_policy: build
 
+  # `seed-users` is parked behind the prod-demo-users profile above, so it is
+  # not part of this stack. depends_on entries are merged, not replaced, which
+  # would leave `ready` waiting on a service compose never starts — hence the
+  # full list is restated here with !override and that one entry dropped.
+  # Everything else is identical to the base file; keep the two in sync.
+  ready:
+    depends_on: !override
+      migrate:
+        condition: service_completed_successfully
+      seed-roadmap:
+        condition: service_completed_successfully
+      seed-cards:
+        condition: service_completed_successfully
+      seed-pattern-content:
+        condition: service_completed_successfully
+      seed-pattern-cards:
+        condition: service_completed_successfully
+      seed-atlas:
+        condition: service_completed_successfully
+      seed-subpattern-cards:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+      web:
+        condition: service_started
+      presentation:
+        condition: service_healthy
+      caddy:
+        condition: service_started
+
   # Route through vpngw:8080 instead of api:8080 — see Caddyfile.internal.prod.
   # depends_on presentation is inherited from the base file and still applies
   # here: the deck is started with the stack, but Caddy is not gated on it.

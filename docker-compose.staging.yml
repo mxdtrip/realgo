@@ -66,6 +66,27 @@ services:
   # inheritance, and reached at staging.realgo.dev/presentation/ through this
   # stack's own caddy — verify with `docker compose ps presentation`.
 
+  # Every seed job is parked behind the unused `seeds` profile above, so none
+  # of them exist in this stack. depends_on entries merge rather than replace,
+  # which would leave the readiness banner waiting forever on services compose
+  # never starts — so the list is restated here with only what staging runs.
+  # The banner's own HTTP probes are unaffected: they go through this stack's
+  # caddy on :8081 (PUBLIC_PORT follows API_PORT, overridden below).
+  ready:
+    depends_on: !override
+      migrate:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+      web:
+        condition: service_started
+      presentation:
+        condition: service_healthy
+      caddy:
+        condition: service_started
+    environment:
+      PUBLIC_PORT: "8081"
+
   frpc:
     volumes: !override
       - ./frpc.staging.toml:/etc/frp/frpc.toml:ro
