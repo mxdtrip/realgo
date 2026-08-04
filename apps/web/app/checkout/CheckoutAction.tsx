@@ -19,9 +19,13 @@ export function CheckoutAction({ isFree }: { isFree: boolean }) {
       <button className="price-cta checkout-pay" type="button" disabled>
         Оплата временно недоступна
       </button>
+      {/* Версия main: кнопка отключена, поэтому «оплачивая, вы принимаете
+          условия» было бы неправдой — оферта здесь в будущем времени. Guard
+          по !isFree из ветки dev не нужен: выше уже стоит ранний return для
+          бесплатного плана. Формулировка приведена к «лицензии Pro». */}
       <p className="checkout-note">Биллинг в разработке; выбор тарифа сейчас не сохраняется.</p>
       <p className="checkout-note">
-        После запуска оплаты будут действовать условия{" "}
+        После запуска оплаты к лицензии Pro будут применяться условия{" "}
         <Link href="/offer" target="_blank">
           Публичной оферты
         </Link>

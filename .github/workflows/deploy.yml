@@ -39,6 +39,19 @@ jobs:
           # /healthz must reach the api container.
           curl -fsS -o /dev/null -w "web: %{http_code}\n" http://127.0.0.1:8081/
           curl -fsS -o /dev/null -w "api: %{http_code}\n" http://127.0.0.1:8081/healthz
+          # The deck lives in its own nginx container behind the same caddy.
+          # Probing the bare path and a nested asset catches the two ways the
+          # /presentation prefix strip breaks without any container going
+          # unhealthy: a missing trailing-slash redirect (relative assets and
+          # the Three.js importmap then resolve against the site root), and a
+          # bad strip (nginx's SPA fallback would answer index.html with 200
+          # for an asset path, so index.html alone proves nothing).
+          redirect="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8081/presentation)"
+          echo "deck redirect: $redirect (want 308)"
+          test "$redirect" = "308"
+          curl -fsSL -o /dev/null -w "deck: %{http_code}\n" http://127.0.0.1:8081/presentation/
+          curl -fsS -o /dev/null -w "deck asset: %{http_code}\n" \
+            http://127.0.0.1:8081/presentation/vendor/three/three.module.min.js
 
       - name: Prune old images
         run: docker image prune -f

@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 
 import { getDictionary } from "../_content/i18n";
 import { FlipReviewCard } from "../components/FlipReviewCard";
+import { KodikWinNotice } from "../components/KodikWinNotice";
 import { MemoryExtensionDemo } from "../components/MemoryExtensionDemo";
 import { ScrollReveal } from "../components/ScrollReveal";
 import { ScrollVideoBackground } from "../components/ScrollVideoBackground";
@@ -144,7 +145,7 @@ export default function Home() {
             <p>{copy.sections.pricing.description}</p>
           </div>
           <div className="pricing-grid">
-            {copy.pricing.map(([name, price, features, cta], index) => (
+            {copy.pricing.map(([name, price, features, cta, period], index) => (
               <article
                 className="price-card"
                 data-reveal="zoom"
@@ -152,7 +153,13 @@ export default function Home() {
                 key={name}
               >
                 <span>{name}</span>
-                <strong>{price}</strong>
+                <strong>
+                  {price}
+                  {/* Pro — разовая бессрочная лицензия. Без этой подписи цена
+                      рядом с бесплатным планом читается как ежемесячная: это
+                      то, чего посетитель ждёт от таблицы тарифов по умолчанию. */}
+                  {period ? <span className="price-period">{period}</span> : null}
+                </strong>
                 <ul className="price-features">
                   {features.map((feature) => (
                     <li key={feature}>{feature}</li>
@@ -173,6 +180,11 @@ export default function Home() {
       <LandingFAQ section={copy.sections.faq} />
 
       <SiteFooter />
+
+      {/* Mounted here rather than in the root layout on purpose: the notice is
+          marketing, so it must not follow a signed-in user into the cabinet,
+          the docs pages or a focused review session. */}
+      <KodikWinNotice />
     </>
   );
 }

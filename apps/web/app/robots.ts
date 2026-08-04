@@ -12,7 +12,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/", "/checkout", "/login", "/register"],
+      allow: ["/", "/presentation/", "/checkout", "/login", "/register"],
       disallow: [
         "/dashboard",
         "/reviews",

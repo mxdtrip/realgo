@@ -36,6 +36,9 @@ sqlc: ## Generate sqlc code from queries/
 up: ## Build and start the full stack in the background
 	$(COMPOSE) up -d --build
 
+# caddy pulls in `presentation` through depends_on, so the deck comes up with
+# this narrowed stack too and /presentation/ is not a 502 while working on the
+# api. `web` stays out on purpose — that is the point of this target.
 up-api: ## Build and start only API, Postgres, Redis, migrations, and Caddy
 	$(COMPOSE) up -d --build postgres redis migrate api caddy
 

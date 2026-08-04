@@ -1,13 +1,16 @@
 # FreeBurger (realgo)
 
 Монорепозиторий продукта **realgo** — системы подготовки к техническим
-интервью, которая не даёт решённым задачам забыться. Три приложения делят
+интервью, которая не даёт решённым задачам забыться. Приложения делят
 один backend-контракт и одну инфраструктуру деплоя:
 
 - **веб-приложение** (`apps/web`) — маркетинговый лендинг + личный кабинет;
 - **браузерное расширение** (`apps/extension`) — ловит submit на площадках
   с задачами и кормит его в личный кабинет;
-- **Go API** (`services/api`) — единый backend для обоих клиентов.
+- **Go API** (`services/api`) — единый backend для обоих клиентов;
+- **презентация продукта** (`apps/presentation`) — статический HTML-дек,
+  отдельный nginx-контейнер за тем же Caddy на
+  [realgo.dev/presentation](https://realgo.dev/presentation/).
 
 **Статус: активный demo-проект.** Публичная точка входа —
 [realgo.dev](https://realgo.dev); её фактическую доступность проверяет runbook.
@@ -57,7 +60,8 @@
 .
 ├── apps/
 │   ├── web/                 # Next.js 16 (App Router), React 19, TypeScript, кастомный CSS
-│   └── extension/           # Plasmo, TypeScript, Manifest V3
+│   ├── extension/           # Plasmo, TypeScript, Manifest V3
+│   └── presentation/        # Финальный дек: статика + nginx, отдаётся на /presentation/
 ├── services/
 │   └── api/                 # Go 1.25 API
 │       ├── cmd/api/         # Точка входа бинарного приложения
@@ -111,7 +115,27 @@ curl -fsS http://localhost:8080/readyz
 
 Сайт и API доступны через Caddy на `http://localhost:8080` (порт меняется
 переменной `API_PORT`). Порт 3000 наружу не публикуется: web-контейнер виден
-только внутри docker-сети, Caddy проксирует на него всё, кроме `/api/*`.
+только внутри docker-сети, Caddy проксирует на него всё, кроме `/api/*` и
+`/presentation/*`.
+
+Момент, когда стек действительно готов, ловить вручную не нужно — его печатает
+одноразовый сервис `ready`. Он стартует последним в графе зависимостей (после
+миграций и всех seed-джобов), затем дожидается реальных ответов от `/healthz`,
+`/readyz`, лендинга и презентации — и только тогда выводит рамку `REALGO —
+СТЕК ПОЛНОСТЬЮ ЗАПУЩЕН`, отделённую от предыдущих логов пустыми строками.
+Состояние контейнера — не то же самое, что готовность: Next отвечает на
+запросы на несколько секунд позже старта процесса, поэтому баннер привязан к
+HTTP, а не к `service_started`.
+
+```sh
+docker compose up               # баннер появится в конце потока логов
+docker compose up -d --wait     # то же в фоне: --wait держит команду до баннера
+docker compose logs ready       # посмотреть баннер уже после запуска
+```
+
+Если что-то не поднялось, `ready` вместо рамки печатает, какой именно эндпоинт
+не ответил, и выходит с ненулевым кодом (`docker compose ps` покажет
+`Exited (1)`). Таймаут ожидания — `READY_TIMEOUT`, по умолчанию 180 секунд.
 
 То же из backend-директории (`make`/`go-task` — эквивалентны):
 
@@ -143,6 +167,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-d
 - [Web](apps/web/README.md) — маршруты кабинета, PWA, локализация.
 - [Browser Extension](apps/extension/README.md) — адаптеры площадок, авторизация, сборка/упаковка.
 - [Go API](services/api/README.md) — запуск, Go Task, runbooks.
+- [Presentation](apps/presentation/README.md) — финальный дек, управление, live-разработка слайдов.
 
 Полный контракт backend API (все `/me/*` эндпоинты, Pattern Atlas, practice
 hub, AI-генерация карточек/квизов, assistant hints) — в

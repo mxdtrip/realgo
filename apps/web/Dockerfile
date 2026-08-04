@@ -23,6 +23,16 @@ ARG NEXT_PUBLIC_API_BASE_URL=""
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
+# public/ is the only thing the runner copies that carries the build context's
+# file modes verbatim (everything under .next/ is generated here, so it already
+# has sane ones). The runner drops to the unprivileged `nextjs` user, so a
+# checkout made under a restrictive umask — 0077 gives files 0600, directories
+# 0700 — would ship static assets the server cannot read, and every image and
+# icon would fail at runtime. Git records only the executable bit, never the
+# read bits, so whether that happens depends on who cloned the repo. Normalise
+# here, in a stage that is not shipped: capital X adds execute to directories
+# only, keeping them traversable without marking files executable.
+RUN chmod -R a+rX public
 
 # ---- runner: minimal runtime ----
 FROM node:22-bookworm-slim AS runner

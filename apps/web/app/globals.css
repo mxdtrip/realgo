@@ -1320,6 +1320,21 @@ h3 {
   margin-bottom: 14px;
 }
 
+/* Характер платежа под ценой («разовый платёж · доступ навсегда»).
+   Селектор из двух классов намеренно: `.price-card span` выше по файлу
+   оформляет название тарифа — uppercase, акцентный цвет, отступ снизу — и
+   как более общий descendant-селектор перебил бы одноклассовый `.price-period`
+   при равной специфичности. */
+.price-card .price-period {
+  display: block;
+  margin: 6px 0 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
 .price-card p {
   margin: 0;
   font-size: 14px;
@@ -1457,11 +1472,18 @@ h3 {
   color: var(--text);
 }
 
+/* Раньше здесь был инлайновый суффикс «/ мес» сразу за ценой. Теперь это
+   характер платежа («разовый платёж · доступ навсегда»), который в строку за
+   38-пиксельной ценой не помещается — отсюда блок и тот же кегль, что у
+   .price-period на лендинге. */
 .checkout-period {
-  font-size: 16px;
-  font-weight: 500;
+  display: block;
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 400;
   color: var(--text-dim);
-  letter-spacing: 0;
+  letter-spacing: 0.02em;
+  text-transform: none;
 }
 
 .checkout-pay:disabled {
@@ -6074,6 +6096,86 @@ a.roadmap-step__practice-card:hover {
   }
 }
 
+/* ---------- шапка: мини-чип аккаунта, пока он не наехал на .site-nav ----------
+
+   Корень проблемы: .site-nav спозиционирован абсолютно и отцентрован по
+   вьюпорту, то есть во flex-раскладке .site-strip он не занимает места вовсе.
+   Браузер физически не может предотвратить наложение — бренд и правый кластер
+   раскладываются так, будто навигации нет, и при сужении окна плашка аккаунта
+   просто наезжает на «/faq».
+
+   Точка налезания посчитана по реальным метрикам шрифтов, а не на глаз:
+
+     .site-nav        379px (Inter 12.5px, letter-spacing .04em, «/» + 4px,
+                             пять пунктов через gap 28px) -> половина 190px
+     правый кластер   355px (чип 236px + gap 20px + Dashboard 100px)
+     padding-right     28px (максимум clamp)
+
+   Наложение начинается, когда W/2 + 190 > W − 28 − 355, то есть при
+   ширине меньше 1146px. Именно этот диапазон и был багом: до 920px, где
+   навигация пряталась целиком, оставалось больше двухсот пикселей поломанной
+   вёрстки.
+
+   С мини-чипом (40px) кластер ужимается до 160px и та же формула даёт порог
+   ~730px — то есть налезание уходит за пределы диапазона, где навигация вообще
+   показывается. Переключаемся на 1240px: это 1146px плюс ~47px запаса, чтобы
+   перед схлопыванием оставался видимый зазор, а не «впритык».
+
+   Сами правила мини-версии раньше жили в блоке 640px. Они не продублированы,
+   а подняты сюда: media-запросы вложены по ширине, поэтому на телефонах этот
+   блок продолжает применяться, а в 640px осталось только телефонное. */
+@media (max-width: 1240px) {
+  .site-auth .site-user-panel {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .site-auth .site-user-panel .user-chip {
+    grid-template-columns: auto;
+    justify-items: center;
+    gap: 0;
+    width: 40px;
+    height: 40px;
+    padding: 4px;
+  }
+
+  /* Not display:none — the chip button would lose its accessible name, since
+     the avatar itself is aria-hidden. Visually hidden keeps it for AT. */
+  .site-auth .site-user-panel .user-chip__id {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  .site-auth .site-user-panel .user-chip__caret {
+    display: none;
+  }
+
+  /* The popup is normally pinned to both edges of the panel; with a 40px panel
+     it has to detach and hang off the right edge instead. */
+  .site-auth .site-user-panel .user-menu {
+    inset: calc(100% + 10px) 0 auto auto;
+    width: min(260px, calc(100vw - 28px));
+  }
+}
+
+/* Ниже мини-чип уже не спасает, и здесь навигация убирается совсем.
+   Единое правило вместо прежней пары «:has(--authenticated) на 920px» плюс
+   «все на 640px»: у неавторизованных была ровно та же болезнь, просто ниже по
+   ширине — Log in (77px) + Sign up (85px) + gap дают кластер 172px, и та же
+   формула W/2 + 190 > W − 14 − 172 ломает вёрстку под 778px, то есть заметно
+   раньше, чем навигация пряталась на 640px. Порог 820px закрывает оба
+   состояния с запасом, и логика становится одна вместо двух. */
+@media (max-width: 820px) {
+  .site-nav {
+    display: none;
+  }
+}
+
 @media (max-width: 920px) {
   /* The whole editor, not just .code-sheet: hiding only the textarea left
      .code-lines (its syntax-highlight backdrop, a sibling — not a child of
@@ -6083,14 +6185,6 @@ a.roadmap-step__practice-card:hover {
      anyway (typing is how it's driven), so there's nothing left worth
      showing once it's gone. */
   .code-editor {
-    display: none;
-  }
-
-  /* .site-nav is absolutely centred, so it does not reserve flex space and
-     silently slides under the authenticated cluster (chip + Dashboard), which
-     is ~350px wide on tablets. Anchor links stay reachable by scrolling; the
-     account controls must not be covered. */
-  .site-strip:has(.site-auth--authenticated) .site-nav {
     display: none;
   }
 
@@ -6173,59 +6267,19 @@ a.roadmap-step__practice-card:hover {
 }
 
 @media (max-width: 640px) {
-  .site-nav {
-    display: none;
-  }
-
+  /* .site-nav уже скрыт блоком 820px выше. */
   .site-strip {
     gap: 12px;
     padding-left: 14px;
   }
 
+  /* Мини-чип и его попап переехали в блок 1240px выше и продолжают
+     действовать здесь — на телефоне остаётся только то, что нужно именно
+     телефону. При 390px бренд (~102px) + чип 40px + Dashboard + зазоры всё
+     ещё впритык, поэтому кластер дожимается более тесными gap'ами. */
   .site-auth--authenticated {
     gap: 8px;
     min-width: 0;
-  }
-
-  /* The authenticated strip used to be brand (~102px) + a 220px user chip +
-     the Dashboard CTA (~92px) + gaps ≈ 416px of content inside ~350px of
-     usable width at 390px — it simply did not fit. On phones the chip collapses
-     to an avatar-only tap target and the name/plan move into the popup. */
-  .site-auth .site-user-panel {
-    flex: 0 0 auto;
-    width: auto;
-  }
-
-  .site-auth .site-user-panel .user-chip {
-    grid-template-columns: auto;
-    justify-items: center;
-    gap: 0;
-    width: 40px;
-    height: 40px;
-    padding: 4px;
-  }
-
-  /* Not display:none — the chip button would lose its accessible name, since
-     the avatar itself is aria-hidden. Visually hidden keeps it for AT. */
-  .site-auth .site-user-panel .user-chip__id {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    clip-path: inset(50%);
-  }
-
-  .site-auth .site-user-panel .user-chip__caret {
-    display: none;
-  }
-
-  /* The popup is normally pinned to both edges of the panel; with a 40px panel
-     it has to detach and hang off the right edge instead. */
-  .site-auth .site-user-panel .user-menu {
-    inset: calc(100% + 10px) 0 auto auto;
-    width: min(260px, calc(100vw - 28px));
   }
 
   .site-brand {
@@ -10547,4 +10601,221 @@ a.roadmap-step__practice-card:hover {
   border-color: rgba(63, 185, 80, 0.4);
   background: rgba(63, 185, 80, 0.1);
   color: var(--success-bright);
+}
+
+/* ---------- Kodik Launchpad win notice ----------
+   Deliberately off-palette: this card speaks in Kodik's brand colours, not
+   realgo's GitHub-blue system, so it reads as an award badge rather than
+   another product surface. The tokens are scoped to the component instead of
+   :root for exactly that reason — nothing else on the site should inherit
+   them. See app/components/KodikWinNotice.tsx. */
+
+.kodik-notice {
+  /* Kodik brand: mascot green and the near-black green it sits on. */
+  --kodik-green: #46bf4c;
+  --kodik-green-bright: #6ee075;
+  --kodik-dark: #07290e;
+
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  /* Above the header (50) and the page, below the toast stack (90) and the
+     shell modal overlay (260): a system message or a dialog must always win. */
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: min(390px, calc(100vw - 32px));
+  border: 1px solid rgba(70, 191, 76, 0.42);
+  border-radius: 14px;
+  padding: 16px 40px 16px 16px;
+  background:
+    radial-gradient(120% 130% at 100% 0%, rgba(70, 191, 76, 0.16) 0%, transparent 58%),
+    linear-gradient(180deg, #0c1a10 0%, #07100a 100%);
+  box-shadow:
+    0 18px 44px rgba(1, 4, 9, 0.62),
+    0 0 0 1px rgba(7, 41, 14, 0.9),
+    0 0 26px rgba(70, 191, 76, 0.12);
+  /* Hidden until the mount timer fires; `visibility` (not `display`) so the
+     transition has something to animate from. */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(14px);
+  transition:
+    opacity 0.32s ease,
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0.32s;
+}
+
+.kodik-notice.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition-delay: 0s;
+}
+
+/* The mascot's frame: a pixel-art cat needs hard edges, so no smoothing and a
+   solid brand-dark plate behind it. */
+.kodik-notice__mascot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(70, 191, 76, 0.55);
+  border-radius: 10px;
+  background: var(--kodik-dark);
+  box-shadow: inset 0 0 18px rgba(70, 191, 76, 0.18);
+}
+
+.kodik-notice__mascot img {
+  width: 34px;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.kodik-notice__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.kodik-notice__eyebrow {
+  margin: 0;
+  color: var(--kodik-green);
+  font-family: var(--font-stack-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.kodik-notice__title {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-stack-display);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.kodik-notice__text {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.kodik-notice__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--kodik-green);
+  font-family: var(--font-stack-mono);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.16s ease;
+}
+
+/* Stretched link: the whole card is clickable through this pseudo-element,
+   while the DOM keeps exactly one anchor. The dismiss button below raises its
+   own stacking context so it stays clickable on top of it. */
+.kodik-notice__cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.kodik-notice__cta:hover,
+.kodik-notice:hover .kodik-notice__cta {
+  color: var(--kodik-green-bright);
+}
+
+.kodik-notice__cta svg {
+  transition: transform 0.16s ease;
+}
+
+.kodik-notice__cta:hover svg {
+  transform: translate(1px, -1px);
+}
+
+/* Focus lands on the anchor but the card is what the user sees, so ring the
+   card. */
+.kodik-notice__cta:focus-visible {
+  outline: none;
+}
+
+.kodik-notice:has(.kodik-notice__cta:focus-visible) {
+  border-color: var(--kodik-green);
+  box-shadow:
+    0 18px 44px rgba(1, 4, 9, 0.62),
+    0 0 0 2px rgba(70, 191, 76, 0.55);
+}
+
+.kodik-notice__dismiss {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1; /* above .kodik-notice__cta::after */
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.kodik-notice__dismiss:hover {
+  border-color: rgba(70, 191, 76, 0.4);
+  background: rgba(70, 191, 76, 0.12);
+  color: var(--kodik-green);
+}
+
+.kodik-notice__dismiss:focus-visible {
+  outline: 2px solid var(--kodik-green);
+  outline-offset: 1px;
+  color: var(--kodik-green);
+}
+
+@media (max-width: 520px) {
+  .kodik-notice {
+    left: max(16px, env(safe-area-inset-left));
+    right: max(16px, env(safe-area-inset-right));
+    width: auto;
+  }
+
+  .kodik-notice__text {
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kodik-notice {
+    transform: none;
+    transition:
+      opacity 0.01ms linear,
+      visibility 0s linear 0.01ms;
+  }
+
+  .kodik-notice.is-visible {
+    transition-delay: 0s;
+  }
+
+  .kodik-notice__cta svg,
+  .kodik-notice__cta:hover svg {
+    transform: none;
+    transition: none;
+  }
 }
