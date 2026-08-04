@@ -32,6 +32,21 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo pull --ignore-buildable || true
           docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo up -d --build --remove-orphans
 
+          # Caddy parses its Caddyfile ONCE, at process start. The file is a
+          # read-only bind mount, so editing it changes nothing for a container
+          # that is already running — and `up -d` only recreates a container
+          # when its service *definition* changes, which a mounted file is not
+          # part of. The result is an edge silently serving a stale routing
+          # table: that is exactly how /presentation 404'd here (the request
+          # fell through to the Next.js catch-all, which is the only thing in
+          # this stack that answers 404 — a missing deck container would have
+          # been a 502 instead).
+          #
+          # Recreating just the edge is cheap (Caddy restarts in milliseconds)
+          # and removes the whole class of "config on disk ≠ config in memory".
+          # --no-deps so this does not churn the app containers behind it.
+          docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo up -d --force-recreate --no-deps caddy
+
       - name: Smoke check
         run: |
           sleep 5
@@ -46,12 +61,27 @@ jobs:
           # the Three.js importmap then resolve against the site root), and a
           # bad strip (nginx's SPA fallback would answer index.html with 200
           # for an asset path, so index.html alone proves nothing).
-          redirect="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8081/presentation)"
-          echo "deck redirect: $redirect (want 308)"
-          test "$redirect" = "308"
-          curl -fsSL -o /dev/null -w "deck: %{http_code}\n" http://127.0.0.1:8081/presentation/
-          curl -fsS -o /dev/null -w "deck asset: %{http_code}\n" \
-            http://127.0.0.1:8081/presentation/vendor/three/three.module.min.js
+          #
+          # Retried rather than probed once after a fixed `sleep 5`: the deck
+          # image carries a HEALTHCHECK with a 5s start period, so a single
+          # shot right after `up` races the container coming up and fails for
+          # a reason that has nothing to do with the routing being tested.
+          probe() {
+            label="$1"; url="$2"; want="$3"
+            for _ in $(seq 1 15); do
+              code="$(curl -s -o /dev/null -w '%{http_code}' "$url")"
+              [ "$code" = "$want" ] && { echo "$label: $code"; return 0; }
+              sleep 2
+            done
+            echo "$label: $code (ожидали $want) -> $url" >&2
+            # 404 здесь означает, что запрос дошёл до Next через catch-all,
+            # то есть caddy работает со старой конфигурацией. 502 означал бы,
+            # что маршрут есть, а контейнер презентации не поднялся.
+            return 1
+          }
+          probe "deck redirect" http://127.0.0.1:8081/presentation 308
+          probe "deck"          http://127.0.0.1:8081/presentation/ 200
+          probe "deck asset"    http://127.0.0.1:8081/presentation/vendor/three/three.module.min.js 200
 
       - name: Prune old images
         run: docker image prune -f

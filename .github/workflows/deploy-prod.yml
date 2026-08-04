@@ -55,6 +55,20 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.prod.yml pull --ignore-buildable || true
           docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --build --remove-orphans
 
+          # Caddy parses its Caddyfile ONCE, at process start. The file is a
+          # read-only bind mount, so editing it changes nothing for a container
+          # that is already running — and `up -d` only recreates a container
+          # when its service *definition* changes, which a mounted file is not
+          # part of. The result is an edge silently serving a stale routing
+          # table (this is what made /presentation 404 on staging: the request
+          # fell through to the Next.js catch-all, the only thing in this stack
+          # that answers 404 — a missing deck container would have been a 502).
+          #
+          # Recreating just the edge is cheap and removes the whole class of
+          # "config on disk ≠ config in memory". --no-deps so this does not
+          # churn the app containers behind it.
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --force-recreate --no-deps caddy
+
       - name: Verify presentation routing
         if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl')
         run: |
@@ -79,12 +93,26 @@ jobs:
           # docker-compose.yml, and the deploy environment does not set it.
           base="http://127.0.0.1:8080"
 
-          redirect="$(curl -s -o /dev/null -w '%{http_code}' "$base/presentation")"
-          index="$(curl -sL -o /dev/null -w '%{http_code}' "$base/presentation/")"
-          asset="$(curl -s -o /dev/null -w '%{http_code}' "$base/presentation/vendor/three/three.module.min.js")"
-
-          echo "bare path: $redirect (want 308) | index: $index (want 200) | asset: $asset (want 200)"
-          test "$redirect" = "308" && test "$index" = "200" && test "$asset" = "200"
+          # Retried, not probed once: the deck image carries a HEALTHCHECK with
+          # a 5s start period, so a single shot right after `up` races the
+          # container coming up and would fail for a reason unrelated to the
+          # routing being tested.
+          probe() {
+            label="$1"; url="$2"; want="$3"
+            for _ in $(seq 1 15); do
+              code="$(curl -s -o /dev/null -w '%{http_code}' "$url")"
+              [ "$code" = "$want" ] && { echo "$label: $code"; return 0; }
+              sleep 2
+            done
+            echo "$label: $code (ожидали $want) -> $url" >&2
+            # 404 здесь означает, что запрос дошёл до Next через catch-all,
+            # то есть caddy работает со старой конфигурацией. 502 означал бы,
+            # что маршрут есть, а контейнер презентации не поднялся.
+            return 1
+          }
+          probe "bare path" "$base/presentation" 308
+          probe "index"     "$base/presentation/" 200
+          probe "asset"     "$base/presentation/vendor/three/three.module.min.js" 200
 
       - name: Verify AI wiring
         if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl')
