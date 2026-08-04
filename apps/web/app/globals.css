@@ -5907,16 +5907,88 @@ a.roadmap-step__practice-card:hover {
   }
 }
 
-@media (max-width: 920px) {
-  .code-sheet {
+/* ---------- шапка: мини-чип аккаунта, пока он не наехал на .site-nav ----------
+
+   Корень проблемы: .site-nav спозиционирован абсолютно и отцентрован по
+   вьюпорту, то есть во flex-раскладке .site-strip он не занимает места вовсе.
+   Браузер физически не может предотвратить наложение — бренд и правый кластер
+   раскладываются так, будто навигации нет, и при сужении окна плашка аккаунта
+   просто наезжает на «/faq».
+
+   Точка налезания посчитана по реальным метрикам шрифтов, а не на глаз:
+
+     .site-nav        379px (Inter 12.5px, letter-spacing .04em, «/» + 4px,
+                             пять пунктов через gap 28px) -> половина 190px
+     правый кластер   355px (чип 236px + gap 20px + Dashboard 100px)
+     padding-right     28px (максимум clamp)
+
+   Наложение начинается, когда W/2 + 190 > W − 28 − 355, то есть при
+   ширине меньше 1146px. Именно этот диапазон и был багом: до 920px, где
+   навигация пряталась целиком, оставалось больше двухсот пикселей поломанной
+   вёрстки.
+
+   С мини-чипом (40px) кластер ужимается до 160px и та же формула даёт порог
+   ~730px — то есть налезание уходит за пределы диапазона, где навигация вообще
+   показывается. Переключаемся на 1240px: это 1146px плюс ~47px запаса, чтобы
+   перед схлопыванием оставался видимый зазор, а не «впритык».
+
+   Сами правила мини-версии раньше жили в блоке 640px. Они не продублированы,
+   а подняты сюда: media-запросы вложены по ширине, поэтому на телефонах этот
+   блок продолжает применяться, а в 640px осталось только телефонное. */
+@media (max-width: 1240px) {
+  .site-auth .site-user-panel {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .site-auth .site-user-panel .user-chip {
+    grid-template-columns: auto;
+    justify-items: center;
+    gap: 0;
+    width: 40px;
+    height: 40px;
+    padding: 4px;
+  }
+
+  /* Not display:none — the chip button would lose its accessible name, since
+     the avatar itself is aria-hidden. Visually hidden keeps it for AT. */
+  .site-auth .site-user-panel .user-chip__id {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  .site-auth .site-user-panel .user-chip__caret {
     display: none;
   }
 
-  /* .site-nav is absolutely centred, so it does not reserve flex space and
-     silently slides under the authenticated cluster (chip + Dashboard), which
-     is ~350px wide on tablets. Anchor links stay reachable by scrolling; the
-     account controls must not be covered. */
-  .site-strip:has(.site-auth--authenticated) .site-nav {
+  /* The popup is normally pinned to both edges of the panel; with a 40px panel
+     it has to detach and hang off the right edge instead. */
+  .site-auth .site-user-panel .user-menu {
+    inset: calc(100% + 10px) 0 auto auto;
+    width: min(260px, calc(100vw - 28px));
+  }
+}
+
+/* Ниже мини-чип уже не спасает, и здесь навигация убирается совсем.
+   Единое правило вместо прежней пары «:has(--authenticated) на 920px» плюс
+   «все на 640px»: у неавторизованных была ровно та же болезнь, просто ниже по
+   ширине — Log in (77px) + Sign up (85px) + gap дают кластер 172px, и та же
+   формула W/2 + 190 > W − 14 − 172 ломает вёрстку под 778px, то есть заметно
+   раньше, чем навигация пряталась на 640px. Порог 820px закрывает оба
+   состояния с запасом, и логика становится одна вместо двух. */
+@media (max-width: 820px) {
+  .site-nav {
+    display: none;
+  }
+}
+
+@media (max-width: 920px) {
+  .code-sheet {
     display: none;
   }
 
@@ -5999,59 +6071,19 @@ a.roadmap-step__practice-card:hover {
 }
 
 @media (max-width: 640px) {
-  .site-nav {
-    display: none;
-  }
-
+  /* .site-nav уже скрыт блоком 820px выше. */
   .site-strip {
     gap: 12px;
     padding-left: 14px;
   }
 
+  /* Мини-чип и его попап переехали в блок 1240px выше и продолжают
+     действовать здесь — на телефоне остаётся только то, что нужно именно
+     телефону. При 390px бренд (~102px) + чип 40px + Dashboard + зазоры всё
+     ещё впритык, поэтому кластер дожимается более тесными gap'ами. */
   .site-auth--authenticated {
     gap: 8px;
     min-width: 0;
-  }
-
-  /* The authenticated strip used to be brand (~102px) + a 220px user chip +
-     the Dashboard CTA (~92px) + gaps ≈ 416px of content inside ~350px of
-     usable width at 390px — it simply did not fit. On phones the chip collapses
-     to an avatar-only tap target and the name/plan move into the popup. */
-  .site-auth .site-user-panel {
-    flex: 0 0 auto;
-    width: auto;
-  }
-
-  .site-auth .site-user-panel .user-chip {
-    grid-template-columns: auto;
-    justify-items: center;
-    gap: 0;
-    width: 40px;
-    height: 40px;
-    padding: 4px;
-  }
-
-  /* Not display:none — the chip button would lose its accessible name, since
-     the avatar itself is aria-hidden. Visually hidden keeps it for AT. */
-  .site-auth .site-user-panel .user-chip__id {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    clip-path: inset(50%);
-  }
-
-  .site-auth .site-user-panel .user-chip__caret {
-    display: none;
-  }
-
-  /* The popup is normally pinned to both edges of the panel; with a 40px panel
-     it has to detach and hang off the right edge instead. */
-  .site-auth .site-user-panel .user-menu {
-    inset: calc(100% + 10px) 0 auto auto;
-    width: min(260px, calc(100vw - 28px));
   }
 
   .site-brand {
