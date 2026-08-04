@@ -196,3 +196,20 @@ func TestAssistantHandler_HintProviderUnavailable(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
 	}
 }
+
+func TestNormalizeAssistantRequest_GeeksForGeeks(t *testing.T) {
+	input, err := normalizeAssistantRequest(AssistantHintRequest{
+		Platform:         "geeksforgeeks",
+		TaskTitle:        "Prerequisite Tasks",
+		TaskURL:          "https://www.geeksforgeeks.org/problems/prerequisite-tasks/1",
+		PlatformTaskSlug: "prerequisite-tasks",
+		Difficulty:       "medium",
+		TaskDescription:  "Determine whether all tasks can finish.",
+	})
+	if err != nil {
+		t.Fatalf("normalizeAssistantRequest() error = %v", err)
+	}
+	if input.Platform != "geeksforgeeks" || input.Slug != "prerequisite-tasks" {
+		t.Fatalf("unexpected normalized input: %+v", input)
+	}
+}

@@ -2,12 +2,19 @@ import {
   ASSISTANT_STATE_KEY_PREFIX,
   DEFAULT_API_BASE_URL,
   DEFAULT_WEB_BASE_URL,
-  REVIEW_PATH,
   STORAGE_KEYS,
   type AssistantPersistedState,
+  type AuthSource,
   type DetectedSubmission,
   type TokenPair,
 } from "./types";
+import {
+  buildReviewUrl,
+  normalizeServiceBaseUrl,
+  resolveWebBaseUrl,
+} from "./navigation";
+
+export { normalizeServiceBaseUrl } from "./navigation";
 
 /**
  * Thin wrapper over chrome.storage.local. Kept out of the popup component so the
@@ -37,37 +44,19 @@ export function setApiBaseUrl(url: string): Promise<void> {
 }
 
 export async function getWebBaseUrl(): Promise<string> {
-  const stored = await get<string>(STORAGE_KEYS.webBaseUrl);
-  try {
-    return normalizeServiceBaseUrl(stored || DEFAULT_WEB_BASE_URL);
-  } catch {
-    return DEFAULT_WEB_BASE_URL;
-  }
+  return resolveWebBaseUrl(
+    await get<string>(STORAGE_KEYS.webBaseUrl),
+    DEFAULT_WEB_BASE_URL
+  );
 }
 
 export function setWebBaseUrl(url: string): Promise<void> {
   return set(STORAGE_KEYS.webBaseUrl, normalizeServiceBaseUrl(url));
 }
 
-/** HTTPS is required off-device; plaintext HTTP is limited to loopback dev. */
-export function normalizeServiceBaseUrl(raw: string): string {
-  const parsed = new URL(raw.trim());
-  const loopback = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]";
-  if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && loopback)) {
-    throw new Error("Используй HTTPS; HTTP разрешён только для localhost.");
-  }
-  if (parsed.username || parsed.password) {
-    throw new Error("URL не должен содержать логин или пароль.");
-  }
-  if (parsed.search || parsed.hash) {
-    throw new Error("URL не должен содержать query-параметры или fragment.");
-  }
-  return parsed.toString().replace(/\/+$/, "");
-}
-
 /** Absolute URL of the review cards section, e.g. https://realgo.dev/cards. */
 export async function getReviewUrl(): Promise<string> {
-  return (await getWebBaseUrl()) + REVIEW_PATH;
+  return buildReviewUrl(await getWebBaseUrl());
 }
 
 export function getAccessToken(): Promise<string | undefined> {
@@ -91,11 +80,21 @@ export function setWebSessionFingerprint(fingerprint: string): Promise<void> {
 }
 
 /** Persists an access + refresh pair returned by the auth endpoints. */
-export async function setTokens(tokens: TokenPair): Promise<void> {
-  await chrome.storage.local.set({
+export async function setTokens(tokens: TokenPair, source?: AuthSource): Promise<void> {
+  const values: Record<string, unknown> = {
     [STORAGE_KEYS.accessToken]: tokens.access_token,
     [STORAGE_KEYS.refreshToken]: tokens.refresh_token,
-  });
+  };
+  if (source) values[STORAGE_KEYS.authSource] = source;
+  await chrome.storage.local.set(values);
+}
+
+export function getAuthSource(): Promise<AuthSource | undefined> {
+  return get<AuthSource>(STORAGE_KEYS.authSource);
+}
+
+export function setAuthSource(source: AuthSource): Promise<void> {
+  return set(STORAGE_KEYS.authSource, source);
 }
 
 /**
@@ -111,6 +110,7 @@ export async function clearTokens(): Promise<void> {
   await chrome.storage.local.remove([
     STORAGE_KEYS.accessToken,
     STORAGE_KEYS.refreshToken,
+    STORAGE_KEYS.authSource,
     STORAGE_KEYS.userEmail,
     STORAGE_KEYS.webSessionFingerprint,
     STORAGE_KEYS.lastSubmission,

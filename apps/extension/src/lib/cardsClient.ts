@@ -2,8 +2,7 @@ import type { CardsResponse, ProblemCardsResult } from "./types";
 
 /**
  * Cards readiness via the background worker — the UI-side counterpart of the
- * REALGO_GET_PROBLEM_CARDS handler. Shared by the in-page overlay and the
- * toolbar popup so both feed the same fetcher into PopupApp.
+ * REALGO_GET_PROBLEM_CARDS handler used by the toolbar popup.
  *
  * Mirrors the transport's "never throw" rule: any failure (asleep worker,
  * closed channel, unavailable endpoint) resolves to `null`, which the popup
