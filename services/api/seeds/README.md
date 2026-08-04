@@ -147,6 +147,41 @@ DATABASE_URL='postgres://postgres:postgres@localhost:5432/freeburger?sslmode=dis
 Идемпотентен: задачи апсертятся по `(platform_id, external_slug)`, curated
 линки (`tier IS NOT NULL`) никогда не перетираются.
 
+## GeeksforGeeks Corpus
+
+`atlas_gfg_problems.yaml` — 78 задач practice.geeksforgeeks.org по 21
+подпаттерну (приоритет — темы, тонко/не покрытые LeetCode+HackerRank на
+момент сбора 2026-07-21). Собран ChatGPT deep-research проходом с реальным
+браузингом; каждый slug/title сверен вручную с живой страницей перед
+мёржем — 4/4 выборочных проверки совпали дословно. Как и LeetCode-корпус,
+tier = NULL (не curated); только primary-линк на подпаттерн, без company
+tags и без роадмапа.
+
+```sh
+DATABASE_URL='postgres://postgres:postgres@localhost:5432/freeburger?sslmode=disable' \
+  python seed_gfg_corpus.py atlas_gfg_problems.yaml
+```
+
+Идемпотентен, та же схема апсерта, что у `seed_atlas_corpus.py`.
+
+## Codeforces Corpus
+
+`atlas_codeforces_problems.yaml` — 83 задачи по 21 подпаттерну, с явным tier
+(`foundational`/`core`/`advanced` по rating-диапазону 800-1200/1300-1700/1800+).
+В отличие от остальных корпусов, этот **curated с самого начала**: каждая
+строка проверена против официального Codeforces API
+(`codeforces.com/api/problemset.problems`) — 83/83 совпадений по title и
+rating, 0 придуманных тегов. Поэтому tier у него не NULL и всегда
+перезаписывается при повторном сиде (как `atlas_problem_links.yaml`), а не
+защищается от перетирания как в plain-корпусах. `external_slug` — это
+`{contestId}{index}` (например `"427C"`), у Codeforces нет числового
+external_id, общего с другими площадками.
+
+```sh
+DATABASE_URL='postgres://postgres:postgres@localhost:5432/freeburger?sslmode=disable' \
+  python seed_codeforces_corpus.py atlas_codeforces_problems.yaml
+```
+
 ## Company Problems Dataset
 
 `atlas_company_problems.csv.gz` — реальные company↔problem улики из публичных
@@ -165,6 +200,38 @@ relevance подпаттернов для Company Overlay из линков prob
 руками relevance в датасете не назначается. Demo-строки при коллизии
 вытесняются dataset'ом, manual/community не трогаются. Запускать ПОСЛЕ
 seed_atlas.py и seed_atlas_corpus.py (нужны линки задач на подпаттерны).
+
+## GFG Company Problems Dataset
+
+`atlas_gfg_company_problems.csv.gz` — company↔problem улики с публичного GFG
+company-tags API (158 компаний / 1183 уникальных задачи / 3567 пар,
+собрано 2026-07-21, полный отчёт и SHA-256 в архиве коллектора). В отличие
+от LeetCode-датасета evidence_count всегда 1 (один источник — сам GFG),
+`difficulty` пустая у 186 строк (GFG-значение `Basic` вне словаря
+easy/medium/hard). `problem_url` в CSV уже полный (не собирается из slug,
+как для LeetCode).
+
+Company-коды в CSV НЕ доверяются напрямую: `seed_gfg_company_problems.py`
+пересчитывает `cmp_<key>` из display-имени той же нормализацией, что и
+`build_company_problems.py` (LeetCode), — иначе Amazon/Adobe/… с GFG легли
+бы отдельной строкой в `companies` и раздвоили evidence вместо слияния с
+LeetCode-версией той же компании. 59 из 158 компаний пересекаются с
+LeetCode-датасетом по этому ключу.
+
+```sh
+DATABASE_URL='postgres://postgres:postgres@localhost:5432/freeburger?sslmode=disable' \
+  python seed_gfg_company_problems.py atlas_gfg_company_problems.csv.gz
+```
+
+Идемпотентен, та же схема ребилда, что у `seed_company_problems.py` — но
+`DELETE FROM company_problems` в обоих скриптах скоупится по platform_id
+(добавлено заодно в `seed_company_problems.py`), поэтому два сидера можно
+гонять в любом порядке, не затирая evidence друг друга. Ребилд
+`subpattern_companies`, наоборот, намеренно НЕ скоупится по платформе —
+relevance подпаттерна для компании складывается из dataset-evidence со всех
+платформ сразу. Запускать ПОСЛЕ seed_atlas.py/seed_atlas_corpus.py (нужны
+линки задач на подпаттерны); порядок относительно `seed_company_problems.py`
+не важен по тем же причинам.
 
 ## realgo Demo Cards
 

@@ -32,15 +32,6 @@ export const ASSISTANT_CSS = `
 }
 .realgo-assistant--closed { width: auto; }
 
-/* The collapsed HackerRank launcher participates in the site's action row.
-   Keep the expanded panel out of that layout so it cannot move Run/Submit. */
-:host([data-realgo-inline]) .realgo-assistant { width: auto; }
-:host([data-realgo-inline]) .realgo-agent-panel {
-  position: fixed;
-  right: 16px;
-  bottom: 72px;
-}
-
 .realgo-agent-button {
   min-width: 150px;
   min-height: 44px;
@@ -252,6 +243,16 @@ export const ASSISTANT_CSS = `
   border-color: rgba(56, 189, 178, 0.4);
   color: #38bdb2;
   background: rgba(56, 189, 178, 0.12);
+}
+.realgo-agent-tag--geeksforgeeks {
+  border-color: rgba(47, 141, 70, 0.4);
+  color: #2f8d46;
+  background: rgba(47, 141, 70, 0.12);
+}
+.realgo-agent-tag--codeforces {
+  border-color: rgba(49, 140, 231, 0.4);
+  color: #318ce7;
+  background: rgba(49, 140, 231, 0.12);
 }
 
 .realgo-agent-messages {

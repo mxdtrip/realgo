@@ -1,4 +1,4 @@
-export const supportedLocales = ["ru", "en", "es"] as const;
+export const supportedLocales = ["ru"] as const;
 
 export type Locale = (typeof supportedLocales)[number];
 
@@ -41,20 +41,20 @@ const ru = {
       navAria: "Site sections",
       nav: ["Memory", "Roadmap", "Reviews", "Pricing", "FAQ"],
       auth: {
-        login: "Log in",
-        signup: "Sign up",
-        dashboard: "Dashboard",
-        createAccount: "Create account",
-        continue: "Continue",
-        email: "Email",
+        login: "Войти",
+        signup: "Регистрация",
+        dashboard: "Кабинет",
+        createAccount: "Создать аккаунт",
+        continue: "Продолжить",
+        email: "Электронная почта",
         emailPlaceholder: "you@company.com",
-        password: "Password",
+        password: "Пароль",
         passwordPlaceholder: "••••••••",
-        interviewDate: "Interview date",
-        loginAria: "Log in",
-        signupAria: "Create account",
-        pending: "Please wait…",
-        error: "Something went wrong. Try again.",
+        interviewDate: "Дата собеседования",
+        loginAria: "Войти",
+        signupAria: "Создать аккаунт",
+        pending: "Подождите…",
+        error: "Что-то пошло не так. Попробуйте ещё раз.",
       },
       sortingCodeAria: "Sorting code",
       eyebrow: "// spaced repetition for technical interviews",
@@ -291,12 +291,12 @@ const ru = {
         comingSoon: "скоро",
       },
       company: {
-        title: "В какие компании хочешь устроиться?",
+        title: "В какую компанию хочешь устроиться?",
         description:
-          "Назови компании — ReAlgo будет рекомендовать задачи и темы, которые именно эти компании реально спрашивают на интервью.",
-        label: "компании",
-        placeholder: "Например, Google, Amazon, Yandex…",
-        selectedLabel: "Выбранные компании",
+          "Выбери основную цель — ReAlgo будет рекомендовать задачи и темы, которые эта компания реально спрашивает на интервью.",
+        label: "компания",
+        placeholder: "Например, Google…",
+        selectedLabel: "Выбранная компания",
         suggestionsLabel: "Подсказки компаний из GitHub-репозитория",
         skipHint: "Если рынок IT для тебя и без того прост и понятен — пропусти этот шаг.",
       },
@@ -312,28 +312,51 @@ const ru = {
       roadmap: {
         title: "Твой план подготовки",
         description:
-          "Горизонт считаем из даты собеседования, которую ты указал на предыдущем шаге. ReAlgo разложит реально релевантные компании темы по неделям — чем меньше времени осталось, тем плотнее план.",
+          "Горизонт считаем из даты собеседования. Выбери, как расставить темы — ReAlgo сразу покажет результат и оставит лишнее в резерве.",
+        priorityLabel: "Как расставить темы?",
+        priorityChangeLater: "можно изменить позже",
+        recommended: "рекомендуем",
+        modes: {
+          balanced: {
+            title: "Оптимально",
+            description: "Частые темы целевой компании, твои пробелы и плавное усложнение.",
+          },
+          easy_first: {
+            title: "Легче → сложнее",
+            description: "Сначала темы с большей долей easy-задач, затем medium и hard.",
+          },
+          company_frequency: {
+            title: "Чаще спрашивают",
+            description: "Сначала подпаттерны с максимальным числом релевантных задач компании.",
+          },
+          knowledge_gaps: {
+            title: "Закрыть пробелы",
+            description: "Сначала темы с самой низкой текущей уверенностью.",
+          },
+        },
         horizonLabel: "горизонт до собеседования",
         previewLabel: "предпросмотр плана",
         previewWeeksUnit: "недель",
-        previewTopicsUnit: "тем",
+        previewTopicsUnit: "тем в плане",
+        previewReserveUnit: "тем в резерве",
         previewLoading: "Считаем план по твоим данным…",
         previewError: "Не удалось загрузить данные для плана. Нажми «Далее», чтобы повторить.",
         noPoolTitle: "Пока не из чего строить план",
         noPoolDescription:
-          "Без компании roadmap строить не из чего. Можно вернуться к этому позже — в атласе паттернов или на странице roadmap, когда выберешь компанию.",
+          "В атласе пока нет доступных подпаттернов. Настройки можно сохранить и вернуться к плану позже.",
       },
       welcome: {
         eyebrow: "setup complete",
         title: "Добро пожаловать в ReAlgo",
         description:
-          "Мы сохранили стартовые настройки локально. Теперь можно перейти в кабинет и начать повторение без лишнего шума.",
+          "План сохранён в профиле и будет доступен на любом устройстве. Можно переходить в кабинет и начинать подготовку.",
         action: "Перейти в Dashboard",
         summary: {
           platform: "площадка",
           companies: "компании",
           date: "интервью",
           roadmap: "план",
+          priority: "приоритет",
           empty: "—",
         },
       },
@@ -415,12 +438,12 @@ const ru = {
               ["g c", "cards"],
               ["g t", "patterns"],
               ["g s", "settings"],
+              ["g n", "начать сессию повторений"],
             ],
           },
           {
             title: "действия",
             items: [
-              ["s", "начать сессию повторений"],
               ["?", "эта справка"],
               ["esc", "закрыть диалог"],
             ],
@@ -445,9 +468,9 @@ const ru = {
         copy: "скопировать отчёт",
         copied: "скопировано ✓",
         copyFailed: "не вышло — скопируй текст вручную",
-        sentTitle: "почтовый клиент открыт",
-        sentNote:
-          "Если письмо не создалось — нажми «скопировать отчёт» и пришли текст в любой канал команды.",
+        handoffTitle: "отправь письмо в почтовом клиенте",
+        handoffNote:
+          "ReAlgo не может проверить отправку. Если окно письма не открылось, скопируй отчёт и пришли текст в любой канал команды.",
         close: "закрыть",
         email: "support@realgo.dev",
       },
@@ -516,6 +539,8 @@ const ru = {
         retry: "повторить",
         dayToday: "сегодня",
         dayTomorrow: "завтра",
+        dayOverdue: "просрочено на",
+        dayUnits: ["день", "дня", "дней"],
         statTooltips: {
           today_queue:
             "Сколько повторений запланировано на сегодня: задачи, карточки и паттерны, у которых подошёл срок.",
@@ -651,6 +676,8 @@ const ru = {
         practiceAction: "start review",
         lockedEyebrow: "locked",
         lockedTitle: "Сначала завершить предыдущие недели",
+        reviewEyebrow: "review week",
+        reviewTitle: "Повторение и mock interview",
         empty: "Роадмап пока пуст — задачи появятся после первого решения с расширением.",
         loading: "Загружаем роадмап…",
         errorTitle: "Не удалось загрузить роадмап",
@@ -667,6 +694,33 @@ const ru = {
         emptyStateAction: "построить roadmap",
         deleteRoadmap: "удалить roadmap",
         deleteRoadmapPending: "удаляем…",
+        priorityTitle: "Порядок тем",
+        priorityChangeLater: "Меняется только будущее плана",
+        priorityPreview: "Предпросмотр: завершённые и текущая недели останутся на месте.",
+        priorityApply: "перестроить будущие недели",
+        priorityCancel: "отмена",
+        priorityPending: "сохраняем…",
+        selectedLabel: "тем в плане",
+        reserveLabel: "тем в резерве",
+        coreLabel: "core plan",
+        modes: {
+          balanced: {
+            title: "Оптимально",
+            description: "Частота компании, твои пробелы и плавное усложнение.",
+          },
+          easy_first: {
+            title: "Легче → сложнее",
+            description: "Сначала темы с большей долей easy-задач.",
+          },
+          company_frequency: {
+            title: "Чаще спрашивают",
+            description: "Сначала темы с максимальным числом задач компании.",
+          },
+          knowledge_gaps: {
+            title: "Закрыть пробелы",
+            description: "Сначала темы с минимальной текущей уверенностью.",
+          },
+        },
       },
       patterns: {
         eyebrow: "/patterns",
@@ -1107,8 +1161,6 @@ export type Dictionary = typeof ru;
 
 const dictionaries: Record<Locale, Dictionary> = {
   ru,
-  en: ru,
-  es: ru,
 };
 
 export function getDictionary(locale: Locale = defaultLocale) {

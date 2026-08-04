@@ -1,5 +1,9 @@
+import type { Metadata } from "next";
+
 import { getDictionary } from "../../_content/i18n";
 import { DashboardClient } from "./_components/DashboardClient";
+
+export const metadata: Metadata = { title: "Дашборд" };
 
 export default function DashboardPage() {
   const copy = getDictionary().cabinet;
@@ -21,6 +25,8 @@ export default function DashboardPage() {
         viewAll: copy.common.viewAll,
         dayToday: page.dayToday,
         dayTomorrow: page.dayTomorrow,
+        dayOverdue: page.dayOverdue,
+        dayUnits: page.dayUnits,
         statTooltips: page.statTooltips,
         launcher: page.launcher,
         heatmap: page.heatmap,

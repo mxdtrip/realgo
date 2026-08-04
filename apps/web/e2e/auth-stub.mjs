@@ -23,10 +23,25 @@ const USER = {
   interview_date: null,
   created_at: "2026-01-01T00:00:00Z",
   onboarding_completed: true,
+  profile: {
+    prep_goal: null,
+    grade: null,
+    target_company: null,
+    target_position: null,
+    platform: null,
+    target_topics: [],
+  },
+  notification_settings: {
+    review_reminder: true,
+    streak_reminder: false,
+    weekly_digest: false,
+    email_enabled: false,
+  },
 };
 
 const tokens = (kind) => ({
-  access_token: `${kind}.access`,
+  // JWT-shaped enough for the web client's cross-tab subject comparison.
+  access_token: `${kind}.eyJzdWIiOiIxIn0.signature`,
   refresh_token: `${kind}.refresh`,
   token_type: "Bearer",
   expires_in: 900,
@@ -91,6 +106,7 @@ const STUB_RELEVANCE = {
 // "today / due now" branches regardless of when the suite runs.
 const NOW_ISO = new Date().toISOString();
 const PAST_ISO = new Date(Date.now() - 3 * 3600_000).toISOString();
+const OVERDUE_ISO = new Date(Date.now() - 3 * 86_400_000).toISOString();
 const FUTURE_ISO = new Date(Date.now() + 26 * 3600_000).toISOString();
 
 const REVIEW_QUEUE = [
@@ -431,7 +447,7 @@ const DASHBOARD = {
       type: "problem_review",
       title: "Stub Problem: Koko Eating Bananas",
       meta: "Binary Search · medium",
-      dueAt: NOW_ISO,
+      dueAt: OVERDUE_ISO,
       lastRating: "hard",
     },
   ],
@@ -451,7 +467,17 @@ const DASHBOARD = {
 
 const ROADMAP = {
   overallProgress: 34,
-  target: { company: null, interviewDate: null },
+  target: { company: { code: "cmp_google", name: "Google" }, interviewDate: "2026-09-01", topics: ["arrays_hashing", "two_pointers"] },
+  priorityMode: "balanced",
+  availableModes: ["balanced", "easy_first", "company_frequency", "knowledge_gaps"],
+  algorithmVersion: 1,
+  source: "company",
+  horizonWeeks: 2,
+  weeklyCapacity: 3,
+  selectedCount: 2,
+  reserveCount: 1,
+  configured: true,
+  generatedAt: NOW_ISO,
   weeks: [
     {
       id: "week_01",
@@ -461,6 +487,7 @@ const ROADMAP = {
       focus: "solve pattern problems and reviews",
       status: "done",
       topics: ["arrays_hashing"],
+      items: [{ code: "arrays_hashing", name: "Arrays & Hashing", relevantProblemCount: 12, difficultyCounts: { easy: 4, medium: 8 }, masteryPercent: 100 }],
     },
     {
       id: "week_02",
@@ -470,6 +497,7 @@ const ROADMAP = {
       focus: "solve pattern problems and reviews",
       status: "active",
       topics: ["two_pointers"],
+      items: [{ code: "two_pointers", name: "Two Pointers", relevantProblemCount: 8, difficultyCounts: { easy: 2, medium: 6 }, masteryPercent: 40 }],
     },
   ],
   patterns: [],
@@ -501,7 +529,7 @@ const server = createServer((req, res) => {
   // content-type, so the browser sends a preflight. No credentials are used
   // (Bearer header, not cookies), so a wildcard origin is safe and simplest.
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
 
   const path = new URL(req.url, `http://127.0.0.1:${PORT}`).pathname;
@@ -538,6 +566,31 @@ const server = createServer((req, res) => {
       return fail(res, 401, "unauthorized", "stub: session invalid");
     }
 
+    if (req.method === "PATCH" && path === `${PREFIX}/me/profile`) {
+      const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+      if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
+      return ok(res, {
+        user: {
+          ...USER,
+          interview_date: Object.hasOwn(body, "interview_date")
+            ? body.interview_date
+            : USER.interview_date,
+          profile: { ...USER.profile, ...body },
+        },
+      });
+    }
+
+    if (req.method === "PATCH" && path === `${PREFIX}/me/notification-settings`) {
+      const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+      if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
+      return ok(res, {
+        user: {
+          ...USER,
+          notification_settings: { ...USER.notification_settings, ...body },
+        },
+      });
+    }
+
     if (req.method === "POST" && path === `${PREFIX}/auth/refresh`) {
       const kind = kindOf(body.refresh_token);
       if (kind === "LIVE") return ok(res, { tokens: tokens("LIVE") });
@@ -560,6 +613,26 @@ const server = createServer((req, res) => {
       const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
       if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
       return ok(res, ROADMAP);
+    }
+
+    if (req.method === "POST" && path === `${PREFIX}/me/roadmap/preview`) {
+      const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+      if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
+      return ok(res, { ...ROADMAP, priorityMode: body.priorityMode ?? "balanced", configured: false });
+    }
+
+    if (req.method === "PUT" && path === `${PREFIX}/me/roadmap`) {
+      const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+      if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
+      return ok(res, { ...ROADMAP, priorityMode: body.priorityMode ?? "balanced", configured: true });
+    }
+
+    if (req.method === "DELETE" && path === `${PREFIX}/me/roadmap`) {
+      const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+      if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
+      res.writeHead(204);
+      res.end();
+      return;
     }
 
     if (req.method === "GET" && path === `${PREFIX}/me/extension/status`) {

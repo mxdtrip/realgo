@@ -1,11 +1,9 @@
 import {
   clearTokens,
   getApiBaseUrl,
-  getAuthSource,
   getRefreshToken,
   getUserEmail,
   getWebSessionFingerprint,
-  setAuthSource,
   setWebSessionFingerprint,
   setTokens,
   setUserEmail,
@@ -94,7 +92,7 @@ export async function login(email: string, password: string): Promise<AuthUser> 
     throw new AuthError("Сервер не вернул токены доступа.", 500, "no_tokens");
   }
 
-  await setTokens(tokens, "options");
+  await setTokens(tokens);
   if (user?.email) await setUserEmail(user.email);
   return user ?? { id: 0, email: email.trim() };
 }
@@ -125,15 +123,18 @@ async function doRefreshAccessToken(): Promise<string> {
   try {
     data = await postJson(`${baseUrl}${AUTH_BASE}/refresh`, { refresh_token: refresh });
   } catch (e) {
+    // Discovered passively (e.g. from a background cards poll) — the user
+    // didn't choose to log out, so their open tasks' assistant conversations
+    // are kept; they'll most likely just log back into the same account.
     if (e instanceof AuthError && e.status === 401 && (await getRefreshToken()) === refresh) {
-      await clearTokens();
+      await clearTokens({ keepAssistantState: true });
     }
     throw e;
   }
 
   const tokens = data?.tokens as TokenPair | undefined;
   if (!tokens?.access_token) {
-    if ((await getRefreshToken()) === refresh) await clearTokens();
+    if ((await getRefreshToken()) === refresh) await clearTokens({ keepAssistantState: true });
     throw new AuthError("Сессия истекла. Войдите снова.", 401, "refresh_failed");
   }
   if ((await getRefreshToken()) !== refresh) {
@@ -185,28 +186,24 @@ let syncChain: Promise<void> = Promise.resolve();
 
 export function syncWebSession(
   accessToken: string | null,
-  refreshToken: string | null,
-  sourceOrigin: string
+  refreshToken: string | null
 ): Promise<void> {
   syncChain = syncChain
     .catch(() => {
       /* previous call's failure shouldn't block the next one */
     })
-    .then(() => syncWebSessionOnce(accessToken, refreshToken, sourceOrigin));
+    .then(() => syncWebSessionOnce(accessToken, refreshToken));
   return syncChain;
 }
 
 async function syncWebSessionOnce(
   accessToken: string | null,
-  refreshToken: string | null,
-  sourceOrigin: string
+  refreshToken: string | null
 ): Promise<void> {
-  const incomingSource = webAuthSource(sourceOrigin);
-  const [current, currentFingerprint, currentEmail, currentSource] = await Promise.all([
+  const [current, currentFingerprint, currentEmail] = await Promise.all([
     getRefreshToken(),
     getWebSessionFingerprint(),
     getUserEmail(),
-    getAuthSource(),
   ]);
   const incomingFingerprint = refreshToken ? await tokenFingerprint(refreshToken) : undefined;
   const currentTokenFingerprint = current ? await tokenFingerprint(current) : undefined;
@@ -218,24 +215,13 @@ async function syncWebSessionOnce(
     sameWebSession: currentFingerprint === incomingFingerprint,
     hasIndependentDeviceSession,
     incomingHasRefresh: Boolean(refreshToken),
-    currentSource,
-    incomingSource,
   });
 
   if (!refreshToken) {
-    // A logged-out web tab can clear only the session synced by that origin.
-    // Options logins, another origin and unowned legacy sessions are preserved.
-    if ((current || currentFingerprint) && currentSource === incomingSource) {
-      await clearTokens();
-    }
+    if (current || currentFingerprint) await clearTokens();
     return;
   }
-  if (current && currentFingerprint === incomingFingerprint) {
-    // Adopt an old web-managed session only after seeing its live token. Do not
-    // reassign an explicitly owned options/other-origin session.
-    if (!currentSource) await setAuthSource(incomingSource);
-    return;
-  }
+  if (current && currentFingerprint === incomingFingerprint) return;
 
   // Resolve the web identity with the access token only. A stale access token
   // is left alone: the web app will emit another auth-changed event immediately
@@ -281,24 +267,11 @@ async function syncWebSessionOnce(
   }
 
   await Promise.all([
-    setTokens(tokens, incomingSource),
+    setTokens(tokens),
     setUserEmail(webUser.email),
     setWebSessionFingerprint(incomingFingerprint!),
   ]);
   console.log("[realgo] syncWebSession: independent device session stored");
-}
-
-function webAuthSource(sourceOrigin: string): `web:${string}` {
-  let parsed: URL;
-  try {
-    parsed = new URL(sourceOrigin);
-  } catch {
-    throw new AuthError("Некорректный origin web-сессии.", 0, "invalid_source_origin");
-  }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new AuthError("Некорректный origin web-сессии.", 0, "invalid_source_origin");
-  }
-  return `web:${parsed.origin}`;
 }
 
 async function fetchWebUser(accessToken: string | null): Promise<AuthUser | null> {

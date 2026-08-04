@@ -4,6 +4,7 @@ import {
   extractDescription,
   findButtonByText,
   findText,
+  looksLikeSubmitLabel,
   type PlatformAdapter,
   type TaskInfo,
 } from "./types";
@@ -18,14 +19,11 @@ import {
  */
 export const hackerrankAdapter: PlatformAdapter = {
   platform: "hackerrank",
-  resultTimeoutMs: 60_000,
 
   matches(url: string): boolean {
     try {
       const u = new URL(url);
-      const isHackerRank =
-        u.hostname === "hackerrank.com" || u.hostname.endsWith(".hackerrank.com");
-      return isHackerRank && /^\/challenges\/[^/]+\/problem\/?$/.test(u.pathname);
+      return u.hostname.endsWith("hackerrank.com") && u.pathname.includes("/challenges/");
     } catch {
       return false;
     }
@@ -36,17 +34,13 @@ export const hackerrankAdapter: PlatformAdapter = {
     if (!slug) return null;
 
     const title =
-      cleanDocTitle() ||
-      findText([
-        "[data-analytics*='challenge' i] h1",
-        "[class*='challenge-title' i]",
-        "[class*='problem-title' i]",
-      ]) ||
-      slugToTitle(slug);
+      findText(["h1", "[class*='challenge'] h1", "[class*='title']"]) ||
+      slugToTitle(slug) ||
+      cleanDocTitle();
 
     return {
       taskTitle: title,
-      taskUrl: canonicalTaskUrl(slug),
+      taskUrl: location.href,
       platformTaskSlug: slug,
       tags: extractTags(),
       difficulty: extractDifficulty(),
@@ -59,50 +53,21 @@ export const hackerrankAdapter: PlatformAdapter = {
   },
 
   findSubmitButton(): HTMLElement | null {
-    return findButtonByText((t) => t === "submit code" || t === "submit");
+    return findButtonByText(looksLikeSubmitLabel);
   },
 
   detectSubmitResult(): SubmitResult {
-    return classifyVerdict(hackerRankResultText());
-  },
-
-  submissionResultFingerprint(): string {
-    return hackerRankResultText();
+    // HackerRank surfaces the verdict in a result/status panel once a submit resolves.
+    const text = findText([
+      "[class*='result']",
+      "[class*='verdict']",
+      "[class*='status']",
+      "[class*='score']",
+      "[class*='submission']",
+    ]);
+    return classifyVerdict(text);
   },
 };
-
-const RESULT_SELECTORS = [
-  "[data-testid*='submission' i]",
-  "[data-analytics*='submission' i]",
-  "[class*='submission-result' i]",
-  "[class*='challenge-success' i]",
-  "[class*='congrat' i]",
-  "[class*='verdict' i]",
-  "[class*='compile-status' i]",
-  "[class*='compiler' i]",
-  "[role='dialog']",
-  "[role='status']",
-  "[aria-live]",
-  "h1",
-  "h2",
-  "h3",
-];
-
-/** Collects all live result panels; the first generic status node is often stale. */
-function hackerRankResultText(): string {
-  const texts = new Set<string>();
-  for (const selector of RESULT_SELECTORS) {
-    for (const element of document.querySelectorAll<HTMLElement>(selector)) {
-      const text = (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim();
-      if (text) texts.add(text);
-    }
-  }
-  return [...texts].join("\n");
-}
-
-function canonicalTaskUrl(slug: string): string {
-  return `${location.origin}/challenges/${encodeURIComponent(slug)}/problem`;
-}
 
 function slugFromPath(pathname: string): string | undefined {
   const parts = pathname.split("/").filter(Boolean);
@@ -149,6 +114,11 @@ function extractDifficulty(): string | undefined {
   ]).toLowerCase();
   if (text.includes("easy")) return "easy";
   if (text.includes("medium")) return "medium";
-  if (text.includes("hard") || text.includes("advanced") || text.includes("expert")) return "hard";
+  // HackerRank exposes Advanced and Expert as distinct labels. Preserve the
+  // site's wording for the assistant badge instead of misrepresenting both as
+  // Hard. The API currently stores unsupported catalog levels as unknown.
+  if (text.includes("expert")) return "expert";
+  if (text.includes("advanced")) return "advanced";
+  if (text.includes("hard")) return "hard";
   return undefined;
 }

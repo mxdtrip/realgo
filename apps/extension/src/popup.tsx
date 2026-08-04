@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { AssistantApp } from "./assistant/AssistantApp";
 import { streamAssistantHintViaBackground } from "./lib/assistantClient";
 import { fetchCardsViaBackground } from "./lib/cardsClient";
-import { clearLastSubmission, getLastSubmission, getReviewUrl } from "./lib/storage";
+import { getPendingSubmissions, getReviewUrl, removePendingSubmission } from "./lib/storage";
 import type {
   AssistantTask,
   CurrentTaskResponse,
@@ -13,7 +13,6 @@ import type {
   SubmissionPayload,
 } from "./lib/types";
 import { PopupApp } from "./popup/PopupApp";
-import { selectPendingSubmission } from "./popup/submission";
 
 const POPUP_DOCUMENT_CSS = `
 html, body {
@@ -51,11 +50,17 @@ function IndexPopup() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([getLastSubmission().catch(() => undefined), getActiveTabContext()])
-      .then(([lastSubmission, context]) => {
+    Promise.all([getPendingSubmissions().catch(() => []), getCurrentTask()])
+      .then(([pending, task]) => {
         if (!alive) return;
-        setCurrentTask(context.task);
-        setSubmission(selectPendingSubmission(lastSubmission, context.task, context.url));
+        setCurrentTask(task);
+        // Prefer whichever pending submission matches the active tab (most
+        // relevant to what the user is looking at), but don't require a
+        // match: a submission stays in the queue until it's rated, so if
+        // the user switched tabs/tasks before rating it, it must still be
+        // reachable from the toolbar icon — not just "task not recognised".
+        const forCurrentTask = task ? pending.find((item) => matchesTask(item, task)) : undefined;
+        setSubmission(forCurrentTask ?? pending[0] ?? null);
       })
       .catch(() => {
         if (!alive) return;
@@ -70,8 +75,8 @@ function IndexPopup() {
   async function handleSave(
     payload: SubmissionPayload
   ): Promise<ExtensionEventResult | null> {
-    // Route the save through the background worker so transport/business logic
-    // stays outside the UI and runs with the extension's host permissions.
+    // Route the save through the background worker (same path as the in-page
+    // overlay) so transport/business logic lives in one place (#35, #38).
     const res: SaveResponse | undefined = await chrome.runtime.sendMessage({
       type: "REALGO_SAVE_SUBMISSION",
       payload,
@@ -79,9 +84,12 @@ function IndexPopup() {
     if (!res?.ok) {
       throw new Error(res?.error ?? "Не удалось сохранить.");
     }
-    await clearLastSubmission();
+    await removePendingSubmission(payload.eventId);
     try {
-      await chrome.action.setBadgeText({ text: "" });
+      // Reflect what's actually still pending (other tabs may have their
+      // own queued submissions) instead of clearing the badge outright.
+      const remaining = (await getPendingSubmissions()).length;
+      await chrome.action.setBadgeText({ text: remaining > 0 ? String(remaining) : "" });
     } catch {
       /* action API may be unavailable in some contexts */
     }
@@ -131,26 +139,24 @@ function IndexPopup() {
   );
 }
 
-interface ActiveTabContext {
-  task: AssistantTask | null;
-  url?: string;
-}
-
-async function getActiveTabContext(): Promise<ActiveTabContext> {
+async function getCurrentTask(): Promise<AssistantTask | null> {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) return { task: null, url: tab?.url };
-    try {
-      const res: CurrentTaskResponse | undefined = await chrome.tabs.sendMessage(tab.id, {
-        type: "REALGO_GET_CURRENT_TASK",
-      });
-      return { task: res?.ok && res.task ? res.task : null, url: tab.url };
-    } catch {
-      return { task: null, url: tab.url };
-    }
+    if (!tab?.id) return null;
+    const res: CurrentTaskResponse | undefined = await chrome.tabs.sendMessage(tab.id, {
+      type: "REALGO_GET_CURRENT_TASK",
+    });
+    return res?.ok && res.task ? res.task : null;
   } catch {
-    return { task: null };
+    return null;
   }
+}
+
+function matchesTask(submission: DetectedSubmission, task: AssistantTask): boolean {
+  return (
+    submission.platform === task.platform &&
+    submission.platformTaskSlug === task.platformTaskSlug
+  );
 }
 
 export default IndexPopup;

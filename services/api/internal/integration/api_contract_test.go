@@ -394,6 +394,44 @@ func TestContractRoadmapTargetAfterOnboarding(t *testing.T) {
 	require.Contains(t, date, "2026-07-21")
 }
 
+func TestContractProfileCanClearInterviewDateAndPersistStreakReminder(t *testing.T) {
+	h := newContractHarness(t)
+	email := uniqueEmail("profile-clear-date")
+	t.Cleanup(func() { h.cleanupUser(email) })
+	tokens := h.register(t, email, "Password123!")
+	t.Cleanup(func() { h.deleteRefreshTokens(tokens.refresh) })
+
+	setDate := h.request(t, http.MethodPatch, "/api/v1/me/profile", tokens.access, map[string]any{
+		"interview_date": "2026-08-12T09:00:00Z",
+	})
+	setDateData := requireSuccessEnvelope(t, setDate, http.StatusOK)
+	setDateUser := objectField(t, setDateData, "user")
+	require.Contains(t, stringField(t, setDateUser, "interview_date"), "2026-08-12")
+
+	clearDate := h.request(t, http.MethodPatch, "/api/v1/me/profile", tokens.access, map[string]any{
+		"interview_date": nil,
+	})
+	clearDateData := requireSuccessEnvelope(t, clearDate, http.StatusOK)
+	clearDateUser := objectField(t, clearDateData, "user")
+	require.Nil(t, clearDateUser["interview_date"], "explicit null must clear interview_date")
+
+	notifications := h.request(t, http.MethodPatch, "/api/v1/me/notification-settings", tokens.access, map[string]any{
+		"review_reminder": false,
+		"streak_reminder": true,
+	})
+	notificationData := requireSuccessEnvelope(t, notifications, http.StatusOK)
+	notificationUser := objectField(t, notificationData, "user")
+	settings := objectField(t, notificationUser, "notification_settings")
+	require.Equal(t, false, settings["review_reminder"])
+	require.Equal(t, true, settings["streak_reminder"])
+
+	me := h.request(t, http.MethodGet, "/api/v1/users/me", tokens.access, nil)
+	meData := requireSuccessEnvelope(t, me, http.StatusOK)
+	meUser := objectField(t, meData, "user")
+	require.Nil(t, meUser["interview_date"])
+	require.Equal(t, true, objectField(t, meUser, "notification_settings")["streak_reminder"])
+}
+
 // TestContractRoadmapTargetEmptyForFreshUser verifies that a freshly registered
 // user (no onboarding yet) gets target.company == null and target.topics == []
 // rather than null/missing, so the frontend never has to guard against null.
@@ -412,6 +450,57 @@ func TestContractRoadmapTargetEmptyForFreshUser(t *testing.T) {
 	topics, ok := target["topics"].([]any)
 	require.True(t, ok, "target.topics must be an empty array, got %T", target["topics"])
 	require.Empty(t, topics, "target.topics must be empty for a fresh user")
+}
+
+func TestContractRoadmapPreviewCommitAndRebuild(t *testing.T) {
+	h := newContractHarness(t)
+	email := uniqueEmail("roadmap-priority")
+	t.Cleanup(func() { h.cleanupUser(email) })
+	tokens := h.register(t, email, "Password123!")
+	t.Cleanup(func() { h.deleteRefreshTokens(tokens.refresh) })
+
+	interviewDate := time.Now().UTC().AddDate(0, 0, 28).Format(time.DateOnly)
+	config := map[string]any{
+		"companyCode":      "",
+		"companyName":      "",
+		"interviewDate":    interviewDate,
+		"priorityMode":     "easy_first",
+		"preserveProgress": false,
+	}
+	preview := h.request(t, http.MethodPost, "/api/v1/me/roadmap/preview", tokens.access, config)
+	previewData := requireSuccessEnvelope(t, preview, http.StatusOK)
+	require.Equal(t, false, previewData["configured"])
+	require.Equal(t, "easy_first", previewData["priorityMode"])
+	require.Equal(t, "core", previewData["source"])
+	require.NotEmpty(t, previewData["weeks"])
+	require.Greater(t, int(previewData["selectedCount"].(float64)), 0)
+
+	saved := h.request(t, http.MethodPut, "/api/v1/me/roadmap", tokens.access, config)
+	savedData := requireSuccessEnvelope(t, saved, http.StatusOK)
+	require.Equal(t, true, savedData["configured"])
+	require.Equal(t, "easy_first", savedData["priorityMode"])
+
+	loaded := h.request(t, http.MethodGet, "/api/v1/me/roadmap", tokens.access, nil)
+	loadedData := requireSuccessEnvelope(t, loaded, http.StatusOK)
+	require.Equal(t, true, loadedData["configured"])
+	require.Equal(t, "easy_first", loadedData["priorityMode"])
+	require.Equal(t, savedData["selectedCount"], loadedData["selectedCount"])
+	target := objectField(t, loadedData, "target")
+	require.NotEmpty(t, target["topics"])
+
+	config["priorityMode"] = "balanced"
+	config["preserveProgress"] = true
+	rebuilt := h.request(t, http.MethodPut, "/api/v1/me/roadmap", tokens.access, config)
+	rebuiltData := requireSuccessEnvelope(t, rebuilt, http.StatusOK)
+	require.Equal(t, "balanced", rebuiltData["priorityMode"])
+	require.Equal(t, savedData["selectedCount"], rebuiltData["selectedCount"])
+
+	deleted := h.request(t, http.MethodDelete, "/api/v1/me/roadmap", tokens.access, nil)
+	require.Equal(t, http.StatusNoContent, deleted.status)
+	afterDelete := h.request(t, http.MethodGet, "/api/v1/me/roadmap", tokens.access, nil)
+	afterDeleteData := requireSuccessEnvelope(t, afterDelete, http.StatusOK)
+	require.Equal(t, false, afterDeleteData["configured"])
+	require.Nil(t, objectField(t, afterDeleteData, "target")["company"])
 }
 
 func newContractHarness(t *testing.T) *contractHarness {

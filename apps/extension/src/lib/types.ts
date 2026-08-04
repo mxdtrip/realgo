@@ -6,7 +6,7 @@
  * wired up, so the Go API client and the web app can share the same contract.
  */
 
-export type Platform = "leetcode" | "hackerrank" | "geeksforgeeks" | "unknown";
+export type Platform = "leetcode" | "hackerrank" | "geeksforgeeks" | "codeforces" | "unknown";
 
 export type SubmitResult =
   | "accepted"
@@ -21,8 +21,8 @@ export type UserDifficulty = "hard" | "normal" | "easy";
 export interface DetectedSubmission {
   /**
    * Stable per-submit idempotency key (uuid). Generated once when the submit is
-   * detected, so popup retries reuse the same value and the backend dedupes by
-   * it (`eventId` in the contract).
+   * detected, so retries — and the overlay vs. toolbar-popup save paths — reuse
+   * the same value and the backend dedupes by it (`eventId` in the contract).
    */
   eventId: string;
   platform: Platform;
@@ -92,7 +92,6 @@ export type RuntimeMessage =
       type: "REALGO_SYNC_WEB_SESSION";
       accessToken: string | null;
       refreshToken: string | null;
-      sourceOrigin: string;
     };
 
 /**
@@ -143,6 +142,16 @@ export interface ExtensionEventResult {
   problemId: number;
   status: string;
   nextReviewAt: string | null;
+}
+
+/** Reply shape for REALGO_SUBMISSION_DETECTED (background → content script).
+    Tells the content script whether chrome.action.openPopup() actually opened
+    the toolbar popup, so it shows its own in-page overlay only when the
+    popup didn't — otherwise the user sees the same rating card twice at once
+    (in-page overlay + toolbar popup). See background.ts handleDetected. */
+export interface SubmissionDetectedResponse {
+  ok: boolean;
+  popupOpened: boolean;
 }
 
 /** Reply shape for REALGO_SAVE_SUBMISSION (background → UI). */
@@ -200,17 +209,25 @@ export interface AuthUser {
   email: string;
 }
 
-export type AuthSource = "options" | `web:${string}`;
-
 export const STORAGE_KEYS = {
-  lastSubmission: "realgo:lastSubmission",
+  // New key (not a rename of the old single-object "realgo:lastSubmission"):
+  // holds an array now, one entry per accepted submission still waiting to
+  // be rated, instead of a single global slot that one tab's submission
+  // could silently overwrite for another (see storage.ts pending-queue
+  // helpers). The old key is left as harmless dead storage rather than
+  // migrated, since its old shape (a lone object) isn't an array.
+  pendingSubmissions: "realgo:pendingSubmissions",
   apiBaseUrl: "realgo:apiBaseUrl",
   webBaseUrl: "realgo:webBaseUrl",
   accessToken: "realgo:accessToken",
   refreshToken: "realgo:refreshToken",
-  authSource: "realgo:authSource",
   userEmail: "realgo:userEmail",
   webSessionFingerprint: "realgo:webSessionFingerprint",
+  // Keyed by platform (see lib/storage.ts cross-page intent helpers). Only
+  // platforms whose submit flow navigates away from the problem page before a
+  // verdict appears (Codeforces: problem page → separate submit form → status
+  // page) need this; same-page platforms never touch it.
+  crossPageSubmitIntent: "realgo:crossPageSubmitIntent",
 } as const;
 
 /** Prefix for per-task assistant conversation state (suffix = task key). */
@@ -237,5 +254,7 @@ export interface AssistantPersistedState {
 export const DEFAULT_API_BASE_URL = "https://realgo.dev";
 
 /** realgo web app (the cabinet). "К повторению" opens its review cards here. */
-export const DEFAULT_WEB_BASE_URL =
-  process.env.PLASMO_PUBLIC_WEB_BASE_URL ?? "https://realgo.dev";
+export const DEFAULT_WEB_BASE_URL = "https://realgo.dev";
+
+/** Path of the spaced-repetition cards section inside the web app. */
+export const REVIEW_PATH = "/cards";

@@ -1,20 +1,14 @@
+import type { TaskInfo } from "../platforms/types";
 import {
   ASSISTANT_STATE_KEY_PREFIX,
   DEFAULT_API_BASE_URL,
   DEFAULT_WEB_BASE_URL,
+  REVIEW_PATH,
   STORAGE_KEYS,
   type AssistantPersistedState,
-  type AuthSource,
   type DetectedSubmission,
   type TokenPair,
 } from "./types";
-import {
-  buildReviewUrl,
-  normalizeServiceBaseUrl,
-  resolveWebBaseUrl,
-} from "./navigation";
-
-export { normalizeServiceBaseUrl } from "./navigation";
 
 /**
  * Thin wrapper over chrome.storage.local. Kept out of the popup component so the
@@ -44,19 +38,40 @@ export function setApiBaseUrl(url: string): Promise<void> {
 }
 
 export async function getWebBaseUrl(): Promise<string> {
-  return resolveWebBaseUrl(
-    await get<string>(STORAGE_KEYS.webBaseUrl),
-    DEFAULT_WEB_BASE_URL
-  );
+  const stored = await get<string>(STORAGE_KEYS.webBaseUrl);
+  try {
+    return normalizeServiceBaseUrl(stored || DEFAULT_WEB_BASE_URL);
+  } catch {
+    return DEFAULT_WEB_BASE_URL;
+  }
 }
 
 export function setWebBaseUrl(url: string): Promise<void> {
   return set(STORAGE_KEYS.webBaseUrl, normalizeServiceBaseUrl(url));
 }
 
+/** HTTPS is required off-device; plaintext HTTP is limited to loopback dev. */
+export function normalizeServiceBaseUrl(raw: string): string {
+  const parsed = new URL(raw.trim());
+  const loopback = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]";
+  if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && loopback)) {
+    throw new Error("Используй HTTPS; HTTP разрешён только для localhost.");
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error("URL не должен содержать логин или пароль.");
+  }
+  if (parsed.search || parsed.hash) {
+    throw new Error("URL не должен содержать query-параметры или fragment.");
+  }
+  if (parsed.pathname !== "/") {
+    throw new Error("URL сервиса не должен содержать путь.");
+  }
+  return parsed.origin;
+}
+
 /** Absolute URL of the review cards section, e.g. https://realgo.dev/cards. */
 export async function getReviewUrl(): Promise<string> {
-  return buildReviewUrl(await getWebBaseUrl());
+  return (await getWebBaseUrl()) + REVIEW_PATH;
 }
 
 export function getAccessToken(): Promise<string | undefined> {
@@ -80,40 +95,39 @@ export function setWebSessionFingerprint(fingerprint: string): Promise<void> {
 }
 
 /** Persists an access + refresh pair returned by the auth endpoints. */
-export async function setTokens(tokens: TokenPair, source?: AuthSource): Promise<void> {
-  const values: Record<string, unknown> = {
+export async function setTokens(tokens: TokenPair): Promise<void> {
+  await chrome.storage.local.set({
     [STORAGE_KEYS.accessToken]: tokens.access_token,
     [STORAGE_KEYS.refreshToken]: tokens.refresh_token,
-  };
-  if (source) values[STORAGE_KEYS.authSource] = source;
-  await chrome.storage.local.set(values);
-}
-
-export function getAuthSource(): Promise<AuthSource | undefined> {
-  return get<AuthSource>(STORAGE_KEYS.authSource);
-}
-
-export function setAuthSource(source: AuthSource): Promise<void> {
-  return set(STORAGE_KEYS.authSource, source);
+  });
 }
 
 /**
- * Clears the account session and all account-scoped cached data. API/Web URL
- * preferences are intentionally retained because they belong to the extension
- * installation rather than to a particular user.
+ * Clears the account session and (by default) all account-scoped cached
+ * data. API/Web URL preferences are intentionally retained because they
+ * belong to the extension installation rather than to a particular user.
+ *
+ * `keepAssistantState` exists for the passive/silent session-loss path
+ * (an access-token refresh discovered the session is gone, e.g. from a
+ * background cards poll) — the user didn't choose to end anything and is
+ * almost certainly about to log back into the same account, so wiping every
+ * open task's AI conversation history/hint progress out from under them is
+ * pure loss with no privacy benefit. An explicit logout, or the web app
+ * handing off to a different account, still wants the full wipe (leaving
+ * another account's assistant history behind on a shared device would be
+ * the actual privacy problem there) and must not pass this.
  */
-export async function clearTokens(): Promise<void> {
+export async function clearTokens(options?: { keepAssistantState?: boolean }): Promise<void> {
   const all = await chrome.storage.local.get(null);
-  const accountKeys = Object.keys(all).filter((key) =>
-    key.startsWith(ASSISTANT_STATE_KEY_PREFIX)
-  );
+  const accountKeys = options?.keepAssistantState
+    ? []
+    : Object.keys(all).filter((key) => key.startsWith(ASSISTANT_STATE_KEY_PREFIX));
   await chrome.storage.local.remove([
     STORAGE_KEYS.accessToken,
     STORAGE_KEYS.refreshToken,
-    STORAGE_KEYS.authSource,
     STORAGE_KEYS.userEmail,
     STORAGE_KEYS.webSessionFingerprint,
-    STORAGE_KEYS.lastSubmission,
+    STORAGE_KEYS.pendingSubmissions,
     ...accountKeys,
   ]);
 }
@@ -126,16 +140,43 @@ export function setUserEmail(email: string): Promise<void> {
   return set(STORAGE_KEYS.userEmail, email);
 }
 
-export function getLastSubmission(): Promise<DetectedSubmission | undefined> {
-  return get<DetectedSubmission>(STORAGE_KEYS.lastSubmission);
+/** Newest, more room for retries than any realistic number of tabs a user
+    would actually leave mid-rating at once; older entries are dropped. */
+const MAX_PENDING_SUBMISSIONS = 5;
+
+async function readPendingSubmissions(): Promise<DetectedSubmission[]> {
+  const stored = await get<DetectedSubmission[]>(STORAGE_KEYS.pendingSubmissions);
+  return Array.isArray(stored) ? stored : [];
 }
 
-export function setLastSubmission(submission: DetectedSubmission): Promise<void> {
-  return set(STORAGE_KEYS.lastSubmission, submission);
+/** All accepted submissions still waiting to be rated, oldest first. */
+export function getPendingSubmissions(): Promise<DetectedSubmission[]> {
+  return readPendingSubmissions();
 }
 
-export function clearLastSubmission(): Promise<void> {
-  return chrome.storage.local.remove(STORAGE_KEYS.lastSubmission);
+/**
+ * Queues a newly detected accepted submission. This used to be a single
+ * global "last submission" slot: two tabs detecting an accepted submit
+ * independently (even for different tasks) both wrote it, and the second
+ * write silently discarded the first tab's still-unrated submission from
+ * the toolbar popup's point of view. Re-adding the same eventId (e.g. a
+ * background retry) replaces the earlier entry instead of duplicating it.
+ */
+export async function addPendingSubmission(submission: DetectedSubmission): Promise<void> {
+  const current = await readPendingSubmissions();
+  const next = [...current.filter((item) => item.eventId !== submission.eventId), submission].slice(
+    -MAX_PENDING_SUBMISSIONS
+  );
+  await set(STORAGE_KEYS.pendingSubmissions, next);
+}
+
+/** Removes one submission (by eventId) once it's been rated and saved. */
+export async function removePendingSubmission(eventId: string): Promise<void> {
+  const current = await readPendingSubmissions();
+  await set(
+    STORAGE_KEYS.pendingSubmissions,
+    current.filter((item) => item.eventId !== eventId)
+  );
 }
 
 /** A day: assistant state older than this is stale (limits reset per task/day). */
@@ -171,4 +212,42 @@ export function setAssistantState(
   state: AssistantPersistedState
 ): Promise<void> {
   return set(ASSISTANT_STATE_KEY_PREFIX + taskKey, state);
+}
+
+/** A pending submit is abandoned (tab closed, no result page ever loaded)
+    rather than resumed after this long. */
+const CROSS_PAGE_INTENT_TTL_MS = 3 * 60 * 1000;
+
+type CrossPageIntentMap = Record<string, { taskInfo: TaskInfo; startedAt: number }>;
+
+async function readCrossPageIntents(): Promise<CrossPageIntentMap> {
+  const stored = await get<CrossPageIntentMap>(STORAGE_KEYS.crossPageSubmitIntent);
+  return stored ?? {};
+}
+
+/**
+ * Persists a click-time task snapshot for a platform whose submit flow
+ * navigates away before a verdict appears (see PlatformAdapter.crossPage).
+ * Keyed by platform rather than a single slot so an unrelated cross-page
+ * platform added later can't clobber this one's pending entry.
+ */
+export async function setCrossPageSubmitIntent(platform: string, taskInfo: TaskInfo): Promise<void> {
+  const all = await readCrossPageIntents();
+  all[platform] = { taskInfo, startedAt: Date.now() };
+  await set(STORAGE_KEYS.crossPageSubmitIntent, all);
+}
+
+/** The pending snapshot for a platform, or undefined if there is none or it
+    has expired (stale entries are left for the next write to prune). */
+export async function getCrossPageSubmitIntent(platform: string): Promise<TaskInfo | undefined> {
+  const entry = (await readCrossPageIntents())[platform];
+  if (!entry) return undefined;
+  if (Date.now() - entry.startedAt > CROSS_PAGE_INTENT_TTL_MS) return undefined;
+  return entry.taskInfo;
+}
+
+export async function clearCrossPageSubmitIntent(platform: string): Promise<void> {
+  const all = await readCrossPageIntents();
+  delete all[platform];
+  await set(STORAGE_KEYS.crossPageSubmitIntent, all);
 }

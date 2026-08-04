@@ -338,27 +338,15 @@ async function tryRefresh(): Promise<string> {
   try {
     return await refreshAccessToken();
   } catch (e) {
-    if (e instanceof AuthError) throw refreshApiError(e);
+    if (e instanceof AuthError) {
+      throw new ApiError(
+        "Аккаунт не подключён. Откройте настройки расширения и войдите в realgo.",
+        401,
+        e.code ?? "unauthorized"
+      );
+    }
     throw e;
   }
-}
-
-export function refreshApiError(error: AuthError): ApiError {
-  if (error.code === "no_session") {
-    return new ApiError(
-      "Аккаунт не подключён. Откройте настройки расширения и войдите в realgo.",
-      401,
-      error.code
-    );
-  }
-  if (error.status === 401 || error.code === "refresh_failed") {
-    return new ApiError("Сессия истекла. Войдите в realgo снова.", 401, error.code);
-  }
-  return new ApiError(
-    error.message,
-    error.status || 503,
-    error.code ?? "auth_unavailable"
-  );
 }
 
 async function authedPost(url: string, body: string, token: string, signal?: AbortSignal): Promise<Response> {

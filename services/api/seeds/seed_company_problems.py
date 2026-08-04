@@ -109,8 +109,15 @@ def seed(cur, rows):
     problems_created = cur.rowcount
 
     # The dataset layer is rebuilt wholesale so removed evidence does not
-    # linger; other source_types are never touched.
-    cur.execute("DELETE FROM company_problems WHERE source_type = 'dataset'")
+    # linger; other source_types are never touched. Scoped to this platform
+    # only: seed_gfg_company_problems.py rebuilds the same 'dataset' layer
+    # for its own platform independently, and each must not delete the
+    # other's rows.
+    cur.execute("""
+        DELETE FROM company_problems
+        WHERE source_type = 'dataset'
+          AND problem_id IN (SELECT id FROM problems WHERE platform_id = %s)
+    """, (platform_id,))
     cur.execute("""
         INSERT INTO company_problems (company_id, problem_id, evidence_count, last_seen_at, source_type)
         SELECT co.id, p.id, s.evidence_count, s.last_seen, 'dataset'
@@ -125,6 +132,8 @@ def seed(cur, rows):
     """, (platform_id,))
     links = cur.rowcount
 
+    # Not platform-scoped: relevance combines dataset evidence from every
+    # platform currently in company_problems (LeetCode + GFG + future ones).
     cur.execute("DELETE FROM subpattern_companies WHERE source_type = 'dataset'")
     cur.execute("""
         INSERT INTO subpattern_companies

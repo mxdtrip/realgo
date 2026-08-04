@@ -7,8 +7,7 @@ import type {
   SubmissionPayload,
   UserDifficulty,
 } from "../lib/types";
-import { buildReviewUrl } from "../lib/navigation";
-import { DEFAULT_WEB_BASE_URL } from "../lib/types";
+import { DEFAULT_WEB_BASE_URL, REVIEW_PATH } from "../lib/types";
 import { POPUP_CSS } from "./popup.styles";
 import { useProblemCards, type CardsUiState } from "./useProblemCards";
 
@@ -36,7 +35,7 @@ export interface PopupAppProps {
   onFetchCards?: (problemId: number) => Promise<ProblemCardsResult | null>;
   /**
    * "Скрыть" on the success screen — hides the extension UI until the next
-   * solved task by closing the toolbar popup.
+   * solved task (overlay: removes itself; toolbar popup: closes the window).
    */
   onClose?: () => void;
   /** Optional collapse handler for the success state, without forcing a header X. */
@@ -65,7 +64,7 @@ const REPORT_ISSUE_URL =
   encodeURIComponent("Расширение: не распознана задача") +
   "&body=" +
   encodeURIComponent("Страница: \nЧто ожидали: \nЧто произошло: ");
-const REVIEWS_URL = buildReviewUrl(DEFAULT_WEB_BASE_URL);
+const REVIEWS_URL = DEFAULT_WEB_BASE_URL + REVIEW_PATH;
 
 type Status = "form" | "saving" | "success" | "error";
 
@@ -142,8 +141,8 @@ export function PopupApp({
             <IconExternal />
           </div>
           <p className="realgo-state__text">
-            Откройте задачу на LeetCode, HackerRank или GeeksForGeeks и отправьте
-            решение — realgo подхватит её автоматически.
+            Откройте задачу на LeetCode, GeeksforGeeks, HackerRank или Codeforces и
+            отправьте решение — realgo подхватит её автоматически.
           </p>
           <button type="button" className="realgo-link" onClick={handleReport}>
             Сообщить об ошибке
@@ -516,6 +515,10 @@ function platformTagClass(platform: string): string {
       return "realgo-tag--leetcode";
     case "hackerrank":
       return "realgo-tag--hackerrank";
+    case "geeksforgeeks":
+      return "realgo-tag--geeksforgeeks";
+    case "codeforces":
+      return "realgo-tag--codeforces";
     default:
       return "";
   }

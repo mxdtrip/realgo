@@ -2,7 +2,7 @@
   "name": "@freeburger/extension",
   "version": "0.1.0",
   "private": true,
-  "description": "realgo — фиксирует решённую задачу на LeetCode и HackerRank и добавляет её в очередь интервальных повторений.",
+  "description": "realgo — фиксирует решённую задачу на LeetCode, GeeksforGeeks, HackerRank или Codeforces и добавляет её в очередь интервальных повторений.",
   "scripts": {
     "dev": "plasmo dev",
     "dev:firefox": "plasmo dev --target=firefox-mv3",
@@ -14,7 +14,6 @@
     "preview": "vite --config preview/vite.config.ts",
     "preview:build": "vite --config preview/vite.config.ts build",
     "preview:serve": "vite --config preview/vite.config.ts preview --host 0.0.0.0 --port 5174",
-    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -22,18 +21,15 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@testing-library/react": "^16.3.2",
     "@types/chrome": "0.0.287",
     "@types/node": "22.10.7",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
     "@vitejs/plugin-react": "4.3.4",
-    "jsdom": "^30.0.1",
     "plasmo": "0.90.5",
     "svgo": "^3.3.3",
     "typescript": "5.7.3",
-    "vite": "6.4.3",
-    "vitest": "^4.1.10"
+    "vite": "6.4.3"
   },
   "manifest": {
     "name": "realgo",
@@ -51,8 +47,9 @@
       "https://www.hackerrank.com/*",
       "https://hackerrank.com/*",
       "https://leetcode.com/*",
+      "https://www.geeksforgeeks.org/*",
       "https://geeksforgeeks.org/*",
-      "https://*.geeksforgeeks.org/*",
+      "https://codeforces.com/*",
       "https://realgo.dev/*",
       "http://localhost:3000/*",
       "http://localhost:8080/*",

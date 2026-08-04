@@ -6,16 +6,29 @@ Background worker, content scripts, popup, options и разрешения ос�
 
 ## Что делает
 
-После того как пользователь отправляет решение задачи на **LeetCode** или
-**HackerRank**, расширение фиксирует факт submit, показывает короткий popup
-realgo с названием задачи и оценкой сложности, затем отправляет результат в
-backend, откуда он попадает в персональную систему повторений.
+После того как пользователь отправляет решение задачи на **LeetCode**,
+**GeeksforGeeks**, **HackerRank** или **Codeforces**, расширение фиксирует
+факт submit, показывает короткий popup realgo с названием задачи и оценкой
+сложности, затем отправляет результат в backend, откуда он попадает в
+персональную систему повторений.
 
 Поддержка платформ построена на адаптерах (`src/platforms`), что делает
 подключение новой площадки локальным изменением, а не переписыванием
-расширения: LeetCode, HackerRank и GeeksForGeeks ловят submit прямо сейчас;
-Codeforces заведён как площадка профиля в веб-приложении и готов принять свой
-адаптер следующим.
+расширения. LeetCode, GeeksforGeeks и HackerRank ловят submit в месте на
+странице — те же логика клика и MutationObserver, разный набор селекторов.
+Codeforces устроен иначе: страница задачи не содержит редактор, кнопка
+«Submit» уводит на отдельную форму, а вердикт появляется на странице статуса
+посылок — адаптер помечает себя `crossPage`, и снапшот задачи переживает
+переход через `chrome.storage.local` (см. `lib/storage.ts`
+`*CrossPageSubmitIntent`, `contents/realgo.ts` `resumeCrossPageWatch`).
+
+⚠️ Адаптеры GeeksforGeeks и Codeforces собраны по той же защитной схеме, что
+и LeetCode/HackerRank (несколько селекторов-кандидатов, деградация в
+`"unknown"` вместо падения), но, в отличие от них, ещё не проверялись на
+живых страницах — вёрстка обеих площадок меняется без предупреждения. Собрать
+`build/chrome-mv3-dev`, пройти реальный submit на geeksforgeeks.org и
+codeforces.com и поправить селекторы по месту — обязательный шаг перед тем,
+как считать эти два адаптера боевыми (тот же принцип, что у Firefox ниже).
 
 ## Структура
 
@@ -24,10 +37,10 @@ src/
 ├── background.ts          # service worker: хранит последний submit, бейдж, попытка открыть popup
 ├── popup.tsx              # toolbar-popup (Plasmo), показывает последнюю задачу
 ├── options.tsx            # настройки: API base URL + вход по email/password
-├── contents/realgo.ts     # content script: детект submit + результата
+├── contents/realgo.ts     # content script: детект submit + результата, fallback-overlay
 ├── platforms/             # detectPlatform / extractTaskInfo / detectSubmit / detectSubmitResult
 ├── popup/
-│   ├── PopupApp.tsx        # сам компонент popup (переиспользуется popup/preview)
+│   ├── PopupApp.tsx        # сам компонент popup (переиспользуется popup/overlay/preview)
 │   ├── popup.styles.ts     # стили-строка (дизайн-токены realgo), инжект через <style>
 │   └── mock.ts             # mock-задача для preview
 └── lib/                    # types, storage (chrome.storage), api-клиент
@@ -39,13 +52,8 @@ preview/                    # standalone Vite-страница предпрос�
 Откройте настройки расширения (`chrome://extensions` → realgo → Details →
 Extension options):
 
-- **API base URL** — в публичной сборке фиксирован на `https://realgo.dev`;
-  локальные origins уже перечислены в dev-манифесте;
-- **Web URL** — по умолчанию берётся из `PLASMO_PUBLIC_WEB_BASE_URL`; локальный
-  адрес можно сохранить для dev-сборки. Production-сборка не использует
-  сохранённый loopback-адрес;
-- вход на локальном сайте синхронизируется с расширением на localhost и
-  127.0.0.1, как на порту `3000`, так и через Caddy origin `8080`;
+- **API base URL** — по умолчанию `https://realgo.dev`; для локальной разработки
+  можно вручную поставить `http://localhost:8080`;
 - **Вход в realgo** — email + пароль. Расширение логинится через
   `POST /api/v1/auth/login`, хранит access + refresh токены в `chrome.storage` и
   **обновляет access-токен автоматически** при истечении (`/api/v1/auth/refresh`).
@@ -75,7 +83,6 @@ npm run build:firefox  # build/firefox-mv3-prod ← about:debugging → This Fir
 npm run preview        # http://localhost:5174
 
 # Проверка типов
-npm test
 npm run typecheck
 ```
 
@@ -84,13 +91,14 @@ npm run typecheck
 Проверено сборкой (не живым браузером): `plasmo build --target=firefox-mv3`
 проходит чисто, манифест транслируется корректно (`background.scripts` вместо
 `service_worker`, свой `browser_specific_settings.gecko.id` вместо
-Chrome-only `key`). Кодовая база написана с оглядкой на кроссбраузерность:
-если `chrome.action.openPopup()` недоступен вне user gesture, background открывает
-тот же toolbar popup в одном переиспользуемом extension window. API origin
-фиксирован и покрыт явными `host_permissions`; динамический health-check удалён.
+Chrome-only `key`). Кодовая база уже была написана с оглядкой на кроссбраузерность:
+`chrome.action.openPopup()` в `background.ts` изначально обёрнут в try/catch с
+документированным fallback на in-page overlay (эта API не гарантирована даже
+в самом Chrome вне user gesture), `chrome.permissions.*` в `options.tsx` уже
+проверяет `typeof chrome === "undefined"` перед вызовом.
 
 **Не проверено** (нужен живой Firefox, недоступен из этого окружения): реальная
-детекция submit на LeetCode/HackerRank/GeeksForGeeks, popup и полный auth-флоу
+детекция submit на LeetCode/HackerRank, popup/overlay рендеринг, полный auth-флоу
 через `chrome.storage.local`. Загрузить `build/firefox-mv3-prod` через
 `about:debugging` → «This Firefox» → «Load Temporary Add-on» и прогнать вручную
 (см. #81 матрицу тестов) — обязательный шаг перед тем, как считать #309 закрытой.

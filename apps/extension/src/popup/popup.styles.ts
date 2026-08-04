@@ -1,8 +1,10 @@
 /*
  * realgo popup styles as a string so they can be injected via a <style> tag.
  *
- * Why a string and not a .css import: the popup is reused by the toolbar popup
- * and the Vite preview. Injecting <style> from the component keeps one source.
+ * Why a string and not a .css import: the popup is reused in three hosts:
+ * the toolbar popup (light DOM), the Vite preview (light DOM), and the in-page
+ * fallback overlay (shadow DOM). Injecting <style> from the component keeps a
+ * single source that also works inside a shadow root.
  *
  * Design tokens are scoped to `.realgo-popup` / `:host` (NOT `:root`) so the
  * custom properties cascade correctly inside a shadow root too.
@@ -253,6 +255,16 @@ export const POPUP_CSS = `
   border-color: rgba(56, 189, 178, 0.4);
   color: #38bdb2;
   background: rgba(56, 189, 178, 0.12);
+}
+.realgo-tag--geeksforgeeks {
+  border-color: rgba(47, 141, 70, 0.4);
+  color: #2f8d46;
+  background: rgba(47, 141, 70, 0.12);
+}
+.realgo-tag--codeforces {
+  border-color: rgba(49, 140, 231, 0.4);
+  color: #318ce7;
+  background: rgba(49, 140, 231, 0.12);
 }
 
 /* Body / question groups.
@@ -679,6 +691,16 @@ export const POPUP_CSS = `
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* In-page fallback overlay (shadow DOM host content).
+   Positioning + isolation live on the light-DOM host (see contents/realgo.ts,
+   which sets all:initial to stop the page CSS leaking a frame around us). */
+.realgo-overlay {
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 24px 72px rgba(1, 4, 9, 0.7);
+}
+.realgo-overlay .realgo-popup { border-radius: 12px; }
 
 @media (prefers-reduced-motion: reduce) {
   .realgo-spinner { animation: none; }
