@@ -54,6 +54,38 @@ jobs:
         run: |
           docker compose -f docker-compose.yml -f docker-compose.prod.yml pull --ignore-buildable || true
           docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --build --remove-orphans
+
+      - name: Verify presentation routing
+        if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl')
+        run: |
+          # The deck is a separate nginx container that Caddy exposes at
+          # /presentation/ by stripping the prefix. Two things can silently
+          # break without any container looking unhealthy, so both are probed
+          # here against the local Caddy rather than the public domain:
+          #
+          #  1. the bare-path redirect. Without it the browser resolves the
+          #     deck's relative assets (and its Three.js importmap) against the
+          #     site root, and the slides load with no styles and no 3D scene.
+          #  2. a nested asset. A 200 on index.html alone would still pass if
+          #     the prefix strip were misconfigured, because nginx's SPA
+          #     fallback answers index.html for unknown paths.
+          #
+          # The port is hardcoded rather than read from `docker compose port`
+          # for the same reason the next step uses plain `docker logs`: any
+          # compose subcommand re-parses the compose file, which fails in a
+          # step without the secrets env block above (AUTH_JWT_SECRET is
+          # declared `:?`, so it must resolve even to print a port number).
+          # 8080 is caddy's published port — `${API_PORT:-8080}` in
+          # docker-compose.yml, and the deploy environment does not set it.
+          base="http://127.0.0.1:8080"
+
+          redirect="$(curl -s -o /dev/null -w '%{http_code}' "$base/presentation")"
+          index="$(curl -sL -o /dev/null -w '%{http_code}' "$base/presentation/")"
+          asset="$(curl -s -o /dev/null -w '%{http_code}' "$base/presentation/vendor/three/three.module.min.js")"
+
+          echo "bare path: $redirect (want 308) | index: $index (want 200) | asset: $asset (want 200)"
+          test "$redirect" = "308" && test "$index" = "200" && test "$asset" = "200"
+
       - name: Verify AI wiring
         if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl')
         run: |

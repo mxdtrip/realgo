@@ -186,12 +186,47 @@ services:
     expose:
       - "3000"
 
+  # Final product presentation (apps/presentation): a static HTML deck served by
+  # its own nginx. Caddy exposes it at /presentation/ by stripping the prefix
+  # and proxying here, so it is same-origin with the landing page — the footer
+  # link and the hackathon notice are plain relative hrefs, no CORS, no second
+  # domain, no certificate.
+  #
+  # Kept out of the web image deliberately: at ~21 MB (11 MB of it one glTF
+  # model) inside apps/web/public it would land in every web image layer and be
+  # rebuilt and redeployed on every product change, while its own caching
+  # policy — media for a week, code never — would have to bend to Next's.
+  presentation:
+    build:
+      context: ./apps/presentation
+    restart: unless-stopped
+    # Never published on the host: the deck is only ever reached through Caddy
+    # at /presentation/, so it needs no port of its own in any environment.
+    expose:
+      - "80"
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    # No depends_on api: on the server the api joins vpngw's netns only after
-    # vpngw is healthy (see docker-compose.prod.yml), so Caddy just 502s until
-    # the upstream is up, then recovers.
+    # depends_on presentation, but WITHOUT a health condition. Two different
+    # reasons, and the distinction matters:
+    #
+    #  - listing it at all is what guarantees the deck is part of every start.
+    #    `docker compose up` with an explicit service list (`make up-api`, or
+    #    any `up -d --build web caddy` typed by hand) only touches the named
+    #    services and their dependencies — an unreferenced `presentation` is
+    #    silently skipped and never built.
+    #  - `service_started` rather than `service_healthy` keeps the failure mode
+    #    contained: a broken deck image must degrade /presentation/ to a 502,
+    #    not hold the whole site's reverse proxy down with it.
+    #
+    # No depends_on api for the related reason below: on the server the api
+    # joins vpngw's netns only after vpngw is healthy (see
+    # docker-compose.prod.yml), so Caddy just 502s until the upstream is up,
+    # then recovers.
+    depends_on:
+      presentation:
+        condition: service_started
     environment:
       REALGO_EXTENSION_ORIGIN: ${REALGO_EXTENSION_ORIGIN:-chrome-extension://kclglopmphebagjjimjhdpnmoddmbgea}
     ports:

@@ -66,7 +66,26 @@ services:
       vpngw:
         condition: service_healthy
 
+  # The product presentation runs in prod exactly as it does locally — the base
+  # service definition already carries everything it needs. It is repeated here
+  # on purpose, for two things that only matter on the server:
+  #
+  #  - `pull_policy: build`. The deploy workflow runs
+  #    `docker compose ... pull --ignore-buildable || true` before `up`. This
+  #    image has no registry to pull from, so being explicit keeps that step
+  #    honest instead of relying on the `|| true` to swallow a miss.
+  #  - it stays on the default compose network, deliberately NOT
+  #    `network_mode: service:vpngw` like api. The deck is pure static content
+  #    with zero outbound calls, so routing it through the VLESS tunnel would
+  #    add a hop and a failure mode for nothing — and Caddy reaches it as
+  #    `presentation:80` on the normal network either way
+  #    (see Caddyfile.internal.prod).
+  presentation:
+    pull_policy: build
+
   # Route through vpngw:8080 instead of api:8080 — see Caddyfile.internal.prod.
+  # depends_on presentation is inherited from the base file and still applies
+  # here: the deck is started with the stack, but Caddy is not gated on it.
   caddy:
     volumes:
       - ./Caddyfile.internal.prod:/etc/caddy/Caddyfile:ro

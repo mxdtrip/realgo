@@ -40,6 +40,19 @@
 		}
 	}
 
-	# Everything that isn't /api/* is the Next.js app.
+	# Final product presentation (apps/presentation), served by its own nginx.
+	# The deck references every asset relatively (assets/..., vendor/...), so it
+	# must be entered with a trailing slash — otherwise the browser resolves
+	# those against the site root and Next.js answers 404s. The redirect makes
+	# the bare /presentation link in the footer and in the hackathon notice
+	# safe.
+	@presentation_bare path /presentation
+	redir @presentation_bare /presentation/ 308
+
+	handle_path /presentation/* {
+		reverse_proxy presentation:80
+	}
+
+	# Everything that isn't /api/* or /presentation/* is the Next.js app.
 	reverse_proxy web:3000
 }

@@ -1,0 +1,21 @@
+.git
+.gitignore
+.dockerignore
+.DS_Store
+
+# Scratch and superseded files.
+archive
+qa
+styles.css
+assets/realgo-promo.mp4
+
+# Authoring-time only. The deck ships the prebuilt assets/product-ui.js, so the
+# TSX source, its Vite config and the live-reload dev server never need to be
+# inside the runtime image.
+product-ui-source.tsx
+product-ui.vite.config.mjs
+dev-server.mjs
+
+# Documentation belongs in the repository, not in the nginx image.
+README.md
+docs

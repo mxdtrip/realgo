@@ -10340,3 +10340,220 @@ a.roadmap-step__practice-card:hover {
   background: rgba(63, 185, 80, 0.1);
   color: var(--success-bright);
 }
+
+/* ---------- Kodik Launchpad win notice ----------
+   Deliberately off-palette: this card speaks in Kodik's brand colours, not
+   realgo's GitHub-blue system, so it reads as an award badge rather than
+   another product surface. The tokens are scoped to the component instead of
+   :root for exactly that reason — nothing else on the site should inherit
+   them. See app/components/KodikWinNotice.tsx. */
+
+.kodik-notice {
+  /* Kodik brand: mascot green and the near-black green it sits on. */
+  --kodik-green: #46bf4c;
+  --kodik-green-bright: #6ee075;
+  --kodik-dark: #07290e;
+
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  /* Above the header (50) and the page, below the toast stack (90) and the
+     shell modal overlay (260): a system message or a dialog must always win. */
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: min(390px, calc(100vw - 32px));
+  border: 1px solid rgba(70, 191, 76, 0.42);
+  border-radius: 14px;
+  padding: 16px 40px 16px 16px;
+  background:
+    radial-gradient(120% 130% at 100% 0%, rgba(70, 191, 76, 0.16) 0%, transparent 58%),
+    linear-gradient(180deg, #0c1a10 0%, #07100a 100%);
+  box-shadow:
+    0 18px 44px rgba(1, 4, 9, 0.62),
+    0 0 0 1px rgba(7, 41, 14, 0.9),
+    0 0 26px rgba(70, 191, 76, 0.12);
+  /* Hidden until the mount timer fires; `visibility` (not `display`) so the
+     transition has something to animate from. */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(14px);
+  transition:
+    opacity 0.32s ease,
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0.32s;
+}
+
+.kodik-notice.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition-delay: 0s;
+}
+
+/* The mascot's frame: a pixel-art cat needs hard edges, so no smoothing and a
+   solid brand-dark plate behind it. */
+.kodik-notice__mascot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(70, 191, 76, 0.55);
+  border-radius: 10px;
+  background: var(--kodik-dark);
+  box-shadow: inset 0 0 18px rgba(70, 191, 76, 0.18);
+}
+
+.kodik-notice__mascot img {
+  width: 34px;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.kodik-notice__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.kodik-notice__eyebrow {
+  margin: 0;
+  color: var(--kodik-green);
+  font-family: var(--font-stack-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.kodik-notice__title {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-stack-display);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.kodik-notice__text {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.kodik-notice__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--kodik-green);
+  font-family: var(--font-stack-mono);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.16s ease;
+}
+
+/* Stretched link: the whole card is clickable through this pseudo-element,
+   while the DOM keeps exactly one anchor. The dismiss button below raises its
+   own stacking context so it stays clickable on top of it. */
+.kodik-notice__cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.kodik-notice__cta:hover,
+.kodik-notice:hover .kodik-notice__cta {
+  color: var(--kodik-green-bright);
+}
+
+.kodik-notice__cta svg {
+  transition: transform 0.16s ease;
+}
+
+.kodik-notice__cta:hover svg {
+  transform: translate(1px, -1px);
+}
+
+/* Focus lands on the anchor but the card is what the user sees, so ring the
+   card. */
+.kodik-notice__cta:focus-visible {
+  outline: none;
+}
+
+.kodik-notice:has(.kodik-notice__cta:focus-visible) {
+  border-color: var(--kodik-green);
+  box-shadow:
+    0 18px 44px rgba(1, 4, 9, 0.62),
+    0 0 0 2px rgba(70, 191, 76, 0.55);
+}
+
+.kodik-notice__dismiss {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1; /* above .kodik-notice__cta::after */
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.kodik-notice__dismiss:hover {
+  border-color: rgba(70, 191, 76, 0.4);
+  background: rgba(70, 191, 76, 0.12);
+  color: var(--kodik-green);
+}
+
+.kodik-notice__dismiss:focus-visible {
+  outline: 2px solid var(--kodik-green);
+  outline-offset: 1px;
+  color: var(--kodik-green);
+}
+
+@media (max-width: 520px) {
+  .kodik-notice {
+    left: max(16px, env(safe-area-inset-left));
+    right: max(16px, env(safe-area-inset-right));
+    width: auto;
+  }
+
+  .kodik-notice__text {
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kodik-notice {
+    transform: none;
+    transition:
+      opacity 0.01ms linear,
+      visibility 0s linear 0.01ms;
+  }
+
+  .kodik-notice.is-visible {
+    transition-delay: 0s;
+  }
+
+  .kodik-notice__cta svg,
+  .kodik-notice__cta:hover svg {
+    transform: none;
+    transition: none;
+  }
+}

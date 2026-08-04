@@ -59,6 +59,9 @@ tasks:
       - "{{.COMPOSE}} up -d --build"
 
   up-api:
+    # caddy pulls in `presentation` through depends_on, so the deck comes up
+    # with this narrowed stack too and /presentation/ is not a 502 while
+    # working on the api. `web` stays out on purpose — that is the point.
     desc: Build and start only API, Postgres, Redis, migrations, and Caddy
     cmds:
       - "{{.COMPOSE}} up -d --build postgres redis migrate api caddy"

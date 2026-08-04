@@ -6,15 +6,22 @@ reverse tunnel через `deploy/vps`.
 ## Схема
 
 - Dev stack: корневой `docker-compose.yml` поднимает `api` (собственная
-  сеть), `web`, `caddy`, `postgres`, `redis`, миграции и seed jobs — без VPS
-  tunnel и без vpngw. Обычный `docker compose up` этого файла достаточно.
+  сеть), `web`, `presentation`, `caddy`, `postgres`, `redis`, миграции и seed
+  jobs — без VPS tunnel и без vpngw. Обычный `docker compose up` этого файла
+  достаточно.
 - Prod-demo: base + overlay `docker-compose.prod.yml` (vpngw; api переезжает
   в его network namespace; caddy монтирует `Caddyfile.internal.prod`) +
   профиль `prod-demo` для `frpc`.
 - VPS edge: `deploy/vps/docker-compose.yml` поднимает `frps` и публичный Caddy.
 - TLS завершается на VPS Caddy. Home Caddy получает plain HTTP через frp и
   роутит `/api/*` в api (`api:8080` в dev, `vpngw:8080` на сервере — см.
-  `Caddyfile.internal.prod`), остальное в `web:3000`.
+  `Caddyfile.internal.prod`), `/presentation/*` в `presentation:80` со
+  снятием префикса (`handle_path`), остальное в `web:3000`.
+- `presentation` — статический дек (`apps/presentation`) в собственном nginx.
+  Он намеренно не входит в netns `vpngw`: исходящих запросов у него нет.
+  Caddy зависит от него через `depends_on` без условия по health — сервис
+  всегда поднимается вместе со стеком, но сломанный дек роняет только
+  `/presentation/` в 502, а не весь реверс-прокси.
 
 ## Локальный dev запуск
 
@@ -120,8 +127,20 @@ Expected:
 
 - `/healthz` возвращает `{"status":"ok"}`.
 - `/readyz` возвращает `{"status":"ready"}`.
-- `docker compose ps` показывает `api`, `vpngw`, `web`, `caddy`, `frpc`,
-  `postgres`, `redis` как running/healthy; `migrate` завершен успешно.
+- `docker compose ps` показывает `api`, `vpngw`, `web`, `presentation`,
+  `caddy`, `frpc`, `postgres`, `redis` как running/healthy; `migrate` завершен
+  успешно.
+- Презентация отвечает по обоим путям:
+
+```sh
+# Голый путь обязан отдавать 308 на слэш-вариант: без него относительные
+# ассеты дека и его importmap для Three.js резолвятся от корня сайта.
+curl -sS -o /dev/null -w '%{http_code}\n' https://realgo.dev/presentation
+# Вложенный ассет, а не только index.html: SPA-фолбэк nginx отдал бы
+# index.html с кодом 200 и на неверно снятом префиксе.
+curl -fsS -o /dev/null -w '%{http_code}\n' \
+  https://realgo.dev/presentation/vendor/three/three.module.min.js
+```
 
 Если публичный healthcheck не проходит:
 

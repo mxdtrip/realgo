@@ -4,6 +4,11 @@ import { getDictionary } from "./_content/i18n";
 
 const publicRoutes = [
   { path: "/", priority: 1, changeFrequency: "weekly" },
+  // Not a Next route: Caddy proxies /presentation/ to the `presentation`
+  // nginx container (apps/presentation). It is listed here because it is a
+  // public, linked, indexable page — the sitemap describes the site, not this
+  // app's router. Trailing slash is canonical; the bare path 308s to it.
+  { path: "/presentation/", priority: 0.6, changeFrequency: "monthly" },
   { path: "/checkout", priority: 0.5, changeFrequency: "monthly" },
   { path: "/login", priority: 0.3, changeFrequency: "monthly" },
   { path: "/register", priority: 0.4, changeFrequency: "monthly" },

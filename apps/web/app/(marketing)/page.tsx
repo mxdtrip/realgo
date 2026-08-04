@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 
 import { getDictionary } from "../_content/i18n";
 import { FlipReviewCard } from "../components/FlipReviewCard";
+import { KodikWinNotice } from "../components/KodikWinNotice";
 import { MemoryExtensionDemo } from "../components/MemoryExtensionDemo";
 import { ScrollReveal } from "../components/ScrollReveal";
 import { ScrollVideoBackground } from "../components/ScrollVideoBackground";
@@ -173,6 +174,11 @@ export default function Home() {
       <LandingFAQ section={copy.sections.faq} />
 
       <SiteFooter />
+
+      {/* Mounted here rather than in the root layout on purpose: the notice is
+          marketing, so it must not follow a signed-in user into the cabinet,
+          the docs pages or a focused review session. */}
+      <KodikWinNotice />
     </>
   );
 }

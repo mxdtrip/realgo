@@ -1,0 +1,20 @@
+# Re-include the vendored Three.js build. The repository-root .gitignore has a
+# blanket `vendor/` rule (it exists for Go module vendoring under services/api),
+# which would otherwise silently drop apps/presentation/vendor — and the deck's
+# 3D MacBook scene does not render without it. Nested .gitignore rules take
+# precedence over the parent's, so this negation is what keeps it tracked.
+!vendor/
+!vendor/**
+
+.DS_Store
+
+# Scratch directories used while iterating on slides; never part of a build.
+archive/
+qa/
+
+# Legacy stylesheet superseded by apple.css.
+styles.css
+
+# Promo cut is distributed out of band (too large for git, not referenced by
+# index.html).
+assets/realgo-promo.mp4

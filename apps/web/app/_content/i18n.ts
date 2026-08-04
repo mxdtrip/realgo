@@ -204,6 +204,20 @@ const ru = {
         ],
       },
     },
+    // Dismissible toast in the bottom-right corner of the landing page,
+    // rendered in Kodik's brand colours. See app/components/KodikWinNotice.tsx.
+    hackathonNotice: {
+      eyebrow: "Kodik Launchpad 2026",
+      title: "ReAlgo — победитель хакатона",
+      description:
+        "30 дней от идеи до продукта: собрали MVP, прошли квалификацию и защитили проект. Посмотри презентацию, с которой мы выиграли.",
+      cta: "Смотреть презентацию",
+      href: "/presentation",
+      dismiss: "Закрыть уведомление",
+      // Names the landmark. The mascot itself is decorative (alt="") — the
+      // region label already says what the card is.
+      regionLabel: "Уведомление о победе в хакатоне Kodik Launchpad",
+    },
     footer: {
       description: "Память для подготовки к интервью. Решай, отмечай, возвращайся в нужный момент.",
       columns: [
@@ -230,7 +244,13 @@ const ru = {
           links: [
             { href: "/about", label: "About" },
             { href: "https://t.me/realgo_devlog", label: "Blog" },
-            { href: "/pitch-deck.html", label: "Pitch Deck" },
+            // Served by the `presentation` nginx container, not by Next — Caddy
+            // strips the /presentation prefix and proxies there. The link is
+            // written without a trailing slash on purpose: Caddy redirects it,
+            // so the footer stays readable and the deck's relative asset paths
+            // still resolve. The older /pitch-deck.html stays reachable by
+            // direct URL but is no longer linked from here.
+            { href: "/presentation", label: "Presentation" },
           ],
         },
         {

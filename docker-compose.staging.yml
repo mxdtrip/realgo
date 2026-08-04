@@ -60,6 +60,12 @@ services:
     ports: !override
       - "8081:80"
 
+  # No `presentation` override on purpose: the base definition needs nothing
+  # environment-specific, and it publishes no host port, so it cannot collide
+  # with the prod stack sharing this docker daemon. It is built and started by
+  # inheritance, and reached at staging.realgo.dev/presentation/ through this
+  # stack's own caddy — verify with `docker compose ps presentation`.
+
   frpc:
     volumes: !override
       - ./frpc.staging.toml:/etc/frp/frpc.toml:ro
