@@ -7,8 +7,13 @@ import { CheckoutAction } from "./CheckoutAction";
  * Минимальный платёжный экран. Открывается из карточек тарифов на лендинге
  * (`/checkout?plan=free|pro`). Показывает выбранный план и его состав.
  *
- * TODO: подключить реального платёжного провайдера (Stripe/ЮKassa). Сейчас это
- * заглушка экрана оплаты — кнопка оплаты неактивна до интеграции биллинга.
+ * Pro — разовая бессрочная лицензия, не подписка: ни периода, ни автопродления
+ * здесь быть не должно. Раньше на этом экране был захардкожен суффикс «/ мес»;
+ * теперь характер платежа приходит из словаря вместе с ценой, чтобы карточка
+ * на лендинге и этот экран не могли разъехаться.
+ *
+ * TODO: подключить реального платёжного провайдера (ЮKassa/CloudPayments).
+ * Сейчас это заглушка экрана оплаты — реальное списание не выполняется.
  */
 export default async function CheckoutPage({
   searchParams,
@@ -22,7 +27,7 @@ export default async function CheckoutPage({
   const plan =
     copy.pricing.find(([name]) => name.toLowerCase() === requested) ??
     copy.pricing[copy.pricing.length - 1];
-  const [name, price, features] = plan;
+  const [name, price, features, , period] = plan;
   const isFree = price.replace(/[^0-9]/g, "") === "0";
 
   return (
@@ -30,10 +35,11 @@ export default async function CheckoutPage({
       <div className="section-kicker">Checkout</div>
       <div className="checkout-grid">
         <div className="section-copy">
-          <h2>Оформление подписки</h2>
+          <h2>Оформление лицензии</h2>
           <p>
             Вы выбрали план <strong>{name}</strong>. Проверьте состав и перейдите
             к оплате.
+            {isFree ? null : " Это разовый платёж — регулярных списаний не будет."}
           </p>
           <Link className="checkout-back" href="/#pricing">
             ← Назад к тарифам
@@ -44,7 +50,7 @@ export default async function CheckoutPage({
           <span>{name}</span>
           <strong>
             {price}
-            <span className="checkout-period">{isFree ? "" : " / мес"}</span>
+            {period ? <span className="checkout-period">{period}</span> : null}
           </strong>
           <ul className="price-features">
             {features.map((feature) => (

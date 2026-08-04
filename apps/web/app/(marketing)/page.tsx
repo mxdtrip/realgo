@@ -145,7 +145,7 @@ export default function Home() {
             <p>{copy.sections.pricing.description}</p>
           </div>
           <div className="pricing-grid">
-            {copy.pricing.map(([name, price, features, cta], index) => (
+            {copy.pricing.map(([name, price, features, cta, period], index) => (
               <article
                 className="price-card"
                 data-reveal="zoom"
@@ -153,7 +153,13 @@ export default function Home() {
                 key={name}
               >
                 <span>{name}</span>
-                <strong>{price}</strong>
+                <strong>
+                  {price}
+                  {/* Pro — разовая бессрочная лицензия. Без этой подписи цена
+                      рядом с бесплатным планом читается как ежемесячная: это
+                      то, чего посетитель ждёт от таблицы тарифов по умолчанию. */}
+                  {period ? <span className="price-period">{period}</span> : null}
+                </strong>
                 <ul className="price-features">
                   {features.map((feature) => (
                     <li key={feature}>{feature}</li>

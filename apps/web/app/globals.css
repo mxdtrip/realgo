@@ -1320,6 +1320,21 @@ h3 {
   margin-bottom: 14px;
 }
 
+/* Характер платежа под ценой («разовый платёж · доступ навсегда»).
+   Селектор из двух классов намеренно: `.price-card span` выше по файлу
+   оформляет название тарифа — uppercase, акцентный цвет, отступ снизу — и
+   как более общий descendant-селектор перебил бы одноклассовый `.price-period`
+   при равной специфичности. */
+.price-card .price-period {
+  display: block;
+  margin: 6px 0 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
 .price-card p {
   margin: 0;
   font-size: 14px;
@@ -1457,11 +1472,18 @@ h3 {
   color: var(--text);
 }
 
+/* Раньше здесь был инлайновый суффикс «/ мес» сразу за ценой. Теперь это
+   характер платежа («разовый платёж · доступ навсегда»), который в строку за
+   38-пиксельной ценой не помещается — отсюда блок и тот же кегль, что у
+   .price-period на лендинге. */
 .checkout-period {
-  font-size: 16px;
-  font-weight: 500;
+  display: block;
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 400;
   color: var(--text-dim);
-  letter-spacing: 0;
+  letter-spacing: 0.02em;
+  text-transform: none;
 }
 
 .checkout-pay:disabled {

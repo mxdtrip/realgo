@@ -29,7 +29,7 @@ export function CheckoutAction({ isFree }: { isFree: boolean }) {
       <p className="checkout-note">Демо-режим: реальная оплата подключится позже.</p>
       {!isFree ? (
         <p className="checkout-note">
-          Оплачивая тариф Pro, вы принимаете условия{" "}
+          Оплачивая лицензию Pro, вы принимаете условия{" "}
           <Link href="/offer" target="_blank">
             Публичной оферты
           </Link>
