@@ -6,7 +6,7 @@
  * wired up, so the Go API client and the web app can share the same contract.
  */
 
-export type Platform = "leetcode" | "hackerrank" | "unknown";
+export type Platform = "leetcode" | "hackerrank" | "geeksforgeeks" | "unknown";
 
 export type SubmitResult =
   | "accepted"
@@ -21,8 +21,8 @@ export type UserDifficulty = "hard" | "normal" | "easy";
 export interface DetectedSubmission {
   /**
    * Stable per-submit idempotency key (uuid). Generated once when the submit is
-   * detected, so retries — and the overlay vs. toolbar-popup save paths — reuse
-   * the same value and the backend dedupes by it (`eventId` in the contract).
+   * detected, so popup retries reuse the same value and the backend dedupes by
+   * it (`eventId` in the contract).
    */
   eventId: string;
   platform: Platform;
@@ -92,6 +92,7 @@ export type RuntimeMessage =
       type: "REALGO_SYNC_WEB_SESSION";
       accessToken: string | null;
       refreshToken: string | null;
+      sourceOrigin: string;
     };
 
 /**
@@ -199,12 +200,15 @@ export interface AuthUser {
   email: string;
 }
 
+export type AuthSource = "options" | `web:${string}`;
+
 export const STORAGE_KEYS = {
   lastSubmission: "realgo:lastSubmission",
   apiBaseUrl: "realgo:apiBaseUrl",
   webBaseUrl: "realgo:webBaseUrl",
   accessToken: "realgo:accessToken",
   refreshToken: "realgo:refreshToken",
+  authSource: "realgo:authSource",
   userEmail: "realgo:userEmail",
   webSessionFingerprint: "realgo:webSessionFingerprint",
 } as const;
@@ -233,7 +237,5 @@ export interface AssistantPersistedState {
 export const DEFAULT_API_BASE_URL = "https://realgo.dev";
 
 /** realgo web app (the cabinet). "К повторению" opens its review cards here. */
-export const DEFAULT_WEB_BASE_URL = "https://realgo.dev";
-
-/** Path of the spaced-repetition cards section inside the web app. */
-export const REVIEW_PATH = "/cards";
+export const DEFAULT_WEB_BASE_URL =
+  process.env.PLASMO_PUBLIC_WEB_BASE_URL ?? "https://realgo.dev";

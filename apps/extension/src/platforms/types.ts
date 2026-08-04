@@ -24,7 +24,7 @@ const MAX_DESCRIPTION_CHARS = 4000;
 export function extractDescription(selectors: string[]): string | undefined {
   for (const selector of selectors) {
     const el = document.querySelector<HTMLElement>(selector);
-    const text = el?.innerText?.trim();
+    const text = (el?.innerText || el?.textContent)?.trim();
     if (text) {
       return text.length > MAX_DESCRIPTION_CHARS
         ? text.slice(0, MAX_DESCRIPTION_CHARS) + "…"
@@ -59,6 +59,12 @@ export interface PlatformAdapter {
    * after a submit; returns "unknown" until a verdict is recognised.
    */
   detectSubmitResult(): SubmitResult;
+
+  /** Snapshot of result UI used to distinguish a new verdict from a stale one. */
+  submissionResultFingerprint?(): string;
+
+  /** Slow judge queues may opt into a longer observation window. */
+  resultTimeoutMs?: number;
 }
 
 /**
@@ -70,7 +76,16 @@ export interface PlatformAdapter {
  */
 export function classifyVerdict(text: string): SubmitResult {
   const t = text.toLowerCase();
-  if (t.includes("all test cases passed")) return "accepted";
+  if (
+    t.includes("all test cases passed") ||
+    t.includes("passed all the test cases") ||
+    t.includes("passed all test cases") ||
+    t.includes("problem solved successfully") ||
+    t.includes("solved this challenge") ||
+    t.includes("congratulations")
+  ) {
+    return "accepted";
+  }
   if (/\baccepted\b/.test(t) && !/\bacceptance\b/.test(t)) return "accepted";
   if (t.includes("wrong answer")) return "wrong_answer";
   if (t.includes("compilation error") || t.includes("compile error")) return "runtime_error";

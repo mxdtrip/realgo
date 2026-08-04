@@ -38,7 +38,12 @@ function syncSession() {
     hasRefresh: Boolean(refreshToken),
   });
   chrome.runtime
-    .sendMessage({ type: "REALGO_SYNC_WEB_SESSION", accessToken, refreshToken })
+    .sendMessage({
+      type: "REALGO_SYNC_WEB_SESSION",
+      accessToken,
+      refreshToken,
+      sourceOrigin: location.origin,
+    })
     .then((res) => console.log("[realgo] web-session: background ack", res))
     .catch((err) => console.error("[realgo] web-session: sendMessage failed", err));
 }

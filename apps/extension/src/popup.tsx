@@ -13,6 +13,7 @@ import type {
   SubmissionPayload,
 } from "./lib/types";
 import { PopupApp } from "./popup/PopupApp";
+import { selectPendingSubmission } from "./popup/submission";
 
 const POPUP_DOCUMENT_CSS = `
 html, body {
@@ -50,15 +51,11 @@ function IndexPopup() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([getLastSubmission().catch(() => undefined), getCurrentTask()])
-      .then(([lastSubmission, task]) => {
+    Promise.all([getLastSubmission().catch(() => undefined), getActiveTabContext()])
+      .then(([lastSubmission, context]) => {
         if (!alive) return;
-        setCurrentTask(task);
-        setSubmission(
-          lastSubmission && isAcceptedForTask(lastSubmission, task)
-            ? lastSubmission
-            : null
-        );
+        setCurrentTask(context.task);
+        setSubmission(selectPendingSubmission(lastSubmission, context.task, context.url));
       })
       .catch(() => {
         if (!alive) return;
@@ -73,8 +70,8 @@ function IndexPopup() {
   async function handleSave(
     payload: SubmissionPayload
   ): Promise<ExtensionEventResult | null> {
-    // Route the save through the background worker (same path as the in-page
-    // overlay) so transport/business logic lives in one place (#35, #38).
+    // Route the save through the background worker so transport/business logic
+    // stays outside the UI and runs with the extension's host permissions.
     const res: SaveResponse | undefined = await chrome.runtime.sendMessage({
       type: "REALGO_SAVE_SUBMISSION",
       payload,
@@ -134,28 +131,26 @@ function IndexPopup() {
   );
 }
 
-async function getCurrentTask(): Promise<AssistantTask | null> {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) return null;
-    const res: CurrentTaskResponse | undefined = await chrome.tabs.sendMessage(tab.id, {
-      type: "REALGO_GET_CURRENT_TASK",
-    });
-    return res?.ok && res.task ? res.task : null;
-  } catch {
-    return null;
-  }
+interface ActiveTabContext {
+  task: AssistantTask | null;
+  url?: string;
 }
 
-function isAcceptedForTask(
-  submission: DetectedSubmission,
-  task: AssistantTask | null
-): boolean {
-  if (!task || submission.submitResult !== "accepted") return false;
-  return (
-    submission.platform === task.platform &&
-    submission.platformTaskSlug === task.platformTaskSlug
-  );
+async function getActiveTabContext(): Promise<ActiveTabContext> {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return { task: null, url: tab?.url };
+    try {
+      const res: CurrentTaskResponse | undefined = await chrome.tabs.sendMessage(tab.id, {
+        type: "REALGO_GET_CURRENT_TASK",
+      });
+      return { task: res?.ok && res.task ? res.task : null, url: tab.url };
+    } catch {
+      return { task: null, url: tab.url };
+    }
+  } catch {
+    return { task: null };
+  }
 }
 
 export default IndexPopup;

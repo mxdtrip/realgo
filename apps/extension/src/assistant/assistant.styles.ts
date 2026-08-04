@@ -32,6 +32,15 @@ export const ASSISTANT_CSS = `
 }
 .realgo-assistant--closed { width: auto; }
 
+/* The collapsed HackerRank launcher participates in the site's action row.
+   Keep the expanded panel out of that layout so it cannot move Run/Submit. */
+:host([data-realgo-inline]) .realgo-assistant { width: auto; }
+:host([data-realgo-inline]) .realgo-agent-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 72px;
+}
+
 .realgo-agent-button {
   min-width: 150px;
   min-height: 44px;

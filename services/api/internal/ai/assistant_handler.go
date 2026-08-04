@@ -186,8 +186,8 @@ func logAssistantProviderError(err error, userID int64) {
 
 func normalizeAssistantRequest(req AssistantHintRequest) (AssistantHintInput, error) {
 	platform := strings.ToLower(strings.TrimSpace(req.Platform))
-	if platform != "leetcode" && platform != "hackerrank" {
-		return AssistantHintInput{}, errors.New("platform must be leetcode or hackerrank")
+	if platform != "leetcode" && platform != "hackerrank" && platform != "geeksforgeeks" {
+		return AssistantHintInput{}, errors.New("platform must be leetcode, hackerrank or geeksforgeeks")
 	}
 	slug := strings.TrimSpace(req.PlatformTaskSlug)
 	if slug == "" {

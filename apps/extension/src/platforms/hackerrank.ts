@@ -18,11 +18,14 @@ import {
  */
 export const hackerrankAdapter: PlatformAdapter = {
   platform: "hackerrank",
+  resultTimeoutMs: 60_000,
 
   matches(url: string): boolean {
     try {
       const u = new URL(url);
-      return u.hostname.endsWith("hackerrank.com") && u.pathname.includes("/challenges/");
+      const isHackerRank =
+        u.hostname === "hackerrank.com" || u.hostname.endsWith(".hackerrank.com");
+      return isHackerRank && /^\/challenges\/[^/]+\/problem\/?$/.test(u.pathname);
     } catch {
       return false;
     }
@@ -33,13 +36,17 @@ export const hackerrankAdapter: PlatformAdapter = {
     if (!slug) return null;
 
     const title =
-      findText(["h1", "[class*='challenge'] h1", "[class*='title']"]) ||
-      slugToTitle(slug) ||
-      cleanDocTitle();
+      cleanDocTitle() ||
+      findText([
+        "[data-analytics*='challenge' i] h1",
+        "[class*='challenge-title' i]",
+        "[class*='problem-title' i]",
+      ]) ||
+      slugToTitle(slug);
 
     return {
       taskTitle: title,
-      taskUrl: location.href,
+      taskUrl: canonicalTaskUrl(slug),
       platformTaskSlug: slug,
       tags: extractTags(),
       difficulty: extractDifficulty(),
@@ -52,21 +59,50 @@ export const hackerrankAdapter: PlatformAdapter = {
   },
 
   findSubmitButton(): HTMLElement | null {
-    return findButtonByText((t) => t.includes("submit"));
+    return findButtonByText((t) => t === "submit code" || t === "submit");
   },
 
   detectSubmitResult(): SubmitResult {
-    // HackerRank surfaces the verdict in a result/status panel once a submit resolves.
-    const text = findText([
-      "[class*='result']",
-      "[class*='verdict']",
-      "[class*='status']",
-      "[class*='score']",
-      "[class*='submission']",
-    ]);
-    return classifyVerdict(text);
+    return classifyVerdict(hackerRankResultText());
+  },
+
+  submissionResultFingerprint(): string {
+    return hackerRankResultText();
   },
 };
+
+const RESULT_SELECTORS = [
+  "[data-testid*='submission' i]",
+  "[data-analytics*='submission' i]",
+  "[class*='submission-result' i]",
+  "[class*='challenge-success' i]",
+  "[class*='congrat' i]",
+  "[class*='verdict' i]",
+  "[class*='compile-status' i]",
+  "[class*='compiler' i]",
+  "[role='dialog']",
+  "[role='status']",
+  "[aria-live]",
+  "h1",
+  "h2",
+  "h3",
+];
+
+/** Collects all live result panels; the first generic status node is often stale. */
+function hackerRankResultText(): string {
+  const texts = new Set<string>();
+  for (const selector of RESULT_SELECTORS) {
+    for (const element of document.querySelectorAll<HTMLElement>(selector)) {
+      const text = (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim();
+      if (text) texts.add(text);
+    }
+  }
+  return [...texts].join("\n");
+}
+
+function canonicalTaskUrl(slug: string): string {
+  return `${location.origin}/challenges/${encodeURIComponent(slug)}/problem`;
+}
 
 function slugFromPath(pathname: string): string | undefined {
   const parts = pathname.split("/").filter(Boolean);

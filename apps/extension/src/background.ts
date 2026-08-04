@@ -1,6 +1,7 @@
 import { ApiError, getProblemCards, saveSubmission, streamAssistantHint } from "./lib/api";
 import { syncWebSession } from "./lib/auth";
 import { clearLastSubmission, setLastSubmission } from "./lib/storage";
+import { createSubmissionPopupController } from "./lib/submissionPopup";
 import type {
   AssistantHintStreamMessage,
   AssistantHintStreamStartMessage,
@@ -11,26 +12,43 @@ import type {
 } from "./lib/types";
 import { ASSISTANT_HINT_STREAM_PORT } from "./lib/types";
 
+const submissionPopup = createSubmissionPopupController({
+  openActionPopup: () => chrome.action.openPopup(),
+  createPopupWindow: (url) =>
+    chrome.windows.create({
+      url,
+      type: "popup",
+      width: 440,
+      height: 680,
+      focused: true,
+    }),
+  focusWindow: (windowId) => chrome.windows.update(windowId, { focused: true }),
+  popupUrl: chrome.runtime.getURL("popup.html"),
+});
+
+chrome.windows.onRemoved.addListener(submissionPopup.handleWindowRemoved);
+const handledSubmissionEvents = new Set<string>();
+
 /**
  * Background service worker.
  *
  * Receives submission events from the content script, persists the latest one,
- * badges the toolbar icon and makes a best-effort attempt to open the popup.
- * Programmatic popup opening is unreliable across Chrome versions, so the
- * content script also renders an in-page fallback overlay.
+ * badges the toolbar icon and opens the toolbar popup. If action.openPopup is
+ * rejected after an asynchronous verdict, the same document opens in one
+ * dedicated extension window instead of being duplicated inside the page.
  */
 chrome.runtime.onMessage.addListener(
   (message: RuntimeMessage, _sender, sendResponse) => {
     if (message.type === "REALGO_SUBMISSION_DETECTED") {
-      handleDetected(message.submission)
+      handleDetectedOnce(message.submission)
         .then(() => sendResponse({ ok: true }))
         .catch((e) => sendResponse({ ok: false, error: String(e) }));
       return true; // keep the message channel open for the async response
     }
 
     if (message.type === "REALGO_SAVE_SUBMISSION") {
-      // Single transport entry point: both the in-page overlay AND the toolbar
-      // popup save through here. The background worker runs on the extension
+      // Single transport entry point: the toolbar popup saves through here. The
+      // background worker runs on the extension
       // origin with host_permissions, so the request dodges the host page's CORS
       // policy — and the UI never duplicates network/business logic (#35, #38).
       saveSubmission(message.payload)
@@ -54,7 +72,7 @@ chrome.runtime.onMessage.addListener(
 
     if (message.type === "REALGO_GET_PROBLEM_CARDS") {
       // One poll tick of the cards readiness. Same CORS rationale as the save:
-      // only the background worker can talk to the API from an overlay context.
+      // only the background worker talks to the API for the popup UI.
       // getProblemCards never throws — `ok: false` simply means "no usable
       // answer" and the UI stays silent (the endpoint may not exist yet).
       getProblemCards(message.problemId)
@@ -74,7 +92,7 @@ chrome.runtime.onMessage.addListener(
         hasAccess: Boolean(message.accessToken),
         hasRefresh: Boolean(message.refreshToken),
       });
-      syncWebSession(message.accessToken, message.refreshToken)
+      syncWebSession(message.accessToken, message.refreshToken, message.sourceOrigin)
         .then(() => sendResponse({ ok: true }))
         .catch((e) => {
           console.error("[realgo] background: syncWebSession failed", e);
@@ -171,10 +189,21 @@ async function handleDetected(submission: DetectedSubmission): Promise<void> {
     /* badge is cosmetic */
   }
 
+  await submissionPopup.open();
+}
+
+async function handleDetectedOnce(submission: DetectedSubmission): Promise<void> {
+  if (handledSubmissionEvents.has(submission.eventId)) return;
+  handledSubmissionEvents.add(submission.eventId);
   try {
-    // Chrome 127+ only, and only within a user gesture window — may throw.
-    await chrome.action.openPopup();
-  } catch {
-    /* expected on most versions; the in-page overlay is the fallback */
+    await handleDetected(submission);
+  } catch (error) {
+    handledSubmissionEvents.delete(submission.eventId);
+    throw error;
+  }
+  // Bound service-worker memory while retaining duplicate protection.
+  if (handledSubmissionEvents.size > 100) {
+    const oldest = handledSubmissionEvents.values().next().value;
+    if (oldest) handledSubmissionEvents.delete(oldest);
   }
 }
