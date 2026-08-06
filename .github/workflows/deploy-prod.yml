@@ -1,13 +1,10 @@
 name: Deploy prod
-# Prod auto-deploy for the realgo-show-must-go-on fork: every push to main
-# rebuilds the shared "freeburger" compose project on appbox — the same
-# project name/containers realgo.dev has always been served from, now built
-# from this repo instead. mxdtrip/freeburger stays untouched; its own
-# deploy runner is stopped (see project notes).
+# ReAlgo production deploy: every push to main rebuilds the existing compose
+# project on appbox that serves realgo.dev. The compose project and container
+# names remain unchanged for compatibility with the current production volumes.
 #
-# Separate file from deploy.yml on purpose: that one already owns push:[dev]
-# for the staging stack (docker-compose.staging.yml) and is working — this
-# file only touches main, so it can't collide with or break it.
+# Separate file from deploy.yml on purpose: that workflow owns push:[dev] for
+# the isolated staging stack. This file only handles main.
 on:
   push:
     branches: [main]

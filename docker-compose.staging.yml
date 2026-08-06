@@ -1,8 +1,8 @@
 # Staging overlay for the appbox server, merged on top of docker-compose.yml:
 # `docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo up -d --build`
 #
-# This is the deploy target of the realgo-show-must-go-on fork: a second, fully
-# isolated copy of the product stack running NEXT TO the freeburger prod stack
+# This is the ReAlgo staging deploy target: a second, fully isolated copy of
+# the product stack running alongside production
 # on the same docker daemon. Isolation comes from the project name below (own
 # containers/network/volumes, so its pgdata never touches prod data) plus
 # non-colliding host ports. Exposed to the internet as staging.realgo.dev

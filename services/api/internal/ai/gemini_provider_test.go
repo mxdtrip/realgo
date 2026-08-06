@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/config"
 )
 
 func newTestServer(t *testing.T, status int, body string) *httptest.Server {

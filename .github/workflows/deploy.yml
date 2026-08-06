@@ -1,8 +1,7 @@
 name: Deploy staging
-# Staging auto-deploy for the realgo-show-must-go-on fork: every push to dev
-# rebuilds the isolated realgo-staging compose stack on appbox (see
+# Every push to dev rebuilds the isolated ReAlgo staging stack on appbox (see
 # docker-compose.staging.yml), served as staging.realgo.dev via the VPS edge.
-# Prod (realgo.dev) deploys from mxdtrip/freeburger and is untouched by this.
+# Production is deployed independently from main by deploy-prod.yml.
 on:
   push:
     branches: [dev]

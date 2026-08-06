@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/auth"
 )
 
 type fakeService struct {

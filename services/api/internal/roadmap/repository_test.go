@@ -6,8 +6,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/patterns"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres/db"
+	"github.com/mxdtrip/realgo/services/api/internal/patterns"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 )
 
 func TestTargetFromRow_IncludesCompanyAndInterviewDate(t *testing.T) {

@@ -7062,9 +7062,8 @@ const Lg = new URL("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA4QAAAOECAYAAA
   { value: "easy", label: "Легко", icon: "easy" },
   { value: "normal", label: "Средне", icon: "normal" },
   { value: "hard", label: "Тяжело", icon: "hard" }
-], qg = "https://github.com/mxdtrip/freeburger/issues/new?labels=extension&title=" + encodeURIComponent("Расширение: не распознана задача") + "&body=" + encodeURIComponent(`Страница: 
-Что ожидали: 
-Что произошло: `), Pg = pg + Cg;
+], qg = "https://github.com/mxdtrip/realgo/issues/new?labels=extension&title=" + encodeURIComponent("Расширение: не распознана задача") + "&body=" + encodeURIComponent(["Страница: ", "Что ожидали: ", "Что произошло: "].join(`
+`)), Pg = pg + Cg;
 function Hg({
   submission: E,
   onSave: Q,

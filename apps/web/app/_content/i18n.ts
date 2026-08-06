@@ -274,7 +274,7 @@ const ru = {
       ],
       copyright: "© 2026 ReAlgo. All rights reserved.",
       tagline: "built by devs who bombed a few interviews first",
-      poweredBy: "powered by",
+      poweredBy: "source on",
     },
   },
   onboarding: {

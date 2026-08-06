@@ -7,10 +7,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/scheduler"
-	"github.com/mxdtrip/freeburger/services/api/internal/specifications"
-	httpdriver "github.com/mxdtrip/freeburger/services/api/internal/testdriver/http"
-	"github.com/mxdtrip/freeburger/services/api/internal/testutil"
+	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
+	"github.com/mxdtrip/realgo/services/api/internal/specifications"
+	httpdriver "github.com/mxdtrip/realgo/services/api/internal/testdriver/http"
+	"github.com/mxdtrip/realgo/services/api/internal/testutil"
 )
 
 // harness — общая пара контейнеров testcontainers, которая запускается

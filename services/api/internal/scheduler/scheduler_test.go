@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/scheduler"
+	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
 )
 
 func TestSimple_Next_FixedIntervals(t *testing.T) {

@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/entity"
-	"github.com/mxdtrip/freeburger/services/api/internal/repo"
-	"github.com/mxdtrip/freeburger/services/api/internal/scheduler"
-	"github.com/mxdtrip/freeburger/services/api/internal/service"
+	"github.com/mxdtrip/realgo/services/api/internal/entity"
+	"github.com/mxdtrip/realgo/services/api/internal/repo"
+	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
+	"github.com/mxdtrip/realgo/services/api/internal/service"
 )
 
 func TestReviewService_GetQueue_DelegatesToRepo(t *testing.T) {

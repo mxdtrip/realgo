@@ -11,15 +11,15 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/ai"
-	"github.com/mxdtrip/freeburger/services/api/internal/auth"
-	"github.com/mxdtrip/freeburger/services/api/internal/cards"
-	"github.com/mxdtrip/freeburger/services/api/internal/config"
-	"github.com/mxdtrip/freeburger/services/api/internal/scheduler"
-	"github.com/mxdtrip/freeburger/services/api/internal/server"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres/db"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/redis"
+	"github.com/mxdtrip/realgo/services/api/internal/ai"
+	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/cards"
+	"github.com/mxdtrip/realgo/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
+	"github.com/mxdtrip/realgo/services/api/internal/server"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/redis"
 )
 
 const shutdownTimeout = 10 * time.Second

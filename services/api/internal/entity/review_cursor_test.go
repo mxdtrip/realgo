@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/entity"
+	"github.com/mxdtrip/realgo/services/api/internal/entity"
 )
 
 func TestReviewQueueCursor_RoundTrip(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/scheduler"
+	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
 )
 
 // TestFSRSAdapter_FirstReview_ReturnsFSRSInterval verifies that for a brand-new

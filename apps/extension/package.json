@@ -1,5 +1,5 @@
 {
-  "name": "@freeburger/extension",
+  "name": "@realgo/extension",
   "version": "0.1.0",
   "private": true,
   "description": "realgo — фиксирует решённую задачу на LeetCode, GeeksforGeeks, HackerRank или Codeforces и добавляет её в очередь интервальных повторений.",

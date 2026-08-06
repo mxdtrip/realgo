@@ -6,7 +6,7 @@ package problemcards
 import (
 	"errors"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/cards"
+	"github.com/mxdtrip/realgo/services/api/internal/cards"
 )
 
 const (

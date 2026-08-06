@@ -15,7 +15,7 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/config"
 )
 
 // Harness поднимает одноразовую пару Postgres + Redis (testcontainers),

@@ -60,10 +60,10 @@ const DIFFICULTY_OPTIONS: {
 
 /** Where "Сообщить об ошибке" points when the host doesn't override it. */
 const REPORT_ISSUE_URL =
-  "https://github.com/mxdtrip/freeburger/issues/new?labels=extension&title=" +
+  "https://github.com/mxdtrip/realgo/issues/new?labels=extension&title=" +
   encodeURIComponent("Расширение: не распознана задача") +
   "&body=" +
-  encodeURIComponent("Страница: \nЧто ожидали: \nЧто произошло: ");
+  encodeURIComponent(["Страница: ", "Что ожидали: ", "Что произошло: "].join("\n"));
 const REVIEWS_URL = DEFAULT_WEB_BASE_URL + REVIEW_PATH;
 
 type Status = "form" | "saving" | "success" | "error";
