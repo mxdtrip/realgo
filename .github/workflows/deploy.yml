@@ -68,7 +68,10 @@ jobs:
           probe() {
             label="$1"; url="$2"; want="$3"
             for _ in $(seq 1 15); do
-              code="$(curl -s -o /dev/null -w '%{http_code}' "$url")"
+              # Caddy is force-recreated immediately before this step. Treat
+              # a brief connection reset as a retryable state under `bash -e`.
+              code="$(curl -sS --connect-timeout 3 --max-time 10 -o /dev/null -w '%{http_code}' "$url" || true)"
+              [ -n "$code" ] || code="000"
               [ "$code" = "$want" ] && { echo "$label: $code"; return 0; }
               sleep 2
             done
