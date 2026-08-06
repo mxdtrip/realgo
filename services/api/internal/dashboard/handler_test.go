@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/auth"
 )
 
 func TestHandlerGet_RequiresAuthContext(t *testing.T) {

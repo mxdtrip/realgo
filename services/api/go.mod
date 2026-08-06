@@ -1,4 +1,4 @@
-module github.com/mxdtrip/freeburger/services/api
+module github.com/mxdtrip/realgo/services/api
 
 go 1.25.7
 

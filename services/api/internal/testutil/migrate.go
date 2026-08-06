@@ -8,7 +8,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres" // registers the "postgres" database driver
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 
-	"github.com/mxdtrip/freeburger/services/api/migrations"
+	"github.com/mxdtrip/realgo/services/api/migrations"
 )
 
 // ApplyMigrations применяет все встроенные up-миграции к указанной базе данных.

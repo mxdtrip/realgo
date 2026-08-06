@@ -70,27 +70,27 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="pattern-profile__section" id="freeburger">
+        <section className="pattern-profile__section" id="realgo">
           <header className="pattern-profile__rail">
-            <h2>freeburger</h2>
+            <h2>ReAlgo</h2>
           </header>
           <div className="pattern-profile__body">
             <p>
-              ReAlgo растёт из freeburger — неформального объединения
-              энтузиастов, которые делают pet-проекты не по ТЗ и не ради
-              строчки в резюме, а потому что зудит довести идею до реального
-              продакшена с живыми пользователями. Без дедлайнов сверху, зато
-              с полной ответственностью за то, что получилось.
+              Мы развиваем ReAlgo как самостоятельный продукт: от идеи и
+              архитектуры до production, поддержки пользователей и проверки
+              продуктовых гипотез. Решения принимаются по тому, насколько они
+              помогают кандидату системно готовиться и не терять уже
+              полученные знания.
             </p>
             <p>
-              ReAlgo — одна из таких идей, выросшая в открытый сервис.
-              Исходный код —{" "}
+              Исходный код, документация и история разработки находятся в
+              основном репозитории —{" "}
               <a
-                href="https://github.com/mxdtrip/freeburger"
+                href="https://github.com/mxdtrip/realgo"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                github.com/mxdtrip/freeburger
+                github.com/mxdtrip/realgo
               </a>
               .
             </p>

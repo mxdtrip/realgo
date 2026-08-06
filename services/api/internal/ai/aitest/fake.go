@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/ai"
+	"github.com/mxdtrip/realgo/services/api/internal/ai"
 )
 
 // Fake is a test double for ai.Provider. Zero value returns three canned

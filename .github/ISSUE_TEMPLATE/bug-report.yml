@@ -1,0 +1,51 @@
+name: Сообщить об ошибке
+description: Воспроизводимая проблема в ReAlgo
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Спасибо, что помогаете улучшить ReAlgo. Не публикуйте здесь секреты или персональные данные.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Компонент
+      options:
+        - Web
+        - Browser extension
+        - API
+        - Infrastructure
+        - Documentation
+        - Presentation
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      placeholder: Опишите минимальную последовательность действий.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемый результат
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактический результат
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Окружение
+      description: ОС, браузер и версия расширения или commit SHA, если известны.
+  - type: textarea
+    id: context
+    attributes:
+      label: Дополнительный контекст
+      description: Приложите безопасные логи или скриншоты без токенов и персональных данных.

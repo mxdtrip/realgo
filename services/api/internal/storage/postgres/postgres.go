@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/mxdtrip/freeburger/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/config"
 )
 
 type Storage struct {

@@ -1,4 +1,4 @@
-# Local dev stack and server deployment for the FreeBurger API.
+# Local development stack and server deployment for ReAlgo.
 #
 # The deploy workflow runs
 # `docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --build`

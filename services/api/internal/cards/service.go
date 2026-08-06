@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	reviewresponse "github.com/mxdtrip/freeburger/services/api/internal/controller/v1/response"
-	reviewservice "github.com/mxdtrip/freeburger/services/api/internal/service"
+	reviewresponse "github.com/mxdtrip/realgo/services/api/internal/controller/v1/response"
+	reviewservice "github.com/mxdtrip/realgo/services/api/internal/service"
 )
 
 var (

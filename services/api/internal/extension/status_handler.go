@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/auth"
-	"github.com/mxdtrip/freeburger/services/api/internal/server/response"
+	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/server/response"
 )
 
 const (

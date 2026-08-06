@@ -10,13 +10,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/auth"
-	"github.com/mxdtrip/freeburger/services/api/internal/controller/v1/request"
-	v1response "github.com/mxdtrip/freeburger/services/api/internal/controller/v1/response"
-	"github.com/mxdtrip/freeburger/services/api/internal/entity"
-	"github.com/mxdtrip/freeburger/services/api/internal/server/httpjson"
-	"github.com/mxdtrip/freeburger/services/api/internal/server/response"
-	"github.com/mxdtrip/freeburger/services/api/internal/service"
+	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/controller/v1/request"
+	v1response "github.com/mxdtrip/realgo/services/api/internal/controller/v1/response"
+	"github.com/mxdtrip/realgo/services/api/internal/entity"
+	"github.com/mxdtrip/realgo/services/api/internal/server/httpjson"
+	"github.com/mxdtrip/realgo/services/api/internal/server/response"
+	"github.com/mxdtrip/realgo/services/api/internal/service"
 )
 
 const defaultQueueLimit = 50

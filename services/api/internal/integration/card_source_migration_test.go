@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mxdtrip/freeburger/services/api/migrations"
+	"github.com/mxdtrip/realgo/services/api/migrations"
 )
 
 func TestCardSourceMigrationRepairsDuplicatesAndPreservesOldestReferences(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/server/response"
+	"github.com/mxdtrip/realgo/services/api/internal/server/response"
 )
 
 const neetcode150Code = "neetcode_150"

@@ -12,8 +12,8 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/ai"
-	"github.com/mxdtrip/freeburger/services/api/internal/ai/aitest"
+	"github.com/mxdtrip/realgo/services/api/internal/ai"
+	"github.com/mxdtrip/realgo/services/api/internal/ai/aitest"
 )
 
 // fakeProvisionRepo tracks just enough state to fake HasReadyCards

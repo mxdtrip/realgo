@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/ai"
-	"github.com/mxdtrip/freeburger/services/api/internal/cards"
+	"github.com/mxdtrip/realgo/services/api/internal/ai"
+	"github.com/mxdtrip/realgo/services/api/internal/cards"
 )
 
 type fakeRepo struct {

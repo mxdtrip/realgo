@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres/db"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 )
 
 var errNotFound = errors.New("question not found")

@@ -13,7 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/config"
 )
 
 const requestTimeout = 45 * time.Second

@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/server/response"
+	"github.com/mxdtrip/realgo/services/api/internal/server/response"
 )
 
 const DefaultMaxBodyBytes int64 = 1 << 20
