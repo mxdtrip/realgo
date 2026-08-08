@@ -4,7 +4,6 @@ import {
   extractDescription,
   findButtonByText,
   findText,
-  looksLikeSubmitLabel,
   type PlatformAdapter,
   type TaskInfo,
 } from "./types";
@@ -19,11 +18,14 @@ import {
  */
 export const hackerrankAdapter: PlatformAdapter = {
   platform: "hackerrank",
+  resultTimeoutMs: 60_000,
 
   matches(url: string): boolean {
     try {
       const u = new URL(url);
-      return u.hostname.endsWith("hackerrank.com") && u.pathname.includes("/challenges/");
+      const isHackerRank =
+        u.hostname === "hackerrank.com" || u.hostname.endsWith(".hackerrank.com");
+      return isHackerRank && /^\/challenges\/[^/]+\/problem\/?$/.test(u.pathname);
     } catch {
       return false;
     }
@@ -33,14 +35,11 @@ export const hackerrankAdapter: PlatformAdapter = {
     const slug = slugFromPath(location.pathname);
     if (!slug) return null;
 
-    const title =
-      findText(["h1", "[class*='challenge'] h1", "[class*='title']"]) ||
-      slugToTitle(slug) ||
-      cleanDocTitle();
+    const title = cleanDocTitle() || slugToTitle(slug);
 
     return {
       taskTitle: title,
-      taskUrl: location.href,
+      taskUrl: `${location.origin}/challenges/${encodeURIComponent(slug)}/problem`,
       platformTaskSlug: slug,
       tags: extractTags(),
       difficulty: extractDifficulty(),
@@ -53,21 +52,73 @@ export const hackerrankAdapter: PlatformAdapter = {
   },
 
   findSubmitButton(): HTMLElement | null {
-    return findButtonByText(looksLikeSubmitLabel);
+    return findButtonByText((text) => text === "submit code" || text === "submit");
   },
 
   detectSubmitResult(): SubmitResult {
     // HackerRank surfaces the verdict in a result/status panel once a submit resolves.
-    const text = findText([
-      "[class*='result']",
-      "[class*='verdict']",
-      "[class*='status']",
-      "[class*='score']",
-      "[class*='submission']",
-    ]);
-    return classifyVerdict(text);
+    return classifyVerdict(hackerRankResultText());
+  },
+
+  submissionResultFingerprint(): string {
+    return hackerRankResultText();
+  },
+
+  didSubmissionResultMutate(records: MutationRecord[]): boolean {
+    return records.some((record) => hackerRankResultMutation(record));
   },
 };
+
+const RESULT_SELECTORS = [
+  "[data-testid*='submission' i]",
+  "[data-analytics*='submission' i]",
+  "[class*='submission-result' i]",
+  "[class*='challenge-success' i]",
+  "[class*='congrat' i]",
+  "[class*='verdict' i]",
+  "[class*='compile-status' i]",
+  "[class*='compiler' i]",
+  "[role='dialog']",
+  "[role='status']",
+  "[aria-live]",
+  "h1",
+  "h2",
+  "h3",
+];
+
+function hackerRankResultText(): string {
+  const texts = new Set<string>();
+  for (const selector of RESULT_SELECTORS) {
+    for (const element of document.querySelectorAll<HTMLElement>(selector)) {
+      const text = (element.innerText || element.textContent || "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (text) texts.add(text);
+    }
+  }
+  return [...texts].join("\n");
+}
+
+function hackerRankResultMutation(record: MutationRecord): boolean {
+  if (record.type !== "childList") return false;
+  if (
+    record.target instanceof Element &&
+    RESULT_SELECTORS.some(
+      (selector) => record.target instanceof Element && record.target.matches(selector)
+    )
+  ) {
+    return true;
+  }
+  return [...record.addedNodes, ...record.removedNodes].some(
+    (node) => node instanceof Element && matchesResultTree(node)
+  );
+}
+
+function matchesResultTree(element: Element): boolean {
+  return RESULT_SELECTORS.some(
+    (selector) => element.matches(selector) || Boolean(element.querySelector(selector))
+  );
+}
 
 function slugFromPath(pathname: string): string | undefined {
   const parts = pathname.split("/").filter(Boolean);

@@ -8,6 +8,17 @@
 
 export type Platform = "leetcode" | "hackerrank" | "geeksforgeeks" | "codeforces" | "unknown";
 
+export type DraggableAgentPlatform = "leetcode" | "hackerrank" | "geeksforgeeks";
+
+export interface AgentLauncherPosition {
+  x: number;
+  y: number;
+}
+
+export type AgentLauncherPositions = Partial<
+  Record<DraggableAgentPlatform, AgentLauncherPosition>
+>;
+
 export type SubmitResult =
   | "accepted"
   | "wrong_answer"
@@ -145,10 +156,8 @@ export interface ExtensionEventResult {
 }
 
 /** Reply shape for REALGO_SUBMISSION_DETECTED (background → content script).
-    Tells the content script whether chrome.action.openPopup() actually opened
-    the toolbar popup, so it shows its own in-page overlay only when the
-    popup didn't — otherwise the user sees the same rating card twice at once
-    (in-page overlay + toolbar popup). See background.ts handleDetected. */
+    `popupOpened` covers either the toolbar action or the single dedicated
+    extension-window fallback; rating UI is never duplicated inside the page. */
 export interface SubmissionDetectedResponse {
   ok: boolean;
   popupOpened: boolean;
@@ -228,6 +237,7 @@ export const STORAGE_KEYS = {
   // verdict appears (Codeforces: problem page → separate submit form → status
   // page) need this; same-page platforms never touch it.
   crossPageSubmitIntent: "realgo:crossPageSubmitIntent",
+  agentLauncherPositions: "realgo:agentLauncherPositions",
 } as const;
 
 /** Prefix for per-task assistant conversation state (suffix = task key). */
