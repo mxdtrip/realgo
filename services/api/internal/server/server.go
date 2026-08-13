@@ -21,6 +21,7 @@ import (
 	"github.com/mxdtrip/realgo/services/api/internal/problems"
 	"github.com/mxdtrip/realgo/services/api/internal/quiz"
 	"github.com/mxdtrip/realgo/services/api/internal/repo"
+	"github.com/mxdtrip/realgo/services/api/internal/reports"
 	"github.com/mxdtrip/realgo/services/api/internal/roadmap"
 	"github.com/mxdtrip/realgo/services/api/internal/roadmaps"
 	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
@@ -116,6 +117,7 @@ func New(deps Deps) http.Handler {
 	}
 	aiHandler := ai.NewHandler(ai.NewRepository(deps.Postgres.Pool), cardGenerator)
 	assistantHandler := ai.NewAssistantHandler(ai.NewRepository(deps.Postgres.Pool), deps.AssistantProvider)
+	reportsHandler := reports.NewHandler(reports.NewRepository(deps.Postgres.Pool))
 
 	// Browser-extension ingest: FSRS scheduler behind the Scheduler interface,
 	// sharing the same algorithm (and the same instance) as the review service
@@ -148,6 +150,10 @@ func New(deps Deps) http.Handler {
 		r.With(requireAuth(deps.Auth)).Post("/me/password", ah.changePassword)
 		r.With(requireAuth(deps.Auth)).Post("/me/sessions/revoke", ah.revokeAllSessions)
 		r.With(requireAuth(deps.Auth)).Post("/me/export", ah.postExport)
+		r.With(
+			requireAuth(deps.Auth),
+			rateLimit(deps.Redis, "problem-reports", 5, 10*time.Minute),
+		).Post("/me/problem-reports", reportsHandler.Create)
 		r.With(requireAuth(deps.Auth)).Delete("/me", ah.deleteMe)
 		r.Route("/users", func(r chi.Router) {
 			// Backward-compatible alias. New clients should call GET /api/v1/me.

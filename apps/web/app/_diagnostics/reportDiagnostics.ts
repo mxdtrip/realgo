@@ -22,6 +22,7 @@ export type NetworkMetadata = {
   statusText?: string;
   responseTimeMs: number;
   startedAt: string;
+  requestId?: string;
 };
 
 type Breadcrumb =
@@ -34,6 +35,7 @@ type Breadcrumb =
       url: string;
       status: NetworkMetadata["status"];
       responseTimeMs?: number;
+      requestId?: string;
     };
 
 type CapturedError = {
@@ -68,6 +70,14 @@ export type DiagnosticReport = {
   network: NetworkMetadata | null;
   breadcrumbs: Breadcrumb[];
   errors: CapturedError[];
+  release: { version: string; commit: string };
+  screenshot?: ReportScreenshot;
+};
+
+export type ReportScreenshot = {
+  dataUrl: string;
+  width: number;
+  height: number;
 };
 
 let nextBreadcrumbId = 1;
@@ -200,7 +210,7 @@ export function recordNetworkStart(method: string, input: string): number {
 
 export function recordNetworkEnd(
   breadcrumbId: number,
-  result: Pick<NetworkMetadata, "status" | "statusText">,
+  result: Pick<NetworkMetadata, "status" | "statusText" | "requestId">,
 ) {
   const storedBreadcrumb = breadcrumbs.find((stored) => stored.id === breadcrumbId);
   const responseTimeMs = storedBreadcrumb
@@ -254,7 +264,10 @@ export function captureError(
   errors = [...errors, captured].slice(-MAX_ERRORS);
 }
 
-export function createDiagnosticReport(description: string): DiagnosticReport {
+export function createDiagnosticReport(
+  description: string,
+  screenshot?: ReportScreenshot | null,
+): DiagnosticReport {
   const { browser, os } = parseUserAgent(navigator.userAgent);
   const now = Date.now();
   const network = lastNetwork
@@ -268,6 +281,7 @@ export function createDiagnosticReport(description: string): DiagnosticReport {
             ? Math.max(0, now - lastNetwork.startedAtMs)
             : lastNetwork.responseTimeMs,
         startedAt: lastNetwork.startedAt,
+        ...(lastNetwork.requestId ? { requestId: lastNetwork.requestId } : {}),
       }
     : null;
 
@@ -287,5 +301,10 @@ export function createDiagnosticReport(description: string): DiagnosticReport {
     network,
     breadcrumbs: breadcrumbs.map(({ value }) => ({ ...value })),
     errors: errors.map((error) => ({ ...error })),
+    release: {
+      version: process.env.NEXT_PUBLIC_APP_VERSION ?? "development",
+      commit: process.env.NEXT_PUBLIC_COMMIT_SHA ?? "unknown",
+    },
+    ...(screenshot ? { screenshot } : {}),
   };
 }

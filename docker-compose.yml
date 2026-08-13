@@ -178,10 +178,19 @@ services:
   web:
     build:
       context: ./apps/web
+      additional_contexts:
+        # Dockerfile resolves the checked-out commit from this read-only,
+        # .dockerignore-limited context when COMMIT_SHA is not supplied. This
+        # makes a plain `docker compose ... up --build` self-describing too.
+        repository_metadata: .
       args:
         # Empty = relative same-origin API calls (/api/v1/...). The browser hits
         # realgo.dev and Caddy proxies /api/* to the api container, so no CORS.
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+        # CI may provide a human release name / explicit SHA. Empty values are
+        # deliberate: Dockerfile falls back to git-<short SHA> and HEAD.
+        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-}
+        NEXT_PUBLIC_COMMIT_SHA: ${COMMIT_SHA:-}
     restart: unless-stopped
     expose:
       - "3000"

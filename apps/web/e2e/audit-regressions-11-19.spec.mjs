@@ -115,17 +115,17 @@ test.describe("audit regressions 11-19", () => {
     );
   });
 
-  test("report mail hand-off remains explicit instead of claiming it was sent", async ({ page }) => {
+  test("report confirms server delivery with a real report id", async ({ page }) => {
     await enterCabinet(page, "/dashboard");
     await page.locator(".user-chip").click();
     await page.locator(".user-menu__report").click();
 
     const dialog = page.locator(".shell-dialog--report");
     await dialog.locator(".report-textarea").fill("Страница не сохранила изменения");
-    await dialog.getByRole("button", { name: "отправить письмо" }).evaluate((button) => button.click());
+    await dialog.getByRole("button", { name: "отправить отчёт" }).click();
 
-    await expect(dialog.getByText("отправь письмо в почтовом клиенте", { exact: true })).toBeVisible();
-    await expect(dialog.getByText(/не может проверить отправку/i)).toBeVisible();
+    await expect(dialog.getByText("отчёт доставлен", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("12b3b7f9-7b92-4ea6-b745-7ae9c0199a92")).toBeVisible();
   });
 
   test("375px landing has no horizontal overflow and auth copy is Russian", async ({ page }) => {

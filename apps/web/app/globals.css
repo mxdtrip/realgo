@@ -8542,6 +8542,81 @@ a.roadmap-step__practice-card:hover {
   font-weight: 700;
 }
 
+.is-report-capturing .shell-overlay {
+  visibility: hidden;
+}
+
+.report-screenshot {
+  position: relative;
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.report-screenshot img {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+}
+
+.report-screenshot button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: rgba(13, 17, 23, 0.9);
+  color: var(--text);
+  font: 11px var(--font-stack-mono);
+  cursor: pointer;
+}
+
+.report-screenshot-add {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.report-screenshot-add small {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-faint);
+}
+
+.report-error {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #f85149;
+}
+
+.report-ticket {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--accent-line);
+  border-radius: 8px;
+  background: var(--accent-soft);
+}
+
+.report-ticket span {
+  font: 10.5px var(--font-stack-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.report-ticket code {
+  overflow-wrap: anywhere;
+  font: 12px var(--font-stack-mono);
+  color: var(--accent-bright);
+}
+
 /* --- #122: welcome-тур --- */
 .shell-overlay--tour {
   background: transparent;

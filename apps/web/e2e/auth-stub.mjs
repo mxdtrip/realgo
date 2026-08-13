@@ -56,7 +56,10 @@ function kindOf(token) {
 }
 
 function send(res, status, obj) {
-  res.writeHead(status, { "Content-Type": "application/json" });
+  res.writeHead(status, {
+    "Content-Type": "application/json",
+    "X-Request-Id": `stub-request-${Date.now()}`,
+  });
   res.end(JSON.stringify(obj));
 }
 const ok = (res, data) => send(res, 200, { data });
@@ -531,6 +534,7 @@ const server = createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  res.setHeader("Access-Control-Expose-Headers", "X-Request-Id");
 
   const path = new URL(req.url, `http://127.0.0.1:${PORT}`).pathname;
 
@@ -600,6 +604,24 @@ const server = createServer((req, res) => {
 
     if (req.method === "POST" && path === `${PREFIX}/auth/logout`) {
       return ok(res, { status: "ok" });
+    }
+
+    if (req.method === "POST" && path === `${PREFIX}/me/problem-reports`) {
+      const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+      if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
+      if (body.schemaVersion !== 2 || typeof body.description !== "string") {
+        return fail(res, 400, "validation_error", "stub: invalid report");
+      }
+      if (body.description === "Не загружается сессия повторения") {
+        return fail(res, 503, "unavailable", "stub: report storage unavailable");
+      }
+      return send(res, 201, {
+        data: {
+          reportId: "12b3b7f9-7b92-4ea6-b745-7ae9c0199a92",
+          fingerprint: "a".repeat(64),
+          receivedAt: "2026-08-14T00:00:00Z",
+        },
+      });
     }
 
     // ---- Dashboard / roadmap / extension fixtures ----------------------

@@ -15,6 +15,7 @@ import (
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
 	"github.com/mxdtrip/realgo/services/api/internal/cards"
 	"github.com/mxdtrip/realgo/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/reports"
 	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
 	"github.com/mxdtrip/realgo/services/api/internal/server"
 	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres"
@@ -51,6 +52,7 @@ func Run(ctx context.Context) error {
 	}
 	defer pg.Close()
 	logger.Info("connected to postgres")
+	go reports.RunRetentionCleanup(ctx, pg.Pool, logger)
 
 	rdb, err := redis.New(ctx, &cfg.Redis)
 	if err != nil {

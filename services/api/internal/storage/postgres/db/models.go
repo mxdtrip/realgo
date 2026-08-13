@@ -127,6 +127,25 @@ type Problem struct {
 	ExternalID      pgtype.Text
 }
 
+type ProblemReport struct {
+	ID                  pgtype.UUID
+	UserID              int64
+	SchemaVersion       int16
+	Description         string
+	Diagnostics         []byte
+	Fingerprint         string
+	ReleaseVersion      pgtype.Text
+	CommitSha           pgtype.Text
+	SourceRequestID     string
+	Screenshot          []byte
+	ScreenshotMime      pgtype.Text
+	ScreenshotWidth     pgtype.Int4
+	ScreenshotHeight    pgtype.Int4
+	ScreenshotExpiresAt pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	ExpiresAt           pgtype.Timestamptz
+}
+
 type ProblemSubpattern struct {
 	ProblemID    int64
 	SubpatternID int64

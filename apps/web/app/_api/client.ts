@@ -68,6 +68,7 @@ async function rawEnvelopeRequest<T, M = unknown>(
   recordNetworkEnd(networkBreadcrumbId, {
     status: res.status,
     statusText: res.statusText || undefined,
+    requestId: res.headers.get("X-Request-Id") || undefined,
   });
 
   const payload = await res.json().catch(() => null);

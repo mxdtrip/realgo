@@ -102,6 +102,17 @@ test.describe("#119 report a problem", () => {
       "(KHTML, like Gecko) Version/18.6 Safari/605.1.15";
     await page.addInitScript((ua) => {
       Object.defineProperty(Navigator.prototype, "userAgent", { configurable: true, get: () => ua });
+      Object.defineProperty(Navigator.prototype, "mediaDevices", {
+        configurable: true,
+        get: () => ({ getDisplayMedia: async () => new MediaStream() }),
+      });
+      Object.defineProperty(HTMLVideoElement.prototype, "videoWidth", { configurable: true, get: () => 800 });
+      Object.defineProperty(HTMLVideoElement.prototype, "videoHeight", { configurable: true, get: () => 500 });
+      HTMLMediaElement.prototype.play = function play() {
+        queueMicrotask(() => this.dispatchEvent(new Event("loadedmetadata")));
+        return Promise.resolve();
+      };
+      CanvasRenderingContext2D.prototype.drawImage = () => {};
     }, safariUserAgent);
     await enterCabinet(page);
 
@@ -125,7 +136,10 @@ test.describe("#119 report a problem", () => {
 
     // Технический контекст отправляется скрыто и не перегружает форму.
     await expect(dialog.locator(".report-context")).toHaveCount(0);
-    await expect(dialog.getByText(/данные форм, токены/i)).toBeVisible();
+    await expect(dialog.getByText(/значения форм, токены/i)).toBeVisible();
+
+    await dialog.getByRole("button", { name: "добавить скриншот" }).click();
+    await expect(dialog.getByAltText("Предпросмотр прикладываемого скриншота")).toBeVisible();
 
     await page.evaluate(() => {
       const error = new Error("diagnostic smoke error");
@@ -165,9 +179,11 @@ test.describe("#119 report a problem", () => {
         endpoint: expect.stringContaining("/api/v1/"),
         status: expect.anything(),
         responseTimeMs: expect.any(Number),
+        requestId: expect.stringContaining("stub-request-"),
       },
       breadcrumbs: expect.any(Array),
       errors: expect.any(Array),
+      release: { version: expect.any(String), commit: expect.any(String) },
     });
     expect(report.errors).toEqual(
       expect.arrayContaining([
@@ -194,7 +210,32 @@ test.describe("#119 report a problem", () => {
     const box = await dialog.boundingBox();
     expect(box?.y).toBeGreaterThanOrEqual(0);
 
+    const reportRequest = page.waitForRequest((request) =>
+      request.method() === "POST" && request.url().endsWith("/api/v1/me/problem-reports"),
+    );
+    await dialog.getByRole("button", { name: "отправить отчёт" }).click();
+    const submitted = (await reportRequest).postDataJSON();
+    expect(submitted.description).toBe("g r что-то сломалось");
+    expect(submitted.screenshot).toMatchObject({ width: 800, height: 500 });
+    expect(submitted.screenshot.dataUrl).toMatch(/^data:image\/jpeg;base64,/);
+    expect(submitted).not.toHaveProperty("ua");
+    await expect(dialog.getByText("отчёт доставлен", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("12b3b7f9-7b92-4ea6-b745-7ae9c0199a92")).toBeVisible();
+
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
+  });
+
+  test("keeps the draft and offers retry when report delivery fails", async ({ page }) => {
+    await enterCabinet(page);
+    await page.locator(".user-chip").click();
+    await page.locator(".user-menu__report").click();
+    const dialog = page.locator(".shell-dialog--report");
+    await dialog.locator(".report-textarea").fill("Не загружается сессия повторения");
+    await dialog.getByRole("button", { name: "отправить отчёт" }).click();
+
+    await expect(dialog.getByRole("alert")).toContainText("Не удалось доставить отчёт");
+    await expect(dialog.getByRole("button", { name: "повторить отправку" })).toBeVisible();
+    await expect(dialog.locator(".report-textarea")).toHaveValue("Не загружается сессия повторения");
   });
 });
