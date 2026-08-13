@@ -274,7 +274,6 @@ const ru = {
       ],
       copyright: "© 2026 ReAlgo. All rights reserved.",
       tagline: "built by devs who bombed a few interviews first",
-      poweredBy: "source on",
     },
   },
   onboarding: {
@@ -297,7 +296,7 @@ const ru = {
         label: "компания",
         placeholder: "Например, Google…",
         selectedLabel: "Выбранная компания",
-        suggestionsLabel: "Подсказки компаний из GitHub-репозитория",
+        suggestionsLabel: "Подсказки компаний из каталога ReAlgo",
         skipHint: "Если рынок IT для тебя и без того прост и понятен — пропусти этот шаг.",
       },
       date: {

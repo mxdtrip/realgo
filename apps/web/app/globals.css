@@ -1696,25 +1696,6 @@ h3 {
   flex-wrap: wrap;
 }
 
-/* Author tag: subtle "powered by <logo>" attribution, centred in the bar. */
-.footer-powered {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  opacity: 0.55;
-  transition: opacity 0.2s ease;
-}
-
-.footer-powered:hover {
-  opacity: 1;
-}
-
-.footer-powered__logo {
-  height: 144px;
-  width: auto;
-  display: block;
-}
-
 /* ============================================================
    PERSONAL CABINET — terminal-grade product shell
    Плотный, инструментальный кабинет: компактная типографика,
