@@ -97,6 +97,12 @@ test.describe("#119 report a problem", () => {
   test("dialog opens from the user menu, attaches context, ignores hotkeys while typing", async ({
     page,
   }) => {
+    const safariUserAgent =
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 " +
+      "(KHTML, like Gecko) Version/18.6 Safari/605.1.15";
+    await page.addInitScript((ua) => {
+      Object.defineProperty(Navigator.prototype, "userAgent", { configurable: true, get: () => ua });
+    }, safariUserAgent);
     await enterCabinet(page);
 
     const userChip = page.locator(".user-chip");
@@ -117,8 +123,76 @@ test.describe("#119 report a problem", () => {
     await expect(page).toHaveURL(/\/dashboard/); // ввод в поле не дёргает навигацию
     await expect(send).toBeEnabled();
 
-    // Контекст страницы приложен и содержит URL.
-    await expect(dialog.locator(".report-context code").first()).toContainText("/dashboard");
+    // Технический контекст отправляется скрыто и не перегружает форму.
+    await expect(dialog.locator(".report-context")).toHaveCount(0);
+    await expect(dialog.getByText(/данные форм, токены/i)).toBeVisible();
+
+    await page.evaluate(() => {
+      const error = new Error("diagnostic smoke error");
+      window.dispatchEvent(
+        new ErrorEvent("error", {
+          message: error.message,
+          error,
+          filename: `${location.origin}/app.js?token=secret`,
+          lineno: 12,
+          colno: 4,
+        }),
+      );
+    });
+
+    // Копия — готовый структурированный JSON без сырой строки User-Agent.
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (value) => {
+            window.__reportClipboard = value;
+          },
+        },
+      });
+    });
+    await dialog.getByRole("button", { name: "скопировать отчёт" }).click();
+    const report = JSON.parse(await page.evaluate(() => window.__reportClipboard));
+    const rawUserAgent = await page.evaluate(() => navigator.userAgent);
+    expect(report).toMatchObject({
+      schemaVersion: 2,
+      description: "g r что-то сломалось",
+      page: { route: "/dashboard" },
+      browser: { name: "Safari", version: "18.6", engine: "WebKit" },
+      os: { name: "macOS", version: "10.15.7" },
+      network: {
+        method: expect.any(String),
+        endpoint: expect.stringContaining("/api/v1/"),
+        status: expect.anything(),
+        responseTimeMs: expect.any(Number),
+      },
+      breadcrumbs: expect.any(Array),
+      errors: expect.any(Array),
+    });
+    expect(report.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "error",
+          message: "diagnostic smoke error",
+          source: "/app.js?token",
+          line: 12,
+          column: 4,
+          stack: expect.any(String),
+        }),
+      ]),
+    );
+    expect(report.breadcrumbs.length).toBeGreaterThanOrEqual(5);
+    expect(report.breadcrumbs.length).toBeLessThanOrEqual(10);
+    expect(report.breadcrumbs.map((item) => item.type)).toEqual(
+      expect.arrayContaining(["navigation", "click", "network"]),
+    );
+    expect(report).not.toHaveProperty("ua");
+    expect(JSON.stringify(report)).not.toContain(rawUserAgent);
+
+    // Даже при низком viewport верхняя граница диалога остаётся на экране.
+    await page.setViewportSize({ width: 820, height: 420 });
+    const box = await dialog.boundingBox();
+    expect(box?.y).toBeGreaterThanOrEqual(0);
 
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);

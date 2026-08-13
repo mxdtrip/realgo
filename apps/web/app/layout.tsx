@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Manrope } from "next/font/google";
 import { AuthProvider } from "./_api/AuthProvider";
 import { getDictionary } from "./_content/i18n";
+import { DiagnosticsCollector } from "./_diagnostics/DiagnosticsCollector";
 import { PWAProvider } from "./_pwa/PWAProvider";
 import { ToastProvider } from "./_toast";
 import "./globals.css";
@@ -96,6 +97,7 @@ export default function RootLayout({
         <AuthProvider>
           <ToastProvider>
             <PWAProvider />
+            <DiagnosticsCollector />
             <div className="site-shell">{children}</div>
           </ToastProvider>
         </AuthProvider>

@@ -8263,9 +8263,16 @@ a.roadmap-step__practice-card:hover {
   inset: 0;
   z-index: 260;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 16px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-y: auto;
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
   background: rgba(1, 4, 9, 0.62);
   backdrop-filter: blur(2px);
   animation: shell-fade-in 0.15s ease-out both;
@@ -8279,7 +8286,10 @@ a.roadmap-step__practice-card:hover {
 
 .shell-dialog {
   width: min(460px, 100%);
-  max-height: calc(100dvh - 48px);
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  flex: none;
+  margin-block: auto;
   overflow-y: auto;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -8483,6 +8493,19 @@ a.roadmap-step__practice-card:hover {
   border-color: var(--accent-line);
 }
 
+.report-field {
+  display: grid;
+  gap: 6px;
+}
+
+.report-field > span {
+  font-family: var(--font-stack-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
 .report-textarea {
   width: 100%;
   resize: vertical;
@@ -8503,28 +8526,20 @@ a.roadmap-step__practice-card:hover {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.report-context {
-  display: grid;
-  gap: 3px;
+.report-privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
   margin-top: 12px;
-}
-
-.report-context__label {
-  font-family: var(--font-stack-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  margin-bottom: 3px;
-}
-
-.report-context code {
-  font-family: var(--font-stack-mono);
-  font-size: 11px;
+  margin-bottom: 0;
+  font-size: 12px;
+  line-height: 1.45;
   color: var(--text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.report-privacy span {
+  color: var(--success-fg);
+  font-weight: 700;
 }
 
 /* --- #122: welcome-тур --- */
@@ -8654,6 +8669,7 @@ a.roadmap-step__practice-card:hover {
 
   .shell-overlay:not(.shell-overlay--tour) .shell-dialog {
     width: 100%;
+    margin-block: 0;
     max-height: calc(100dvh - 40px - env(safe-area-inset-top));
     border-left: 0;
     border-right: 0;

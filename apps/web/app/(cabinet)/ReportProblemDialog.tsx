@@ -3,13 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 
 import { CabinetIcon } from "./_icons";
+import { createDiagnosticReport } from "../_diagnostics/reportDiagnostics";
 
 export type ReportCopy = Readonly<{
   triggerAria: string;
   title: string;
   description: string;
+  fieldLabel: string;
   placeholder: string;
-  contextLabel: string;
+  privacyNote: string;
   send: string;
   copy: string;
   copied: string;
@@ -27,15 +29,6 @@ export function openReportProblemDialog() {
   window.dispatchEvent(new Event(REPORT_PROBLEM_EVENT));
 }
 
-function pageContextLines(): string[] {
-  return [
-    `url: ${window.location.href}`,
-    `viewport: ${window.innerWidth}×${window.innerHeight}`,
-    `ua: ${navigator.userAgent}`,
-    `time: ${new Date().toISOString()}`,
-  ];
-}
-
 export function ReportProblemLauncher({
   copy,
   showTrigger = true,
@@ -44,7 +37,6 @@ export function ReportProblemLauncher({
   const [text, setText] = useState("");
   const [phase, setPhase] = useState<"edit" | "handoff">("edit");
   const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
-  const [context, setContext] = useState<string[]>([]);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,7 +49,6 @@ export function ReportProblemLauncher({
 
   useEffect(() => {
     if (!open) return;
-    setContext(pageContextLines());
     dialogRef.current?.focus();
 
     function onKeyDown(event: KeyboardEvent) {
@@ -83,7 +74,7 @@ export function ReportProblemLauncher({
   }
 
   function composedReport(): string {
-    return `${text.trim()}\n\n---\n${context.join("\n")}`;
+    return JSON.stringify(createDiagnosticReport(text), null, 2);
   }
 
   function send() {
@@ -149,19 +140,22 @@ export function ReportProblemLauncher({
             {phase === "edit" ? (
               <>
                 <p className="shell-dialog__note">{copy.description}</p>
-                <textarea
-                  className="report-textarea"
-                  value={text}
-                  placeholder={copy.placeholder}
-                  rows={5}
-                  onChange={(event) => setText(event.target.value)}
-                />
-                <div className="report-context">
-                  <span className="report-context__label">{copy.contextLabel}</span>
-                  {context.map((line) => (
-                    <code key={line}>{line}</code>
-                  ))}
-                </div>
+                <label className="report-field">
+                  <span>{copy.fieldLabel}</span>
+                  <textarea
+                    className="report-textarea"
+                    value={text}
+                    placeholder={copy.placeholder}
+                    rows={5}
+                    maxLength={2_000}
+                    aria-describedby="report-privacy-note"
+                    onChange={(event) => setText(event.target.value)}
+                  />
+                </label>
+                <p className="report-privacy" id="report-privacy-note">
+                  <span aria-hidden="true">✓</span>
+                  {copy.privacyNote}
+                </p>
                 <div className="shell-dialog__actions">
                   <button
                     className="shell-btn shell-btn--primary"
