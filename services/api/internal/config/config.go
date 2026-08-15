@@ -14,6 +14,7 @@ type Config struct {
 	HTTPServer `yaml:"http_server"`
 	Database   `yaml:"database"`
 	Redis      `yaml:"redis"`
+	Admin      Admin `yaml:"admin"`
 	AI         `yaml:"ai"`
 	FSRS       `yaml:"fsrs"`
 }
@@ -42,6 +43,11 @@ type Redis struct {
 	Port     string `yaml:"port" env:"REDIS_PORT" env-default:"6379"`
 	Password string `yaml:"password" env:"REDIS_PASSWORD"`
 	DB       int    `yaml:"db" env:"REDIS_DB" env-default:"0"`
+}
+
+type Admin struct {
+	Username string `yaml:"username" env:"GOADMIN_USERNAME"`
+	Password string `yaml:"password" env:"GOADMIN_PASSWORD"`
 }
 
 // AI configures the LLM provider (Gemini via its OpenAI-compatible endpoint)

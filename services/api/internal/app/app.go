@@ -61,6 +61,12 @@ func Run(ctx context.Context) error {
 	}
 	defer pg.Close()
 	logger.Info("connected to postgres")
+	if err := adminui.Bootstrap(ctx, pg.Pool, cfg.Admin.Username, cfg.Admin.Password); err != nil {
+		return fmt.Errorf("bootstrap admin user: %w", err)
+	}
+	if cfg.Admin.Username == "" {
+		logger.Warn("admin login disabled: GOADMIN_USERNAME and GOADMIN_PASSWORD are not set")
+	}
 
 	rdb, err := redis.New(ctx, &cfg.Redis)
 	if err != nil {
