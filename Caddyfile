@@ -11,7 +11,7 @@
 		X-Frame-Options "DENY"
 	}
 
-	@api path /api/* /healthz /readyz
+	@api path /api/* /admin /admin/* /healthz /readyz
 	@allowed_origin header_regexp Origin ^(https?://(localhost|127[.]0[.]0[.]1):(5173|3000)|{$REALGO_EXTENSION_ORIGIN:chrome-extension://kclglopmphebagjjimjhdpnmoddmbgea})$
 
 	handle @api {
