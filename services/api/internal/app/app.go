@@ -7,10 +7,20 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
+	_ "github.com/GoAdminGroup/go-admin/adapter/chi"                 // Import the adapter, it must be imported. If it is not imported, you need to define it yourself.
+	_ "github.com/GoAdminGroup/go-admin/modules/db/drivers/postgres" // Import the sql driver
+	_ "github.com/GoAdminGroup/themes/adminlte"                      // Import the theme
+	chiV4 "github.com/go-chi/chi"
 	"github.com/joho/godotenv"
 
+	"github.com/GoAdminGroup/go-admin/engine"
+	admConfig "github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/language"
+
+	adminui "github.com/mxdtrip/freeburger/services/api/internal/admin"
 	"github.com/mxdtrip/freeburger/services/api/internal/ai"
 	"github.com/mxdtrip/freeburger/services/api/internal/auth"
 	"github.com/mxdtrip/freeburger/services/api/internal/cards"
@@ -99,6 +109,37 @@ func Run(ctx context.Context) error {
 
 	handler := server.New(deps)
 
+	eng := loadEngine()
+	admCfg := admConfig.Config{
+		Databases: admConfig.DatabaseList{
+			"default": {
+				Host:            cfg.Database.Host,
+				Port:            strconv.Itoa(cfg.Database.Port),
+				User:            cfg.User,
+				Pwd:             cfg.Database.Password,
+				Name:            cfg.DBName,
+				Driver:          admConfig.DriverPostgresql,
+				MaxOpenConns:    int(cfg.MaxConns),
+				ConnMaxLifetime: cfg.MaxConnLifetime,
+				ConnMaxIdleTime: cfg.MaxConnIdleTime,
+				Params: map[string]string{
+					"sslmode": cfg.SSLMode,
+				},
+			},
+		},
+		UrlPrefix: "admin",
+		Store: admConfig.Store{
+			Path:   "./uploads",
+			Prefix: "uploads",
+		},
+		Language: language.EN,
+	}
+	adminRouter := chiV4.NewRouter()
+	if err := eng.AddConfig(&admCfg).AddGenerators(adminui.Generators).Use(adminRouter); err != nil {
+		return fmt.Errorf("mount admin routes: %w", err)
+	}
+	handler.Handle("/admin/*", adminRouter)
+
 	srv := &http.Server{
 		Addr:              cfg.Address,
 		Handler:           handler,
@@ -137,6 +178,10 @@ func Run(ctx context.Context) error {
 
 	logger.Info("api stopped")
 	return nil
+}
+
+func loadEngine() *engine.Engine {
+	return engine.Default()
 }
 
 // newLogger returns a human-readable text logger for local development and a
