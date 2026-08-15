@@ -97,6 +97,23 @@ test.describe("#119 report a problem", () => {
   test("dialog opens from the user menu, attaches context, ignores hotkeys while typing", async ({
     page,
   }) => {
+    const safariUserAgent =
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 " +
+      "(KHTML, like Gecko) Version/18.6 Safari/605.1.15";
+    await page.addInitScript((ua) => {
+      Object.defineProperty(Navigator.prototype, "userAgent", { configurable: true, get: () => ua });
+      Object.defineProperty(Navigator.prototype, "mediaDevices", {
+        configurable: true,
+        get: () => ({ getDisplayMedia: async () => new MediaStream() }),
+      });
+      Object.defineProperty(HTMLVideoElement.prototype, "videoWidth", { configurable: true, get: () => 800 });
+      Object.defineProperty(HTMLVideoElement.prototype, "videoHeight", { configurable: true, get: () => 500 });
+      HTMLMediaElement.prototype.play = function play() {
+        queueMicrotask(() => this.dispatchEvent(new Event("loadedmetadata")));
+        return Promise.resolve();
+      };
+      CanvasRenderingContext2D.prototype.drawImage = () => {};
+    }, safariUserAgent);
     await enterCabinet(page);
 
     const userChip = page.locator(".user-chip");
@@ -117,10 +134,108 @@ test.describe("#119 report a problem", () => {
     await expect(page).toHaveURL(/\/dashboard/); // ввод в поле не дёргает навигацию
     await expect(send).toBeEnabled();
 
-    // Контекст страницы приложен и содержит URL.
-    await expect(dialog.locator(".report-context code").first()).toContainText("/dashboard");
+    // Технический контекст отправляется скрыто и не перегружает форму.
+    await expect(dialog.locator(".report-context")).toHaveCount(0);
+    await expect(dialog.getByText(/значения форм, токены/i)).toBeVisible();
+
+    await dialog.getByRole("button", { name: "добавить скриншот" }).click();
+    await expect(dialog.getByAltText("Предпросмотр прикладываемого скриншота")).toBeVisible();
+
+    await page.evaluate(() => {
+      const error = new Error("diagnostic smoke error");
+      window.dispatchEvent(
+        new ErrorEvent("error", {
+          message: error.message,
+          error,
+          filename: `${location.origin}/app.js?token=secret`,
+          lineno: 12,
+          colno: 4,
+        }),
+      );
+    });
+
+    // Копия — готовый структурированный JSON без сырой строки User-Agent.
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (value) => {
+            window.__reportClipboard = value;
+          },
+        },
+      });
+    });
+    await dialog.getByRole("button", { name: "скопировать отчёт" }).click();
+    const report = JSON.parse(await page.evaluate(() => window.__reportClipboard));
+    const rawUserAgent = await page.evaluate(() => navigator.userAgent);
+    expect(report).toMatchObject({
+      schemaVersion: 2,
+      description: "g r что-то сломалось",
+      page: { route: "/dashboard" },
+      browser: { name: "Safari", version: "18.6", engine: "WebKit" },
+      os: { name: "macOS", version: "10.15.7" },
+      network: {
+        method: expect.any(String),
+        endpoint: expect.stringContaining("/api/v1/"),
+        status: expect.anything(),
+        responseTimeMs: expect.any(Number),
+        requestId: expect.stringContaining("stub-request-"),
+      },
+      breadcrumbs: expect.any(Array),
+      errors: expect.any(Array),
+      release: { version: expect.any(String), commit: expect.any(String) },
+    });
+    expect(report.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "error",
+          message: "diagnostic smoke error",
+          source: "/app.js?token",
+          line: 12,
+          column: 4,
+          stack: expect.any(String),
+        }),
+      ]),
+    );
+    expect(report.breadcrumbs.length).toBeGreaterThanOrEqual(5);
+    expect(report.breadcrumbs.length).toBeLessThanOrEqual(10);
+    expect(report.breadcrumbs.map((item) => item.type)).toEqual(
+      expect.arrayContaining(["navigation", "click", "network"]),
+    );
+    expect(report).not.toHaveProperty("ua");
+    expect(JSON.stringify(report)).not.toContain(rawUserAgent);
+
+    // Даже при низком viewport верхняя граница диалога остаётся на экране.
+    await page.setViewportSize({ width: 820, height: 420 });
+    const box = await dialog.boundingBox();
+    expect(box?.y).toBeGreaterThanOrEqual(0);
+
+    const reportRequest = page.waitForRequest((request) =>
+      request.method() === "POST" && request.url().endsWith("/api/v1/me/problem-reports"),
+    );
+    await dialog.getByRole("button", { name: "отправить отчёт" }).click();
+    const submitted = (await reportRequest).postDataJSON();
+    expect(submitted.description).toBe("g r что-то сломалось");
+    expect(submitted.screenshot).toMatchObject({ width: 800, height: 500 });
+    expect(submitted.screenshot.dataUrl).toMatch(/^data:image\/jpeg;base64,/);
+    expect(submitted).not.toHaveProperty("ua");
+    await expect(dialog.getByText("отчёт доставлен", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("12b3b7f9-7b92-4ea6-b745-7ae9c0199a92")).toBeVisible();
 
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
+  });
+
+  test("keeps the draft and offers retry when report delivery fails", async ({ page }) => {
+    await enterCabinet(page);
+    await page.locator(".user-chip").click();
+    await page.locator(".user-menu__report").click();
+    const dialog = page.locator(".shell-dialog--report");
+    await dialog.locator(".report-textarea").fill("Не загружается сессия повторения");
+    await dialog.getByRole("button", { name: "отправить отчёт" }).click();
+
+    await expect(dialog.getByRole("alert")).toContainText("Не удалось доставить отчёт");
+    await expect(dialog.getByRole("button", { name: "повторить отправку" })).toBeVisible();
+    await expect(dialog.locator(".report-textarea")).toHaveValue("Не загружается сессия повторения");
   });
 });

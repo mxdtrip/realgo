@@ -1,0 +1,11 @@
+# This root context is used only as the web image's named `repository_metadata`
+# context. Keep it intentionally tiny: enough to resolve HEAD whether the ref
+# is loose or packed, without sending source history, config, hooks or reflogs
+# to the Docker builder.
+*
+!.git/
+.git/*
+!.git/HEAD
+!.git/packed-refs
+!.git/refs/
+!.git/refs/**

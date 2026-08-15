@@ -12,6 +12,7 @@ import {
   setTokens,
 } from "./tokens";
 import { ApiError, type ApiEnvelope, type ApiErrorBody, type AuthTokens } from "./types";
+import { recordNetworkEnd, recordNetworkStart } from "../_diagnostics/reportDiagnostics";
 
 const configuredApiBase = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
 // The deployed app is fronted by Caddy, which routes same-origin `/api/*` to
@@ -44,17 +45,31 @@ async function rawEnvelopeRequest<T, M = unknown>(
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
 
+  const method = options.method ?? (options.body !== undefined ? "POST" : "GET");
+  const endpoint = `${API_PREFIX}${path}`;
+  const networkBreadcrumbId = recordNetworkStart(method, endpoint);
+
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${API_PREFIX}${path}`, {
-      method: options.method ?? (options.body !== undefined ? "POST" : "GET"),
+      method,
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: options.signal,
     });
   } catch {
+    recordNetworkEnd(networkBreadcrumbId, {
+      status: options.signal?.aborted ? "aborted" : "network_error",
+      statusText: options.signal?.aborted ? "Request aborted" : "Network error",
+    });
     throw new ApiError("Не удалось связаться с сервером. Проверьте, что бэкенд запущен.", 0, "network");
   }
+
+  recordNetworkEnd(networkBreadcrumbId, {
+    status: res.status,
+    statusText: res.statusText || undefined,
+    requestId: res.headers.get("X-Request-Id") || undefined,
+  });
 
   const payload = await res.json().catch(() => null);
 

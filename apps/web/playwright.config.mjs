@@ -13,6 +13,16 @@ import { defineConfig, devices } from "@playwright/test";
 const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? process.env.WEB_PORT ?? 3300);
 const STUB_PORT = Number(process.env.E2E_STUB_PORT ?? process.env.STUB_PORT ?? 38080);
 const REUSE_SERVERS = process.env.PLAYWRIGHT_REUSE_SERVERS === "1";
+const E2E_BROWSER = process.env.E2E_BROWSER ?? "chromium";
+const browserDevices = {
+  chromium: devices["Desktop Chrome"],
+  firefox: devices["Desktop Firefox"],
+  webkit: devices["Desktop Safari"],
+};
+
+if (!(E2E_BROWSER in browserDevices)) {
+  throw new Error(`Unsupported E2E_BROWSER: ${E2E_BROWSER}`);
+}
 
 export default defineConfig({
   testDir: "./e2e",
@@ -27,7 +37,7 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${WEB_PORT}`,
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [{ name: E2E_BROWSER, use: { ...browserDevices[E2E_BROWSER] } }],
   webServer: [
     {
       command: "node e2e/auth-stub.mjs",

@@ -114,6 +114,9 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+        env:
+          NEXT_PUBLIC_APP_VERSION: ci-${{ github.run_number }}
+          NEXT_PUBLIC_COMMIT_SHA: ${{ github.sha }}
 
   extension:
     name: Extension
