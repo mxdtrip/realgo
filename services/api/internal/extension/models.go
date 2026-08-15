@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/scheduler"
+	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
 )
 
 // Event types accepted from the extension. Only EventProblemSolved drives the

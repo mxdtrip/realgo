@@ -10,7 +10,7 @@ import (
 	// works identically in every runtime, including minimal container images.
 	_ "time/tzdata"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/app"
+	"github.com/mxdtrip/realgo/services/api/internal/app"
 )
 
 func main() {

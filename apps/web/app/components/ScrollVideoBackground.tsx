@@ -2,198 +2,335 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import * as THREE from "three";
 
-// Background clip @ 120fps. At the top of the page the video sits at START_TIME;
-// scrolling scrubs it forward (down) / backward (up). The scrub range is mapped
-// onto [page top → bottom of the #memory section], so the clip reaches its last
-// frame exactly when that section has been fully scrolled through, then holds.
-const START_TIME = 0;
-// Section whose bottom edge marks the end of the clip.
+// The recovered Geometry Nodes scene supplies the motion graph: frames 240..960,
+// 40 cards and one cubic Bezier curve. Mesh/camera composition is calibrated
+// against the original 1920×810 MP4 because those parts of the .blend were only
+// approximately reconstructed. Keeping it procedural avoids shipping a GLB.
 const SCRUB_END_SECTION_ID = "memory";
-// Per-frame easing toward the scroll target: higher = snappier, lower = smoother.
+const FRAME_START = 240;
+const FRAME_END = 960;
+const FRAME_OFFSET = -477;
+const TIME_SPAN = 1467;
+const CARD_COUNT = 40;
+const CARD_GAP = 0.02;
+const CARD_SCALE = 0.54;
+const CARD_HEIGHT = 3.8;
+const SPINS = 1;
+const FLOW_HORIZONTAL_SCALE = 0.58;
+const FLOW_HORIZONTAL_OFFSET = -0.1;
+const FLOW_ROLL = THREE.MathUtils.degToRad(-5);
+const EXIT_RUNOUT_START = 0.82;
+const EXIT_RUNOUT_DISTANCE = 0.8;
 const SMOOTHING = 0.12;
+const SETTLE_MS = 1200;
+// The shipped reference render is 1920×810, not 16:9.
+const SOURCE_ASPECT = 1920 / 810;
+
+// Blender Z-up → Three.js Y-up: (x, y, z) becomes (x, z, -y).
+const CARD_CURVE = new THREE.CubicBezierCurve3(
+  new THREE.Vector3(0, -0.01, 6.52),
+  new THREE.Vector3(-1.16, -0.9, 1.99),
+  new THREE.Vector3(0, 0, -0.29),
+  new THREE.Vector3(0, 0.01, -7.09),
+);
+CARD_CURVE.arcLengthDivisions = 240;
+const CARD_CURVE_LENGTH = CARD_CURVE.getLength();
+const CARD_CURVE_START = CARD_CURVE.getPointAt(0);
+const CARD_CURVE_END = CARD_CURVE.getPointAt(1);
+const CARD_CURVE_START_TANGENT = CARD_CURVE.getTangentAt(0);
+const CARD_CURVE_END_TANGENT = CARD_CURVE.getTangentAt(1);
+
+// Blender Euler XYZ (60°, -30°, 180°), preceded by the Z-up → Y-up basis.
+// Blender exposes quaternions as (w,x,y,z); Three.js expects (x,y,z,w).
+const BASE_ROTATION = new THREE.Quaternion(
+  0.25,
+  0.9330127019,
+  0.25,
+  0.0669872981,
+);
+const GLOBAL_SPIN_AXIS = new THREE.Vector3(0, 0, -1);
+
+function createRoundedCardGeometry() {
+  const width = 2;
+  const height = CARD_HEIGHT;
+  const depth = 0.02;
+  const radius = 0.12;
+  const x = width / 2;
+  const y = height / 2;
+  const shape = new THREE.Shape();
+
+  shape.moveTo(-x + radius, -y);
+  shape.lineTo(x - radius, -y);
+  shape.quadraticCurveTo(x, -y, x, -y + radius);
+  shape.lineTo(x, y - radius);
+  shape.quadraticCurveTo(x, y, x - radius, y);
+  shape.lineTo(-x + radius, y);
+  shape.quadraticCurveTo(-x, y, -x, y - radius);
+  shape.lineTo(-x, -y + radius);
+  shape.quadraticCurveTo(-x, -y, -x + radius, -y);
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: false,
+    curveSegments: 5,
+  });
+  // The Geometry Nodes graph recenters the source mesh before instancing it.
+  geometry.translate(0, 0, -depth / 2);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function verticalFovForAspect(aspect: number) {
+  const sourceVerticalFov = THREE.MathUtils.degToRad(18);
+
+  // Match the old video's object-fit: cover behavior on unusually wide screens.
+  if (aspect <= SOURCE_ASPECT) return THREE.MathUtils.radToDeg(sourceVerticalFov);
+  return THREE.MathUtils.radToDeg(
+    2 * Math.atan((Math.tan(sourceVerticalFov / 2) * SOURCE_ASPECT) / aspect),
+  );
+}
+
+function sampleExtendedCurve(factor: number, target: THREE.Vector3) {
+  if (factor < 0) {
+    return target
+      .copy(CARD_CURVE_START)
+      .addScaledVector(CARD_CURVE_START_TANGENT, factor * CARD_CURVE_LENGTH);
+  }
+  if (factor > 1) {
+    return target
+      .copy(CARD_CURVE_END)
+      .addScaledVector(
+        CARD_CURVE_END_TANGENT,
+        (factor - 1) * CARD_CURVE_LENGTH,
+      );
+  }
+  return CARD_CURVE.getPointAt(factor, target);
+}
+
+function scrollProgress() {
+  const section = document.getElementById(SCRUB_END_SECTION_ID);
+  const fallbackBottom = document.documentElement.scrollHeight;
+  const sectionBottom = section
+    ? section.getBoundingClientRect().bottom + window.scrollY
+    : fallbackBottom;
+  const endScroll = Math.max(1, sectionBottom - window.innerHeight);
+  return THREE.MathUtils.clamp(window.scrollY / endScroll, 0, 1);
+}
 
 export function ScrollVideoBackground() {
   const pathname = usePathname();
   const isLanding = pathname === "/";
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!isLanding) return undefined;
 
-    const video = videoRef.current;
-    if (!video) return undefined;
+    const host = hostRef.current;
+    if (!host) return undefined;
 
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance",
+      });
+    } catch {
+      host.dataset.state = "fallback";
+      return undefined;
+    }
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(12.2, SOURCE_ASPECT, 0.1, 1000);
+    camera.position.set(18.64, -0.56, 0);
+    camera.up.set(0, Math.cos(FLOW_ROLL), -Math.sin(FLOW_ROLL));
+    camera.lookAt(0, -0.56, 0);
+
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.NoToneMapping;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setClearColor(0x000000, 0);
+    renderer.domElement.tabIndex = -1;
+    renderer.domElement.setAttribute("role", "presentation");
+    host.prepend(renderer.domElement);
+
+    const geometry = createRoundedCardGeometry();
+    const material = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(0.82, 0.84, 0.88),
+      metalness: 0,
+      roughness: 0.26,
+    });
+    const cards = new THREE.InstancedMesh(geometry, material, CARD_COUNT);
+    cards.frustumCulled = false;
+    cards.castShadow = true;
+    cards.receiveShadow = true;
+    cards.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    const instanceColors = new THREE.InstancedBufferAttribute(
+      new Float32Array(CARD_COUNT * 3),
+      3,
+    );
+    instanceColors.setUsage(THREE.DynamicDrawUsage);
+    cards.instanceColor = instanceColors;
+    scene.add(cards);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.008);
+    const spot = new THREE.SpotLight(0xffffff, 800, 0, 0.25, 1, 2);
+    spot.position.set(0, 10.13, 0);
+    spot.target.position.set(0, 0, 0);
+    spot.castShadow = true;
+    spot.shadow.mapSize.set(2048, 2048);
+    spot.shadow.camera.near = 0.1;
+    spot.shadow.camera.far = 40;
+    spot.shadow.bias = -0.0004;
+    spot.shadow.normalBias = 0.015;
+    scene.add(ambient, spot, spot.target);
+
+    const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    const spin = new THREE.Quaternion();
+    const rotation = new THREE.Quaternion();
+    const instanceColor = new THREE.Color();
+
+    let target = scrollProgress();
+    let current = target;
+    let lastRendered = Number.NaN;
+    let rafId = 0;
+    let settleUntil = performance.now() + SETTLE_MS;
+    let disposed = false;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    let duration = 0;
-    let target = START_TIME;
-    let current = START_TIME;
-    let ready = false;
-    let rafId = 0;
-    // While the page settles after (re)load, we lock the frame straight onto
-    // the live scroll position instead of easing toward it (see `tick`).
-    let settleUntil = 0;
-    // True between issuing `video.currentTime = …` and the resulting `seeked`.
-    // A high-res clip can't decode a new frame every animation frame, so firing
-    // a fresh seek each tick just queues work the decoder drops — the video then
-    // visibly lags behind the scroll. We instead hold off until the in-flight
-    // seek finishes, always seeking to the *latest* target when it does.
-    let seeking = false;
-    // When the in-flight seek was issued. If `seeked` never fires — e.g. the seek
-    // is cancelled by the `video.load()` below when a deep reload restores the
-    // scroll offset — the flag would stay stuck and freeze the clip on frame 0.
-    // A watchdog clears it after SEEK_TIMEOUT_MS so the next tick retries. Normal
-    // scrub seeks resolve well under this, so throttling to the decoder's rate
-    // (the reason the flag exists) still holds.
-    let seekStartedAt = 0;
-    const SEEK_TIMEOUT_MS = 250;
-
-    const computeTarget = () => {
-      // Scroll distance over which the clip should play: from the top of the page
-      // until the bottom of the anchor section reaches the bottom of the viewport.
-      const section = document.getElementById(SCRUB_END_SECTION_ID);
-      let endScroll: number;
-      if (section) {
-        const sectionBottom = section.getBoundingClientRect().bottom + window.scrollY;
-        endScroll = sectionBottom - window.innerHeight;
-      } else {
-        endScroll = document.documentElement.scrollHeight - window.innerHeight;
-      }
-      endScroll = Math.max(1, endScroll);
-      const progress = Math.min(1, Math.max(0, window.scrollY / endScroll));
-      const end = Math.max(START_TIME, duration);
-      target = START_TIME + progress * (end - START_TIME);
+    const resize = () => {
+      const width = Math.max(1, host.clientWidth);
+      const height = Math.max(1, host.clientHeight);
+      const aspect = width / height;
+      renderer.setSize(width, height, false);
+      camera.aspect = aspect;
+      camera.fov = verticalFovForAspect(aspect);
+      camera.updateProjectionMatrix();
+      lastRendered = Number.NaN;
     };
 
-    const seek = (time: number) => {
-      // Skip while a previous seek is still in flight; the next tick re-issues
-      // with the newest target once `seeked` clears the flag. This throttles
-      // seeks to the decoder's real rate instead of flooding it every frame.
-      if (!ready || seeking || !Number.isFinite(time)) return;
-      // Compare against the video's ACTUAL position, not the last requested
-      // value. A seek issued while the element is still (re)loading — e.g. right
-      // after a reload that restored the scroll deep down the page, where the
-      // effect's `video.load()` resets currentTime back to 0 — is silently
-      // dropped. Guarding on the last requested value would then never retry and
-      // the clip freezes on frame 0; re-issuing until the element truly reaches
-      // the target self-heals once it becomes seekable.
-      if (Math.abs(time - video.currentTime) < 0.005) return;
-      try {
-        seeking = true;
-        seekStartedAt = performance.now();
-        video.currentTime = time;
-      } catch {
-        // ignore seeks while metadata is still settling
-        seeking = false;
+    const renderFrame = (progress: number) => {
+      if (progress === lastRendered) return;
+
+      const frame = THREE.MathUtils.lerp(FRAME_START, FRAME_END, progress);
+      const streamRange = (CARD_COUNT - 1) * CARD_GAP + 1;
+      const streamProgress = ((frame - FRAME_OFFSET) / TIME_SPAN) * streamRange;
+      // The recovered timing leaves the final card at factor ~0.96 on the last
+      // frame. Add a late run-out so the darkened tail continues along the end
+      // tangent and clears the viewport instead of freezing in its corner.
+      const exitRunout =
+        THREE.MathUtils.smoothstep(progress, EXIT_RUNOUT_START, 1) *
+        EXIT_RUNOUT_DISTANCE;
+      let onCurveCards = 0;
+
+      for (let index = 0; index < CARD_COUNT; index += 1) {
+        const factor = streamProgress + exitRunout - index * CARD_GAP;
+        const onCurve = factor >= 0 && factor <= 1;
+        sampleExtendedCurve(factor, position);
+        position.z =
+          position.z * FLOW_HORIZONTAL_SCALE + FLOW_HORIZONTAL_OFFSET;
+        spin.setFromAxisAngle(GLOBAL_SPIN_AXIS, factor * SPINS * Math.PI * 2);
+        rotation.multiplyQuaternions(spin, BASE_ROTATION);
+        scale.setScalar(CARD_SCALE);
+        matrix.compose(position, rotation, scale);
+        cards.setMatrixAt(index, matrix);
+
+        // Cards do not get deleted at the end of the curve. They continue along
+        // its tangent and lose the remaining fill light until they are black.
+        const exitShadow = THREE.MathUtils.smoothstep(factor, 0.84, 1.16);
+        const entryShadow = 1 - THREE.MathUtils.smoothstep(factor, -0.16, 0.04);
+        const illumination = (1 - exitShadow) * (1 - entryShadow);
+        instanceColor.setScalar(illumination);
+        cards.setColorAt(index, instanceColor);
+        if (onCurve) onCurveCards += 1;
       }
+
+      cards.instanceMatrix.needsUpdate = true;
+      instanceColors.needsUpdate = true;
+      renderer.render(scene, camera);
+      lastRendered = progress;
+      host.dataset.progress = progress.toFixed(4);
+      host.dataset.cardCount = String(CARD_COUNT);
+      host.dataset.visibleCards = String(CARD_COUNT);
+      host.dataset.onCurveCards = String(onCurveCards);
     };
 
     const tick = () => {
-      // Self-heal a seek whose `seeked` never arrived (cancelled by a reload's
-      // load()), so the flag can't stay stuck and freeze the clip.
-      if (seeking && performance.now() - seekStartedAt > SEEK_TIMEOUT_MS) {
-        seeking = false;
+      rafId = 0;
+      if (disposed) return;
+
+      target = scrollProgress();
+      if (reduceMotion || performance.now() < settleUntil) {
+        current = target;
+      } else {
+        current += (target - current) * SMOOTHING;
+        if (Math.abs(target - current) < 0.0001) current = target;
       }
-      if (ready) {
-        // Recompute the target from the live scroll position every frame. The
-        // browser restores the scroll offset a beat AFTER the video metadata
-        // loads, and that restoration doesn't reliably fire a scroll event —
-        // tracking scroll here (rather than only on scroll events) means a deep
-        // reload always lands on the matching frame instead of freezing on
-        // frame 0. Right after (re)load we snap straight to it; once the page
-        // has settled we ease toward it for smooth scrubbing.
-        computeTarget();
-        if (performance.now() < settleUntil) {
-          current = target;
-        } else {
-          current += (target - current) * SMOOTHING;
-          if (Math.abs(target - current) < 0.001) current = target;
-        }
-        seek(current);
+      renderFrame(current);
+
+      if (performance.now() < settleUntil || Math.abs(target - current) >= 0.0001) {
+        rafId = requestAnimationFrame(tick);
       }
-      rafId = requestAnimationFrame(tick);
     };
 
-    const onLoaded = () => {
-      duration = Number.isFinite(video.duration) ? video.duration : START_TIME;
-      ready = true;
-      computeTarget();
-      current = target;
-      seek(current);
-      // Keep snapping to the restored scroll position for a short beat, so a
-      // deep reload lands on the matching frame instead of freezing on frame 0.
-      settleUntil = performance.now() + 1200;
+    const requestTick = () => {
+      target = scrollProgress();
+      if (reduceMotion) current = target;
+      if (!rafId) rafId = requestAnimationFrame(tick);
     };
 
-    // Clear the in-flight flag once the decoder has produced the target frame
-    // (or bailed), so the next tick can seek to the newest scroll position.
-    const onSeeked = () => {
-      seeking = false;
+    const onResize = () => {
+      resize();
+      requestTick();
+    };
+    const onContextLost = (event: Event) => {
+      event.preventDefault();
+      host.dataset.state = "fallback";
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
+    };
+    const onContextRestored = () => {
+      host.dataset.state = "ready";
+      settleUntil = performance.now() + SETTLE_MS;
+      resize();
+      requestTick();
     };
 
-    // Some browsers (notably iOS Safari) won't paint a paused video until it has
-    // played once; a muted play/pause primes the decoder so seeking shows frames.
-    const prime = () => {
-      video.play().then(() => video.pause()).catch(() => {});
-    };
-
-    if (video.readyState >= 1) onLoaded();
-    else video.addEventListener("loadedmetadata", onLoaded);
-    video.addEventListener("loadeddata", prime, { once: true });
-    video.addEventListener("seeked", onSeeked);
-    video.addEventListener("error", onSeeked);
-    video.load();
-
-    if (reduceMotion) {
-      // No scrubbing loop under reduced motion, but still lock onto the
-      // restored scroll position for a short beat after load (same race as in
-      // `tick`), so a deep reload lands on the matching frame, not frame 0.
-      const settleEnd = performance.now() + 2000;
-      let settleRaf = 0;
-      const settle = () => {
-        if (seeking && performance.now() - seekStartedAt > SEEK_TIMEOUT_MS) {
-          seeking = false;
-        }
-        if (ready) {
-          computeTarget();
-          current = target;
-          seek(current);
-        }
-        if (performance.now() < settleEnd) settleRaf = requestAnimationFrame(settle);
-      };
-      settleRaf = requestAnimationFrame(settle);
-      return () => {
-        cancelAnimationFrame(settleRaf);
-        video.removeEventListener("loadedmetadata", onLoaded);
-        video.removeEventListener("seeked", onSeeked);
-        video.removeEventListener("error", onSeeked);
-      };
-    }
-
-    const onScroll = () => computeTarget();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    resize();
+    renderFrame(current);
+    host.dataset.state = "ready";
+    window.addEventListener("scroll", requestTick, { passive: true });
+    window.addEventListener("resize", onResize);
+    renderer.domElement.addEventListener("webglcontextlost", onContextLost);
+    renderer.domElement.addEventListener("webglcontextrestored", onContextRestored);
     rafId = requestAnimationFrame(tick);
 
     return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      video.removeEventListener("loadedmetadata", onLoaded);
-      video.removeEventListener("seeked", onSeeked);
-      video.removeEventListener("error", onSeeked);
+      disposed = true;
+      if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", requestTick);
+      window.removeEventListener("resize", onResize);
+      renderer.domElement.removeEventListener("webglcontextlost", onContextLost);
+      renderer.domElement.removeEventListener("webglcontextrestored", onContextRestored);
+      cards.dispose();
+      geometry.dispose();
+      material.dispose();
+      renderer.dispose();
+      renderer.domElement.remove();
     };
   }, [isLanding]);
 
-  if (!isLanding) {
-    return null;
-  }
+  if (!isLanding) return null;
 
   return (
-    <div className="scroll-video-bg" aria-hidden="true">
-      <video ref={videoRef} src="/realgo-hero.mp4" muted playsInline preload="auto" tabIndex={-1} />
-      <div className="scroll-video-bg__overlay" />
+    <div ref={hostRef} className="scroll-card-flow-bg" aria-hidden="true" data-state="loading">
+      <div className="scroll-card-flow-bg__overlay" />
     </div>
   );
 }

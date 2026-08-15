@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/server/response"
+	"github.com/mxdtrip/realgo/services/api/internal/server/response"
 )
 
 const DefaultMaxBodyBytes int64 = 1 << 20
@@ -15,7 +15,14 @@ const DefaultMaxBodyBytes int64 = 1 << 20
 // enforces a small body limit. It writes the API error envelope and returns
 // false on invalid input.
 func DecodeStrict(w http.ResponseWriter, r *http.Request, dst any, code string) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, DefaultMaxBodyBytes)
+	return DecodeStrictLimit(w, r, dst, code, DefaultMaxBodyBytes)
+}
+
+// DecodeStrictLimit is DecodeStrict with an endpoint-specific body limit.
+// Large-but-bounded payloads (for example an explicitly attached screenshot)
+// can opt in without relaxing the default for every JSON endpoint.
+func DecodeStrictLimit(w http.ResponseWriter, r *http.Request, dst any, code string, maxBodyBytes int64) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {

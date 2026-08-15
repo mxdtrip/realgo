@@ -1,188 +1,134 @@
-# FreeBurger (realgo)
+<p align="center">
+  <a href="https://realgo.dev">
+    <img src="apps/web/public/icons/realgo-logo.png" width="112" alt="ReAlgo logo" />
+  </a>
+</p>
 
-Монорепозиторий продукта **realgo** — системы подготовки к техническим
-интервью, которая не даёт решённым задачам забыться. Приложения делят
-один backend-контракт и одну инфраструктуру деплоя:
+<h1 align="center">ReAlgo</h1>
 
-- **веб-приложение** (`apps/web`) — маркетинговый лендинг + личный кабинет;
-- **браузерное расширение** (`apps/extension`) — ловит submit на площадках
-  с задачами и кормит его в личный кабинет;
-- **Go API** (`services/api`) — единый backend для обоих клиентов;
-- **презентация продукта** (`apps/presentation`) — статический HTML-дек,
-  отдельный nginx-контейнер за тем же Caddy на
-  [realgo.dev/presentation](https://realgo.dev/presentation/).
+<p align="center">
+  Память для подготовки к техническим интервью: решайте задачи, фиксируйте результат и возвращайтесь к нему в нужный момент.
+</p>
 
-**Статус: активный demo-проект.** Публичная точка входа —
-[realgo.dev](https://realgo.dev); её фактическую доступность проверяет runbook.
-В репозитории есть CI (`ci.yml`), но автоматического deploy workflow сейчас нет.
-Основной auth/cards/FSRS/extension/Atlas-контур реализован; генерация quiz,
-экспорт данных и checkout пока являются явно обозначенными заготовками.
+<p align="center">
+  <a href="https://realgo.dev">Сайт</a> ·
+  <a href="https://realgo.dev/docs">Документация</a> ·
+  <a href="https://realgo.dev/presentation/">Презентация</a> ·
+  <a href="https://t.me/realgo_devlog">Devlog</a>
+</p>
 
-Дневник разработки продукта — в Telegram-канале
+<p align="center">
+  <a href="https://github.com/mxdtrip/realgo/actions/workflows/ci.yml"><img src="https://github.com/mxdtrip/realgo/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
+  <a href="https://realgo.dev"><img src="https://img.shields.io/website?url=https%3A%2F%2Frealgo.dev&label=realgo.dev" alt="realgo.dev status" /></a>
+</p>
+
+## О продукте
+
+Один раз решить алгоритмическую задачу недостаточно: без повторения подход
+забывается как раз к собеседованию. ReAlgo замыкает полный цикл подготовки:
+
+1. Браузерное расширение распознаёт задачу и результат отправки на LeetCode,
+   HackerRank, GeeksforGeeks и Codeforces.
+2. Пользователь оценивает, насколько легко далось решение.
+3. FSRS планирует следующее повторение: сложные задачи возвращаются раньше,
+   уверенно решённые — позже.
+4. Pattern Atlas связывает практику с 22 семействами и 111 субпаттернами.
+5. Персональный roadmap учитывает дату интервью, выбранные компании,
+   доступное время и пробелы в знаниях.
+6. AI-помощник даёт поэтапные подсказки и создаёт карточки, не подменяя
+   самостоятельное решение готовым ответом.
+
+ReAlgo — активно развиваемый продукт. Production доступен на
+[realgo.dev](https://realgo.dev), а история разработки публикуется в
 [@realgo_devlog](https://t.me/realgo_devlog).
 
-Дневник разработки продукта — в Telegram-канале
-[@realgo_devlog](https://t.me/realgo_devlog).
-
-## Что решает продукт
-
-Идея: *«Solved» ≠ «Remembered»*. Решённая задача без повторения забывается
-почти всегда — обычно прямо перед интервью. realgo:
-
-1. **Фиксирует** решение задачи прямо из браузера (расширение перехватывает
-   submit на площадке, без ручного ввода).
-2. **Планирует повторения** по алгоритму интервальных повторений (FSRS) —
-   лёгкая задача уходит в очередь реже, тяжёлая — чаще.
-3. **Строит персональный roadmap**: число недель считается из даты
-   собеседования (не выбирается вручную), а темы — из реально релевантных
-   выбранной компании субпаттернов Pattern Atlas (Company Overlay), а не из
-   статичного учебного плана.
-4. **Атлас паттернов**: 22 семейства / 111 субпаттернов алгоритмических
-   паттернов с методическим материалом (что это, когда не подходит, с чем
-   не путать), карточками повторения и AI-подсказками по требованию.
-5. **AI-генерация карточек** по решённой задаче (кэш Redis → Postgres →
-   провайдер, bounded queue и дедупликация). Quiz generation пока возвращает
-   статус-заглушку и не должна считаться готовой функцией.
-
-## Поддерживаемые площадки
-
-Профиль пользователя (онбординг, `/settings`) и фильтр в Pattern Atlas
-поддерживают 4 площадки: **LeetCode**, **HackerRank**, **GeeksforGeeks**,
-**Codeforces**. Архитектура расширения — адаптеры по площадке
-(`apps/extension/src/platforms`), поэтому список площадок расширяется без
-переписывания расширения: **LeetCode** и **HackerRank** уже ловят submit и
-кладут задачу в личный кабинет автоматически, GeeksforGeeks и Codeforces
-подключены как площадки профиля и готовы принять адаптер следующими.
-
-## Структура репозитория
+## Состав монорепозитория
 
 ```text
 .
 ├── apps/
-│   ├── web/                 # Next.js 16 (App Router), React 19, TypeScript, кастомный CSS
+│   ├── web/                 # Next.js 16, React 19, TypeScript, PWA
 │   ├── extension/           # Plasmo, TypeScript, Manifest V3
-│   └── presentation/        # Финальный дек: статика + nginx, отдаётся на /presentation/
+│   └── presentation/        # Автономный HTML-дек в nginx-контейнере
 ├── services/
-│   └── api/                 # Go 1.25 API
-│       ├── cmd/api/         # Точка входа бинарного приложения
-│       ├── internal/        # Бизнес-логика: auth, cards, patterns, roadmap, ai, extension, ...
-│       ├── migrations/      # Версионируемые SQL-миграции (golang-migrate)
-│       └── seeds/           # Идемпотентные Python-сидеры контента и demo-данных
-├── docs/                     # Контракт API, deploy runbook
-└── packages/                 # Общий код для будущих клиентов (структура готова)
-    ├── ui/                  # Общие React-компоненты
-    ├── shared/              # Платформонезависимые TypeScript-типы/утилиты
-    └── config/              # Общие настройки инструментов
+│   └── api/                 # Go 1.25, chi, pgx, sqlc, FSRS
+│       ├── cmd/api/         # Точка входа API
+│       ├── internal/        # Предметные модули
+│       ├── migrations/      # SQL-миграции golang-migrate
+│       └── seeds/           # Идемпотентные сидеры контента
+├── docs/                    # API-контракт и runbook деплоя
+└── packages/                # Общие UI, типы и конфигурация
 ```
 
-### Backend: `services/api/internal`
+Клиенты используют единый API. Backend — модульный монолит с PostgreSQL и
+Redis; основные предметные области: auth, cards, companies, dashboard,
+extension, patterns, practice, problems, quiz, roadmap и scheduler.
 
-Модульный монолит на chi + pgx + sqlc + Redis. Каждый пакет — отдельная
-предметная область со своим handler/service/repository:
+Подробности по компонентам:
 
-`ai` · `auth` · `cards` · `companies` · `dashboard` · `extension` ·
-`patterns` (Pattern Atlas) · `practice` · `problemcards` · `problems` ·
-`quiz` · `roadmap` / `roadmaps` · `scheduler` (FSRS) · `server` · `storage`
-(sqlc-сгенерированный доступ к Postgres + Redis).
-
-### Архитектурные границы
-
-- `apps/*` — запускаемые frontend-приложения. Могут зависеть от `packages/*`,
-  но не друг от друга.
-- `services/*` — независимо собираемые Go-сервисы; код конкретного сервиса
-  живёт в его `internal` и не импортируется извне.
-- `packages/ui` — визуальные React-компоненты, добавляются только если
-  реально используются обоими приложениями.
-- `packages/shared` — типы/утилиты без React, Next.js и Plasmo API.
-- `packages/config` — общие настройки инструментов без продуктового кода.
-
-Node-приложения хранят собственные `package-lock.json`; общего Node
-workspace в корне нет. Lock-файлы обязательны в Git.
+- [Web](apps/web/README.md)
+- [Browser Extension](apps/extension/README.md)
+- [Go API](services/api/README.md)
+- [Presentation](apps/presentation/README.md)
+- [Backend API contract](docs/cabinet-api-contract.md)
 
 ## Быстрый запуск
 
-`docker-compose.yml` — базовый (локальный) стек; всё серверное (vpngw, netns
-для api, prod Caddyfile) вынесено в overlay `docker-compose.prod.yml`.
-`VPN_SUB_URL`, `FRP_VPS_HOST`, `FRP_TOKEN` нужны только серверу.
+Понадобятся Docker и Docker Compose.
 
 ```sh
 cp .env.example .env
-# заменить AUTH_JWT_SECRET на случайную строку 32+ символа
-docker compose up -d --build
-curl -fsS http://localhost:8080/healthz
-curl -fsS http://localhost:8080/readyz
+# Задайте в .env случайный AUTH_JWT_SECRET длиной не менее 32 символов.
+docker compose up -d --build --wait
 ```
 
-Сайт и API доступны через Caddy на `http://localhost:8080` (порт меняется
-переменной `API_PORT`). Порт 3000 наружу не публикуется: web-контейнер виден
-только внутри docker-сети, Caddy проксирует на него всё, кроме `/api/*` и
-`/presentation/*`.
+После запуска:
 
-Момент, когда стек действительно готов, ловить вручную не нужно — его печатает
-одноразовый сервис `ready`. Он стартует последним в графе зависимостей (после
-миграций и всех seed-джобов), затем дожидается реальных ответов от `/healthz`,
-`/readyz`, лендинга и презентации — и только тогда выводит рамку `REALGO —
-СТЕК ПОЛНОСТЬЮ ЗАПУЩЕН`, отделённую от предыдущих логов пустыми строками.
-Состояние контейнера — не то же самое, что готовность: Next отвечает на
-запросы на несколько секунд позже старта процесса, поэтому баннер привязан к
-HTTP, а не к `service_started`.
+- web и API через Caddy: [http://localhost:8080](http://localhost:8080);
+- health check: [http://localhost:8080/healthz](http://localhost:8080/healthz);
+- readiness check: [http://localhost:8080/readyz](http://localhost:8080/readyz);
+- презентация: [http://localhost:8080/presentation/](http://localhost:8080/presentation/).
+
+Сервис `ready` дожидается миграций, сидеров, API, web и презентации. При
+успехе он печатает `REALGO — СТЕК ПОЛНОСТЬЮ ЗАПУЩЕН`; при ошибке указывает
+эндпоинт, который не ответил. Диагностика:
 
 ```sh
-docker compose up               # баннер появится в конце потока логов
-docker compose up -d --wait     # то же в фоне: --wait держит команду до баннера
-docker compose logs ready       # посмотреть баннер уже после запуска
+docker compose ps
+docker compose logs ready
 ```
 
-Если что-то не поднялось, `ready` вместо рамки печатает, какой именно эндпоинт
-не ответил, и выходит с ненулевым кодом (`docker compose ps` покажет
-`Exited (1)`). Таймаут ожидания — `READY_TIMEOUT`, по умолчанию 180 секунд.
-
-То же из backend-директории (`make`/`go-task` — эквивалентны):
+Backend можно поднять отдельно:
 
 ```sh
 cd services/api
-make up-api      # backend-only: API, Postgres, Redis, миграции, Caddy
-make up          # то же + web
-make health      # healthz + readyz
+make up-api
+make health
 ```
 
-Если Docker пишет `permission denied` к сокету — это не ошибка проекта:
-запустите Docker Desktop или добавьте пользователя в `docker` группу и
-перелогиньтесь.
+Полный список переменных находится в [`.env.example`](.env.example), а
+серверный сценарий — в [prod-demo runbook](docs/prod-demo-deploy-runbook.md).
+Секреты и локальный `.env` коммитить нельзя.
 
-Prod-demo (сервер) запускается с overlay и профилем `prod-demo`:
+## Разработка и проверка
 
-```sh
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --build
-# или: cd services/api && make prod-demo-up
-```
+Основные проверки запускаются автоматически из `.github/workflows/ci.yml` для
+push в `main` и `dev`, а также для pull request. CI проверяет Go build/vet/tests,
+sqlc и форматирование, собирает web и расширение и запускает Playwright e2e.
 
-Для prod-demo нужны `FRP_VPS_HOST`, `FRP_TOKEN` и `VPN_SUB_URL`; для обычной
-локальной разработки они не нужны. Полный разбор переменных окружения — в
-[`.env.example`](.env.example); детали серверного деплоя — в
-[prod-demo runbook](docs/prod-demo-deploy-runbook.md).
+Production автоматически разворачивается из `main` workflow
+`deploy-prod.yml`; staging — из `dev` workflow `deploy.yml`. Перед релизом
+проверяйте зелёный CI именно для выпускаемого commit SHA и состояние
+[realgo.dev](https://realgo.dev).
 
-## Приложения и сервисы
+Правила веток, коммитов и pull request описаны в
+[CONTRIBUTING.md](CONTRIBUTING.md). О проблемах безопасности сообщайте по
+[SECURITY.md](SECURITY.md), не через публичный issue.
 
-- [Web](apps/web/README.md) — маршруты кабинета, PWA, локализация.
-- [Browser Extension](apps/extension/README.md) — адаптеры площадок, авторизация, сборка/упаковка.
-- [Go API](services/api/README.md) — запуск, Go Task, runbooks.
-- [Presentation](apps/presentation/README.md) — финальный дек, управление, live-разработка слайдов.
+## Текущие ограничения
 
-Полный контракт backend API (все `/me/*` эндпоинты, Pattern Atlas, practice
-hub, AI-генерация карточек/квизов, assistant hints) — в
-[docs/cabinet-api-contract.md](docs/cabinet-api-contract.md).
-
-## CI/CD
-
-`.github/workflows/ci.yml` настроен на каждый push в `main`/`dev` и каждый PR:
-Go-сборка, `go vet`, unit/integration-тесты с Postgres/Redis, проверка generated
-sqlc-кода, `golangci-lint` и `gofmt`; отдельно — TypeScript/build web и
-extension, плюс Playwright e2e (`apps/web/e2e`). Перед релизом нужно проверить
-зелёный run именно для выпускаемого SHA — наличие workflow-файла само по себе
-не доказывает, что конкретный commit прошёл CI.
-
-Repo-owned deploy workflow отсутствует. Prod-demo разворачивается вручную по
-[runbook](docs/prod-demo-deploy-runbook.md); rollback и миграции требуют
-операторского контроля. Назначение веток и правила pull request описаны в
-[CONTRIBUTING.md](CONTRIBUTING.md).
+- Генерация quiz через AI пока возвращает явный статус `not implemented`.
+- Экспорт пользовательских данных пока является API-заглушкой.
+- Платёжный checkout не завершает реальную оплату.
+- Для production нужны серверные секреты и инфраструктура, описанные в runbook;
+  обычный локальный запуск их не требует.

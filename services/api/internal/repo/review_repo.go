@@ -3,7 +3,7 @@ package repo
 import (
 	"context"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/entity"
+	"github.com/mxdtrip/realgo/services/api/internal/entity"
 )
 
 // ReviewRepository — интерфейс для работы с данными повторений.

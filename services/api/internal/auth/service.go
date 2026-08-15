@@ -15,7 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	goredis "github.com/redis/go-redis/v9"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres/db"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 )
 
 const minPasswordLen = 8

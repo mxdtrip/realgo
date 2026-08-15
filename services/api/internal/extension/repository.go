@@ -12,8 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/scheduler"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres/db"
+	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 )
 
 // algorithmFSRS marks every schedule written by the extension ingest as

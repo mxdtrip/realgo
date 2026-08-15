@@ -8,10 +8,10 @@ import (
 	"math"
 	"time"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/controller/v1/response"
-	"github.com/mxdtrip/freeburger/services/api/internal/entity"
-	"github.com/mxdtrip/freeburger/services/api/internal/repo"
-	"github.com/mxdtrip/freeburger/services/api/internal/scheduler"
+	"github.com/mxdtrip/realgo/services/api/internal/controller/v1/response"
+	"github.com/mxdtrip/realgo/services/api/internal/entity"
+	"github.com/mxdtrip/realgo/services/api/internal/repo"
+	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
 )
 
 var (

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/auth"
-	"github.com/mxdtrip/freeburger/services/api/internal/server/response"
-	redisstore "github.com/mxdtrip/freeburger/services/api/internal/storage/redis"
+	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/server/response"
+	redisstore "github.com/mxdtrip/realgo/services/api/internal/storage/redis"
 )
 
 const rateLimitScript = `

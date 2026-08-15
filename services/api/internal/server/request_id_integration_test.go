@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/server/response"
+	"github.com/mxdtrip/realgo/services/api/internal/server/response"
 )
 
 // TestRequestIDInBodyHeaderAndLog verifies the three surfaces of the request id

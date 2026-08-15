@@ -11,9 +11,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/auth"
-	"github.com/mxdtrip/freeburger/services/api/internal/server/response"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres/db"
+	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/server/response"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 )
 
 // authHandler exposes the authentication endpoints over the auth service.

@@ -54,6 +54,7 @@ export const ASSISTANT_CSS = `
 }
 .realgo-agent-button:hover { border-color: var(--accent-bright); color: var(--accent-bright); }
 .realgo-agent-button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-line); }
+.realgo-agent-button--draggable { cursor: grab; touch-action: none; }
 
 .realgo-agent-logo {
   width: 20px;
@@ -80,6 +81,7 @@ export const ASSISTANT_CSS = `
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 24px 70px -32px rgba(1, 4, 9, 0.95);
 }
+.realgo-assistant--open { max-width: calc(100vw - 20px); }
 
 @keyframes realgo-agent-panel-in {
   from {
@@ -134,6 +136,7 @@ export const ASSISTANT_CSS = `
   border-bottom: 1px solid var(--border);
   background: rgba(1, 4, 9, 0.56);
 }
+.realgo-assistant--dock .realgo-agent-header { cursor: grab; touch-action: none; }
 
 .realgo-agent-brand {
   display: inline-flex;

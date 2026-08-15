@@ -11,7 +11,7 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/config"
 )
 
 var releaseLockScript = goredis.NewScript(`

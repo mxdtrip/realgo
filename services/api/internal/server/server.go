@@ -8,25 +8,26 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/ai"
-	"github.com/mxdtrip/freeburger/services/api/internal/auth"
-	"github.com/mxdtrip/freeburger/services/api/internal/cards"
-	"github.com/mxdtrip/freeburger/services/api/internal/companies"
-	v1 "github.com/mxdtrip/freeburger/services/api/internal/controller/v1"
-	"github.com/mxdtrip/freeburger/services/api/internal/dashboard"
-	"github.com/mxdtrip/freeburger/services/api/internal/extension"
-	"github.com/mxdtrip/freeburger/services/api/internal/patterns"
-	"github.com/mxdtrip/freeburger/services/api/internal/practice"
-	"github.com/mxdtrip/freeburger/services/api/internal/problemcards"
-	"github.com/mxdtrip/freeburger/services/api/internal/problems"
-	"github.com/mxdtrip/freeburger/services/api/internal/quiz"
-	"github.com/mxdtrip/freeburger/services/api/internal/repo"
-	"github.com/mxdtrip/freeburger/services/api/internal/roadmap"
-	"github.com/mxdtrip/freeburger/services/api/internal/roadmaps"
-	"github.com/mxdtrip/freeburger/services/api/internal/scheduler"
-	"github.com/mxdtrip/freeburger/services/api/internal/service"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/redis"
+	"github.com/mxdtrip/realgo/services/api/internal/ai"
+	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/cards"
+	"github.com/mxdtrip/realgo/services/api/internal/companies"
+	v1 "github.com/mxdtrip/realgo/services/api/internal/controller/v1"
+	"github.com/mxdtrip/realgo/services/api/internal/dashboard"
+	"github.com/mxdtrip/realgo/services/api/internal/extension"
+	"github.com/mxdtrip/realgo/services/api/internal/patterns"
+	"github.com/mxdtrip/realgo/services/api/internal/practice"
+	"github.com/mxdtrip/realgo/services/api/internal/problemcards"
+	"github.com/mxdtrip/realgo/services/api/internal/problems"
+	"github.com/mxdtrip/realgo/services/api/internal/quiz"
+	"github.com/mxdtrip/realgo/services/api/internal/repo"
+	"github.com/mxdtrip/realgo/services/api/internal/reports"
+	"github.com/mxdtrip/realgo/services/api/internal/roadmap"
+	"github.com/mxdtrip/realgo/services/api/internal/roadmaps"
+	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
+	"github.com/mxdtrip/realgo/services/api/internal/service"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/redis"
 )
 
 // The upstream AI client is bounded at 45 seconds. Keep the request context
@@ -116,6 +117,7 @@ func New(deps Deps) http.Handler {
 	}
 	aiHandler := ai.NewHandler(ai.NewRepository(deps.Postgres.Pool), cardGenerator)
 	assistantHandler := ai.NewAssistantHandler(ai.NewRepository(deps.Postgres.Pool), deps.AssistantProvider)
+	reportsHandler := reports.NewHandler(reports.NewRepository(deps.Postgres.Pool))
 
 	// Browser-extension ingest: FSRS scheduler behind the Scheduler interface,
 	// sharing the same algorithm (and the same instance) as the review service
@@ -148,6 +150,10 @@ func New(deps Deps) http.Handler {
 		r.With(requireAuth(deps.Auth)).Post("/me/password", ah.changePassword)
 		r.With(requireAuth(deps.Auth)).Post("/me/sessions/revoke", ah.revokeAllSessions)
 		r.With(requireAuth(deps.Auth)).Post("/me/export", ah.postExport)
+		r.With(
+			requireAuth(deps.Auth),
+			rateLimit(deps.Redis, "problem-reports", 5, 10*time.Minute),
+		).Post("/me/problem-reports", reportsHandler.Create)
 		r.With(requireAuth(deps.Auth)).Delete("/me", ah.deleteMe)
 		r.Route("/users", func(r chi.Router) {
 			// Backward-compatible alias. New clients should call GET /api/v1/me.

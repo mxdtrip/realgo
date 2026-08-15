@@ -13,9 +13,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/companies"
-	"github.com/mxdtrip/freeburger/services/api/internal/patterns"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres/db"
+	"github.com/mxdtrip/realgo/services/api/internal/companies"
+	"github.com/mxdtrip/realgo/services/api/internal/patterns"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 )
 
 var ErrUserNotFound = errors.New("roadmap: user not found")

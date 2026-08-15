@@ -39,18 +39,6 @@ export function SiteFooter() {
       </div>
       <div className="site-footer__bar">
         <span>{copy.footer.copyright}</span>
-        <a className="footer-powered" href="/about#freeburger">
-          {copy.footer.poweredBy}
-          <img
-            src="/author-tag.png"
-            alt="freeburger"
-            className="footer-powered__logo"
-            decoding="async"
-            height="1024"
-            loading="lazy"
-            width="1024"
-          />
-        </a>
         <span>{copy.footer.tagline}</span>
       </div>
     </footer>

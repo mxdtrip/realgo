@@ -22,12 +22,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/auth"
-	"github.com/mxdtrip/freeburger/services/api/internal/config"
-	"github.com/mxdtrip/freeburger/services/api/internal/server"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres/db"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/redis"
+	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/server"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/redis"
 )
 
 const contractJWTSecret = "integration-secret-with-more-than-32-bytes"

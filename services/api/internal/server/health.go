@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/server/response"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/redis"
+	"github.com/mxdtrip/realgo/services/api/internal/server/response"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/redis"
 )
 
 // healthHandler serves the liveness and readiness probes.

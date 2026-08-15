@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/auth"
 )
 
 type fakeCardGenerator struct {

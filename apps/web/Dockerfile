@@ -20,9 +20,41 @@ COPY . .
 # NEXT_PUBLIC_* values are inlined at build time. Empty = relative same-origin
 # API calls (https://realgo.dev/api/v1/...), which is what the tunnel setup uses.
 ARG NEXT_PUBLIC_API_BASE_URL=""
+ARG NEXT_PUBLIC_APP_VERSION=""
+ARG NEXT_PUBLIC_COMMIT_SHA=""
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+# Resolve release metadata inside the build so the ordinary compose command is
+# sufficient. `repository_metadata` is a named BuildKit context limited by the
+# repository-root .dockerignore to HEAD/refs/packed-refs; none of it is copied
+# into an image layer. Explicit CI args still take precedence.
+RUN --mount=from=repository_metadata,target=/repository-metadata,ro \
+    set -eu; \
+    commit="$NEXT_PUBLIC_COMMIT_SHA"; \
+    if [ -z "$commit" ]; then \
+      git_dir=/repository-metadata/.git; \
+      head_value="$(tr -d '\r\n' < "$git_dir/HEAD")"; \
+      case "$head_value" in \
+        "ref: "*) \
+          git_ref="${head_value#ref: }"; \
+          if [ -f "$git_dir/$git_ref" ]; then \
+            commit="$(tr -d '\r\n' < "$git_dir/$git_ref")"; \
+          elif [ -f "$git_dir/packed-refs" ]; then \
+            commit="$(awk -v ref="$git_ref" '$2 == ref { print $1; exit }' "$git_dir/packed-refs")"; \
+          fi \
+          ;; \
+        *) commit="$head_value" ;; \
+      esac; \
+    fi; \
+    commit="$(printf '%s' "$commit" | tr 'A-F' 'a-f')"; \
+    case "$commit" in ''|*[!0-9a-f]*) echo 'Unable to resolve a valid commit SHA' >&2; exit 1;; esac; \
+    if [ "${#commit}" -ne 40 ] && [ "${#commit}" -ne 64 ]; then \
+      echo "Unexpected commit SHA length: ${#commit}" >&2; exit 1; \
+    fi; \
+    release="$NEXT_PUBLIC_APP_VERSION"; \
+    if [ -z "$release" ]; then release="git-$(printf '%.12s' "$commit")"; fi; \
+    echo "Building web release $release ($commit)"; \
+    NEXT_PUBLIC_APP_VERSION="$release" NEXT_PUBLIC_COMMIT_SHA="$commit" npm run build
 # public/ is the only thing the runner copies that carries the build context's
 # file modes verbatim (everything under .next/ is generated here, so it already
 # has sane ones). The runner drops to the unprivileged `nextjs` user, so a

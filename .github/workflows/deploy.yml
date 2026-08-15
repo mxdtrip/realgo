@@ -1,8 +1,7 @@
 name: Deploy staging
-# Staging auto-deploy for the realgo-show-must-go-on fork: every push to dev
-# rebuilds the isolated realgo-staging compose stack on appbox (see
+# Every push to dev rebuilds the isolated ReAlgo staging stack on appbox (see
 # docker-compose.staging.yml), served as staging.realgo.dev via the VPS edge.
-# Prod (realgo.dev) deploys from mxdtrip/freeburger and is untouched by this.
+# Production is deployed independently from main by deploy-prod.yml.
 on:
   push:
     branches: [dev]
@@ -22,6 +21,8 @@ jobs:
 
       - name: Build & start staging stack
         env:
+          APP_VERSION: staging-${{ github.run_number }}
+          COMMIT_SHA: ${{ github.sha }}
           AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
           FRP_VPS_HOST: ${{ secrets.FRP_VPS_HOST }}
           FRP_TOKEN: ${{ secrets.FRP_TOKEN }}
@@ -69,7 +70,10 @@ jobs:
           probe() {
             label="$1"; url="$2"; want="$3"
             for _ in $(seq 1 15); do
-              code="$(curl -s -o /dev/null -w '%{http_code}' "$url")"
+              # Caddy is force-recreated immediately before this step. Treat
+              # a brief connection reset as a retryable state under `bash -e`.
+              code="$(curl -sS --connect-timeout 3 --max-time 10 -o /dev/null -w '%{http_code}' "$url" || true)"
+              [ -n "$code" ] || code="000"
               [ "$code" = "$want" ] && { echo "$label: $code"; return 0; }
               sleep 2
             done

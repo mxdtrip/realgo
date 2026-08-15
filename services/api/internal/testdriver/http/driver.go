@@ -28,14 +28,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/auth"
-	"github.com/mxdtrip/freeburger/services/api/internal/scheduler"
-	"github.com/mxdtrip/freeburger/services/api/internal/server"
-	"github.com/mxdtrip/freeburger/services/api/internal/specifications"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/postgres/db"
-	"github.com/mxdtrip/freeburger/services/api/internal/storage/redis"
-	"github.com/mxdtrip/freeburger/services/api/internal/testutil"
+	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
+	"github.com/mxdtrip/realgo/services/api/internal/server"
+	"github.com/mxdtrip/realgo/services/api/internal/specifications"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/redis"
+	"github.com/mxdtrip/realgo/services/api/internal/testutil"
 )
 
 // Driver реализует HTTP-провайдеры спецификаций поверх реального сервера.

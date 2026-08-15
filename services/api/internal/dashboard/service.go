@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mxdtrip/freeburger/services/api/internal/patterns"
+	"github.com/mxdtrip/realgo/services/api/internal/patterns"
 )
 
 const (

@@ -1,13 +1,10 @@
 name: Deploy prod
-# Prod auto-deploy for the realgo-show-must-go-on fork: every push to main
-# rebuilds the shared "freeburger" compose project on appbox — the same
-# project name/containers realgo.dev has always been served from, now built
-# from this repo instead. mxdtrip/freeburger stays untouched; its own
-# deploy runner is stopped (see project notes).
+# ReAlgo production deploy: every push to main rebuilds the existing compose
+# project on appbox that serves realgo.dev. The compose project and container
+# names remain unchanged for compatibility with the current production volumes.
 #
-# Separate file from deploy.yml on purpose: that one already owns push:[dev]
-# for the staging stack (docker-compose.staging.yml) and is working — this
-# file only touches main, so it can't collide with or break it.
+# Separate file from deploy.yml on purpose: that workflow owns push:[dev] for
+# the isolated staging stack. This file only handles main.
 on:
   push:
     branches: [main]
@@ -39,6 +36,8 @@ jobs:
       - name: Build & start
         if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl')
         env:
+          APP_VERSION: production-${{ github.run_number }}
+          COMMIT_SHA: ${{ github.sha }}
           AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
           FRP_VPS_HOST: ${{ secrets.FRP_VPS_HOST }}
           FRP_TOKEN: ${{ secrets.FRP_TOKEN }}
@@ -100,7 +99,11 @@ jobs:
           probe() {
             label="$1"; url="$2"; want="$3"
             for _ in $(seq 1 15); do
-              code="$(curl -s -o /dev/null -w '%{http_code}' "$url")"
+              # A connection reset while Caddy is being recreated is an
+              # expected transient state. `|| true` keeps `bash -e` from
+              # aborting the function before the remaining retries run.
+              code="$(curl -sS --connect-timeout 3 --max-time 10 -o /dev/null -w '%{http_code}' "$url" || true)"
+              [ -n "$code" ] || code="000"
               [ "$code" = "$want" ] && { echo "$label: $code"; return 0; }
               sleep 2
             done

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Вопрос о безопасности
+    url: https://github.com/mxdtrip/realgo/security/advisories/new
+    about: Сообщить об уязвимости приватно, без публичного issue.
+  - name: ReAlgo devlog
+    url: https://t.me/realgo_devlog
+    about: Новости продукта и история разработки.
