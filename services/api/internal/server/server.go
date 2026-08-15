@@ -2,7 +2,6 @@ package server
 
 import (
 	"log/slog"
-	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -63,9 +62,9 @@ type Deps struct {
 	AssistantProvider ai.HintProvider
 }
 
-// New builds the application's HTTP handler with the base middleware stack,
+// New builds the application's HTTP router with the base middleware stack,
 // liveness/readiness probes and the versioned API subrouter.
-func New(deps Deps) http.Handler {
+func New(deps Deps) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)

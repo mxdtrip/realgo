@@ -68,6 +68,108 @@ type ExtensionEvent struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
+type GoadminMenu struct {
+	ID         int32
+	ParentID   int32
+	Type       pgtype.Int4
+	Order      int32
+	Title      string
+	Header     pgtype.Text
+	PluginName string
+	Icon       string
+	Uri        string
+	Uuid       pgtype.Text
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
+}
+
+type GoadminOperationLog struct {
+	ID        int32
+	UserID    int32
+	Path      string
+	Method    string
+	Ip        string
+	Input     string
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
+type GoadminPermission struct {
+	ID         int32
+	Name       string
+	Slug       string
+	HttpMethod pgtype.Text
+	HttpPath   string
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
+}
+
+type GoadminRole struct {
+	ID        int32
+	Name      string
+	Slug      string
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
+type GoadminRoleMenu struct {
+	RoleID    int32
+	MenuID    int32
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
+type GoadminRolePermission struct {
+	RoleID       int32
+	PermissionID int32
+	CreatedAt    pgtype.Timestamp
+	UpdatedAt    pgtype.Timestamp
+}
+
+type GoadminRoleUser struct {
+	RoleID    int32
+	UserID    int32
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
+type GoadminSession struct {
+	ID        int32
+	Sid       string
+	Values    string
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
+type GoadminSite struct {
+	ID          int32
+	Key         string
+	Value       string
+	Type        pgtype.Int4
+	Description pgtype.Text
+	State       pgtype.Int4
+	CreatedAt   pgtype.Timestamp
+	UpdatedAt   pgtype.Timestamp
+}
+
+type GoadminUser struct {
+	ID            int32
+	Username      string
+	Password      string
+	Name          string
+	Avatar        pgtype.Text
+	RememberToken pgtype.Text
+	CreatedAt     pgtype.Timestamp
+	UpdatedAt     pgtype.Timestamp
+}
+
+type GoadminUserPermission struct {
+	UserID       int32
+	PermissionID int32
+	CreatedAt    pgtype.Timestamp
+	UpdatedAt    pgtype.Timestamp
+}
+
 type Pattern struct {
 	ID                  int64
 	Code                string

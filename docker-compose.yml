@@ -404,6 +404,8 @@ services:
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?AUTH_JWT_SECRET must be set}
       AUTH_ACCESS_TTL: ${AUTH_ACCESS_TTL:-15m}
       AUTH_REFRESH_TTL: ${AUTH_REFRESH_TTL:-720h}
+      GOADMIN_USERNAME: ${GOADMIN_USERNAME:-}
+      GOADMIN_PASSWORD: ${GOADMIN_PASSWORD:-}
       # Optional: without a key the api still boots, AI card generation is
       # just disabled. Prod gets it from the GEMINI_API_KEY GitHub secret.
       # Despite the name, this currently holds a Groq key — AI_BASE_URL/AI_MODEL

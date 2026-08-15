@@ -7,10 +7,19 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
+	_ "github.com/GoAdminGroup/go-admin/adapter/chi" // Import the adapter, it must be imported. If it is not imported, you need to define it yourself.
+	"github.com/GoAdminGroup/go-admin/engine"
+	admConfig "github.com/GoAdminGroup/go-admin/modules/config"
+	_ "github.com/GoAdminGroup/go-admin/modules/db/drivers/postgres" // Import the sql driver
+	"github.com/GoAdminGroup/go-admin/modules/language"
+	_ "github.com/GoAdminGroup/themes/adminlte" // Import the theme
+	chiV4 "github.com/go-chi/chi"
 	"github.com/joho/godotenv"
 
+	adminui "github.com/mxdtrip/realgo/services/api/internal/admin"
 	"github.com/mxdtrip/realgo/services/api/internal/ai"
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
 	"github.com/mxdtrip/realgo/services/api/internal/cards"
@@ -53,6 +62,12 @@ func Run(ctx context.Context) error {
 	defer pg.Close()
 	logger.Info("connected to postgres")
 	go reports.RunRetentionCleanup(ctx, pg.Pool, logger)
+	if err := adminui.Bootstrap(ctx, pg.Pool, cfg.Admin.Username, cfg.Admin.Password); err != nil {
+		return fmt.Errorf("bootstrap admin user: %w", err)
+	}
+	if cfg.Admin.Username == "" {
+		logger.Warn("admin login disabled: GOADMIN_USERNAME and GOADMIN_PASSWORD are not set")
+	}
 
 	rdb, err := redis.New(ctx, &cfg.Redis)
 	if err != nil {
@@ -101,6 +116,37 @@ func Run(ctx context.Context) error {
 
 	handler := server.New(deps)
 
+	eng := loadEngine()
+	admCfg := admConfig.Config{
+		Databases: admConfig.DatabaseList{
+			"default": {
+				Host:            cfg.Database.Host,
+				Port:            strconv.Itoa(cfg.Database.Port),
+				User:            cfg.User,
+				Pwd:             cfg.Database.Password,
+				Name:            cfg.DBName,
+				Driver:          admConfig.DriverPostgresql,
+				MaxOpenConns:    int(cfg.MaxConns),
+				ConnMaxLifetime: cfg.MaxConnLifetime,
+				ConnMaxIdleTime: cfg.MaxConnIdleTime,
+				Params: map[string]string{
+					"sslmode": cfg.SSLMode,
+				},
+			},
+		},
+		UrlPrefix: "admin",
+		Store: admConfig.Store{
+			Path:   "./uploads",
+			Prefix: "uploads",
+		},
+		Language: language.EN,
+	}
+	adminRouter := chiV4.NewRouter()
+	if err := eng.AddConfig(&admCfg).AddGenerators(adminui.Generators).Use(adminRouter); err != nil {
+		return fmt.Errorf("mount admin routes: %w", err)
+	}
+	handler.Handle("/admin/*", adminRouter)
+
 	srv := &http.Server{
 		Addr:              cfg.Address,
 		Handler:           handler,
@@ -139,6 +185,10 @@ func Run(ctx context.Context) error {
 
 	logger.Info("api stopped")
 	return nil
+}
+
+func loadEngine() *engine.Engine {
+	return engine.Default()
 }
 
 // newLogger returns a human-readable text logger for local development and a

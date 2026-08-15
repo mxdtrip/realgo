@@ -23,6 +23,11 @@ redis:
   password: ""
   db: 0
 
+admin:
+  # Leave both empty to keep the admin panel inaccessible.
+  username: ""
+  password: ""
+
 ai:
   # Empty key = AI card generation disabled. Personal free keys:
   # https://aistudio.google.com/apikey (never commit real keys).
