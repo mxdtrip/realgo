@@ -6,25 +6,30 @@ import type {
   AssistantTask,
   CurrentTaskResponse,
   DetectedSubmission,
-  ExtensionEventResult,
   RuntimeMessage,
-  SaveResponse,
-  SubmissionDetectedResponse,
-  SubmissionPayload,
   SubmitResult,
 } from "../lib/types";
 import { AssistantApp } from "../assistant/AssistantApp";
 import { streamAssistantHintViaBackground } from "../lib/assistantClient";
-import { fetchCardsViaBackground } from "../lib/cardsClient";
 import {
   clearCrossPageSubmitIntent,
+  getAgentLauncherPosition,
   getCrossPageSubmitIntent,
-  getReviewUrl,
+  setAgentLauncherPosition,
   setCrossPageSubmitIntent,
 } from "../lib/storage";
 import { adapters, detectAdapter, type PlatformAdapter, type TaskInfo } from "../platforms";
 import { looksLikeSubmitLabel } from "../platforms/types";
-import { PopupApp } from "../popup/PopupApp";
+import {
+  shouldCancelWatch,
+  shouldNotifySubmission,
+  SubmissionResultWatcher,
+  type WatchOptions,
+} from "./submissionWatcher";
+import {
+  AgentLauncherDragController,
+  isDraggableAgentPlatform,
+} from "./agentLauncherDrag";
 
 export const config: PlasmoCSConfig = {
   matches: [
@@ -40,19 +45,20 @@ export const config: PlasmoCSConfig = {
 
 /**
  * Content script. Watches the page for a Submit, resolves the verdict and then
- * (a) notifies the background worker and (b) shows an in-page fallback overlay
- * with the rating form. All DOM access is defensive — it must never break the
- * host page.
+ * notifies the background worker, which owns the single rating popup. All DOM
+ * access is defensive — it must never break the host page.
  */
-const RESULT_POLL_MS = 500;
-const RESULT_TIMEOUT_MS = 20_000;
 // Cross-page judging (Codeforces) resumes on a freshly loaded status page, so
 // there's no click-to-submit latency to subtract, but the judge itself can
 // legitimately take longer than any same-page platform's in-browser run.
 const CROSS_PAGE_RESULT_TIMEOUT_MS = 90_000;
 const ASSISTANT_REFRESH_MS = 1_000;
+const contentGlobal = globalThis as typeof globalThis & {
+  __realgoContentCleanup?: () => void;
+};
 
 function init() {
+  contentGlobal.__realgoContentCleanup?.();
   // The manifest already scopes this script to supported hosts, so the listener
   // is attached unconditionally and the adapter is resolved per click. Resolving
   // it once at load broke SPA flows: landing on a list page (e.g. /practice)
@@ -62,11 +68,40 @@ function init() {
   document.addEventListener("click", onDocumentClick, true);
   chrome.runtime.onMessage.addListener(onRuntimeMessage);
   refreshAssistant();
-  window.setInterval(refreshAssistant, ASSISTANT_REFRESH_MS);
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) refreshAssistant();
-  });
+  const assistantTimer = window.setInterval(refreshAssistant, ASSISTANT_REFRESH_MS);
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  window.addEventListener("pagehide", onPageHide);
+  window.addEventListener("pageshow", onPageShow);
+  contentGlobal.__realgoContentCleanup = () => {
+    document.removeEventListener("click", onDocumentClick, true);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    window.removeEventListener("pagehide", onPageHide);
+    window.removeEventListener("pageshow", onPageShow);
+    window.clearInterval(assistantTimer);
+    submissionWatcher.stop();
+    watchedTaskKey = "";
+    try {
+      chrome.runtime.onMessage.removeListener(onRuntimeMessage);
+    } catch {
+      /* the previous extension context may already be invalidated */
+    }
+    removeAssistant();
+  };
   void resumeCrossPageWatch();
+}
+
+function onVisibilityChange() {
+  if (!document.hidden) refreshAssistant();
+}
+
+function onPageHide() {
+  submissionWatcher.stop();
+  watchedTaskKey = "";
+  removeAssistant();
+}
+
+function onPageShow() {
+  refreshAssistant();
 }
 
 /**
@@ -108,6 +143,7 @@ function onDocumentClick(event: MouseEvent) {
   // Snapshot the task while still on the problem page: after a submit the SPA
   // can swap to the submission-history URL, where extraction would fail.
   const clickInfo = adapter.extractTaskInfo();
+  watchedTaskKey = taskKey(adapter, clickInfo);
 
   if (adapter.crossPage) {
     handleCrossPageSubmitClick(event, adapter, submitButton, clickInfo);
@@ -155,63 +191,22 @@ function isSubmitClick(target: HTMLElement, submitButton: HTMLElement | null): b
   return looksLikeSubmitLabel(text);
 }
 
-let watching = false;
-
 function watchForResult(
   adapter: PlatformAdapter,
   clickInfo: TaskInfo | null,
-  options: { timeoutMs?: number; pollImmediately?: boolean } = {}
+  options: WatchOptions = {}
 ) {
-  if (watching) return;
-  watching = true;
+  submissionWatcher.watch(adapter, clickInfo, options);
+}
 
-  const timeoutMs = options.timeoutMs ?? RESULT_TIMEOUT_MS;
-  const startedAt = Date.now();
-  // pollImmediately: a resumed cross-page watch may land on a page whose
-  // verdict is already settled (judging finished before this page loaded), so
-  // it can't rely on a future mutation to trigger the first real read.
-  let sawMutation = options.pollImmediately ?? false;
-  // A single reading isn't trusted on its own: right after a click, the
-  // *previous* submission's verdict panel (e.g. an old "Accepted") can
-  // still be sitting in the DOM for a moment before the site clears it for
-  // the new run, and the broad `[class*='result']`-style selectors the
-  // adapters use can't tell old from new by markup alone. Requiring the
-  // same reading to repeat on a later poll — i.e. the DOM has actually
-  // settled — filters out that transient/stale state without penalizing a
-  // genuine resubmit that happens to land on the same verdict again.
-  let lastSeen: SubmitResult | null = null;
-  const finish = (result: SubmitResult) => {
-    clearInterval(timer);
-    observer.disconnect();
-    watching = false;
-    finalize(adapter, result, clickInfo);
-  };
+let watchedTaskKey = "";
+const submissionWatcher = new SubmissionResultWatcher((adapter, result, clickInfo) => {
+  watchedTaskKey = "";
+  finalize(adapter, result, clickInfo);
+});
 
-  const check = () => {
-    if (!sawMutation) {
-      if (Date.now() - startedAt > timeoutMs) finish("unknown");
-      return;
-    }
-    if (Date.now() - startedAt < 800) return;
-    const result = adapter.detectSubmitResult();
-    if (result !== "unknown" && result === lastSeen) {
-      finish(result);
-      return;
-    }
-    lastSeen = result;
-    if (Date.now() - startedAt > timeoutMs) finish(result);
-  };
-
-  const observer = new MutationObserver(() => {
-    sawMutation = true;
-    check();
-  });
-  try {
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-  } catch {
-    /* body may not be ready; the interval still drives detection */
-  }
-  const timer = setInterval(check, RESULT_POLL_MS);
+function taskKey(adapter: PlatformAdapter, info: TaskInfo | null): string {
+  return info ? `${adapter.platform}:${info.platformTaskSlug ?? info.taskUrl}` : "";
 }
 
 let lastKey = "";
@@ -266,128 +261,22 @@ function finalize(
   // The popup is a spaced-repetition rating flow and must only appear after a
   // confirmed accepted verdict. Wrong answers, runtime errors and verdict
   // timeouts are not solved tasks and must never create review schedules.
-  if (submitResult !== "accepted") return;
+  if (!shouldNotifySubmission(submitResult)) return;
 
-  // Ask the background worker to try opening the toolbar popup first, and
-  // only fall back to the in-page overlay if that didn't happen — showing
-  // both at once for the same submission stacks two identical rating cards
-  // (one anchored to the page, one in the toolbar) on top of each other.
-  Promise.resolve(chrome.runtime.sendMessage({ type: "REALGO_SUBMISSION_DETECTED", submission }))
-    .then((response: SubmissionDetectedResponse | undefined) => {
-      if (!response?.popupOpened) enqueueOverlay(submission);
-    })
-    .catch(() => {
-      /* background may be asleep; the in-page overlay is the only UI left */
-      enqueueOverlay(submission);
-    });
-}
-
-/* -- In-page fallback overlay (shadow DOM, PopupApp reused) ------------- */
-
-let overlayHost: HTMLDivElement | null = null;
-let overlayRoot: Root | null = null;
-
-// Submissions detected while an earlier one is still on screen, unrated. A
-// second accepted submit used to call showOverlay() straight away, which
-// unmounts whatever's showing first — if the user hadn't picked a
-// difficulty yet, that submission was never sent to REALGO_SAVE_SUBMISSION
-// and its review card silently never got created. Queuing instead means
-// nothing gets replaced until the user actually disposes of the current one
-// (saves it or dismisses it).
-const overlayQueue: DetectedSubmission[] = [];
-
-function enqueueOverlay(submission: DetectedSubmission) {
-  overlayQueue.push(submission);
-  if (!overlayRoot) showNextQueuedOverlay();
-}
-
-function showNextQueuedOverlay() {
-  const next = overlayQueue.shift();
-  if (next) showOverlay(next);
-}
-
-/** Dismisses the current overlay (saved, collapsed, or closed) and, unlike a
-    bare removeOverlay(), advances to the next queued submission if any. */
-function dismissOverlay() {
-  removeOverlay();
-  showNextQueuedOverlay();
-}
-
-function removeOverlay() {
-  overlayRoot?.unmount();
-  overlayHost?.remove();
-  overlayRoot = null;
-  overlayHost = null;
-}
-
-function showOverlay(submission: DetectedSubmission) {
-  removeOverlay();
-
-  overlayHost = document.createElement("div");
-  overlayHost.id = "realgo-overlay-host";
-  // `all: initial` walls the host off from the page's global CSS (e.g. a
-  // framework reset that would otherwise paint a border/background frame around
-  // the card). Positioning lives here too; the shadow content stays static.
-  // Placed below the site's top nav so a self-triggered popup doesn't cover it.
-  overlayHost.style.cssText =
-    "all: initial; position: fixed; top: 76px; right: 16px; z-index: 2147483647; color-scheme: dark; background: transparent; width: max-content; height: max-content;";
-  const shadow = overlayHost.attachShadow({ mode: "open" });
-  const mount = document.createElement("div");
-  mount.className = "realgo-overlay";
-  mount.style.cssText = "all: initial; display: block; background: transparent; width: max-content; height: max-content;";
-
-  // The close affordance lives in the popup header (PopupApp renders an X when
-  // given onClose), so the overlay doesn't add its own button.
-  shadow.appendChild(mount);
-  document.body.appendChild(overlayHost);
-
-  overlayRoot = createRoot(mount);
-  overlayRoot.render(
-    createElement(PopupApp, {
-      submission,
-      onSave: saveViaBackground,
-      // Cards readiness poll ticks, routed through the background worker.
-      onFetchCards: fetchCardsViaBackground,
-      // "Свернуть": dismiss this one and reveal the next queued submission,
-      // if any, instead of just hiding until the next fresh solve.
-      onClose: dismissOverlay,
-      // "К повторению": open the web app's review cards in a new tab.
-      onReview: openReview,
-    })
-  );
-}
-
-/** Opens the realgo review cards section in a new browser tab. */
-async function openReview() {
-  const url = await getReviewUrl();
-  window.open(url, "_blank", "noopener,noreferrer");
-  dismissOverlay();
-}
-
-/**
- * Routes the save through the background worker to dodge host-page CORS.
- * Resolves with the backend's event result so the popup can start the cards
- * poll off its `problemId` (null when the backend didn't provide one).
- */
-async function saveViaBackground(
-  payload: SubmissionPayload
-): Promise<ExtensionEventResult | null> {
-  const res: SaveResponse | undefined = await chrome.runtime.sendMessage({
-    type: "REALGO_SAVE_SUBMISSION",
-    payload,
+  void Promise.resolve(
+    chrome.runtime.sendMessage({ type: "REALGO_SUBMISSION_DETECTED", submission })
+  ).catch(() => {
+    /* badge/pending queue remains available if the worker was restarting */
   });
-  if (!res?.ok) {
-    throw new Error(res?.error ?? "Не удалось сохранить.");
-  }
-  return res.result ?? null;
 }
 
-/* -- In-page AI assistant (shadow DOM, independent from submit overlay) ----- */
+/* -- In-page AI assistant (shadow DOM, independent from rating popup) ----- */
 
 let assistantHost: HTMLDivElement | null = null;
 let assistantRoot: Root | null = null;
 let assistantKey = "";
 let assistantUrl = "";
+let assistantDrag: AgentLauncherDragController | null = null;
 
 function refreshAssistant() {
   if (document.hidden) return;
@@ -402,6 +291,10 @@ function refreshAssistant() {
   }
 
   const key = `${task.platform}:${task.platformTaskSlug}:${task.taskUrl}`;
+  if (shouldCancelWatch(watchedTaskKey, `${task.platform}:${task.platformTaskSlug}`)) {
+    submissionWatcher.stop();
+    watchedTaskKey = "";
+  }
   if (key === assistantKey && assistantHost?.isConnected) {
     assistantUrl = location.href;
     return;
@@ -426,8 +319,17 @@ function refreshAssistant() {
     createElement(AssistantApp, {
       task,
       onAsk: streamAssistantHintViaBackground,
+      draggableLauncher: isDraggableAgentPlatform(task.platform),
     })
   );
+  if (isDraggableAgentPlatform(task.platform)) {
+    assistantDrag = new AgentLauncherDragController({
+      host: assistantHost,
+      platform: task.platform,
+      load: getAgentLauncherPosition,
+      save: setAgentLauncherPosition,
+    });
+  }
 }
 
 function currentAssistantTaskResponse(): CurrentTaskResponse {
@@ -438,6 +340,8 @@ function currentAssistantTaskResponse(): CurrentTaskResponse {
 }
 
 function removeAssistant() {
+  assistantDrag?.destroy();
+  assistantDrag = null;
   assistantRoot?.unmount();
   assistantHost?.remove();
   assistantRoot = null;

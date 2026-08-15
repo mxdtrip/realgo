@@ -6,7 +6,10 @@ import {
   REVIEW_PATH,
   STORAGE_KEYS,
   type AssistantPersistedState,
+  type AgentLauncherPosition,
+  type AgentLauncherPositions,
   type DetectedSubmission,
+  type DraggableAgentPlatform,
   type TokenPair,
 } from "./types";
 
@@ -22,6 +25,26 @@ async function get<T>(key: string): Promise<T | undefined> {
 
 async function set(key: string, value: unknown): Promise<void> {
   await chrome.storage.local.set({ [key]: value });
+}
+
+export async function getAgentLauncherPosition(
+  platform: DraggableAgentPlatform
+): Promise<AgentLauncherPosition | undefined> {
+  const positions = await get<AgentLauncherPositions>(STORAGE_KEYS.agentLauncherPositions);
+  const position = positions?.[platform];
+  return position && Number.isFinite(position.x) && Number.isFinite(position.y)
+    ? position
+    : undefined;
+}
+
+export async function setAgentLauncherPosition(
+  platform: DraggableAgentPlatform,
+  position: AgentLauncherPosition
+): Promise<void> {
+  if (!Number.isFinite(position.x) || !Number.isFinite(position.y)) return;
+  const stored = await get<AgentLauncherPositions>(STORAGE_KEYS.agentLauncherPositions);
+  const positions = stored && typeof stored === "object" ? stored : {};
+  await set(STORAGE_KEYS.agentLauncherPositions, { ...positions, [platform]: position });
 }
 
 export async function getApiBaseUrl(): Promise<string> {
