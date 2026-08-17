@@ -145,6 +145,8 @@ func Run(ctx context.Context) error {
 	if err := eng.AddConfig(&admCfg).AddGenerators(adminui.Generators).Use(adminRouter); err != nil {
 		return fmt.Errorf("mount admin routes: %w", err)
 	}
+	eng.HTML(http.MethodGet, "/admin", adminui.Dashboard)
+	handler.Handle("/admin", adminRouter)
 	handler.Handle("/admin/*", adminRouter)
 
 	srv := &http.Server{
