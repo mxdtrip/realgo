@@ -1,0 +1,12 @@
+Re: {{.TicketSubject}} · обращение #{{.TicketID}}
+
+{{.FirstName}}, мы разобрались.
+{{.SupportAnswer}}
+Если проблема сохранилась, ответьте прямо на это письмо — история обращения останется в цепочке.
+
+Открыть ReAlgo: {{.ProductURL}}
+
+{{.AgentName}} · команда поддержки ReAlgo
+
+Настройки писем: {{.SettingsURL}}
+Поддержка: {{.SupportURL}}
