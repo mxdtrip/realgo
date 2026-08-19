@@ -171,4 +171,16 @@ func TestAcceptance_FSRS(t *testing.T) {
 
 		specifications.FSRSManualRateReplayAdvances(t, d, d)
 	})
+	// reviewed_at_clamped — (clamp reviewedAt):
+	// будущее → now, прошлое до last_review_at → last_review_at.
+	// Один драйвер с дефолтным scheduler.Config достаточен: инвариант не
+	// зависит от retention.
+	t.Run("reviewed_at_clamped", func(t *testing.T) {
+		harness.Reset(t)
+
+		d := httpdriver.New(t, harness)
+		defer d.Close()
+
+		specifications.FSRSReviewedAtClamped(t, d)
+	})
 }
