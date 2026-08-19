@@ -108,6 +108,10 @@ type CardsUser interface {
 
 	// RateCard оценивает карточку в сессии.
 	RateCard(t *testing.T, sessionID string, cardID int64, rating string) RateInfo
+	// RateCardAt оценивает карточку в сессии с явной клиентской меткой
+	// времени reviewedAt. Нужен спекам, проверяющим обработку метки
+	// сервером (clamp по W1); обычный rate использует RateCard.
+	RateCardAt(t *testing.T, sessionID string, cardID int64, rating string, reviewedAt time.Time) RateInfo
 }
 
 // CardsSpecification объединяет все north-star AT для cards-модуля.

@@ -1,6 +1,7 @@
 package specifications
 
 import (
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -59,6 +60,10 @@ type FSRSUser interface {
 	// же cardID. Возврат card_id как int64 (а не из response) — тест-only
 	// допущение: RateFirstReview не возвращает card_id в response.
 	LastRatedCardID(t *testing.T) int64
+
+	// RateCardAt оценивает карточку с явной меткой времени reviewedAt
+	// (POST /me/cards/{id}/rate). Используется спекой reviewed_at_clamped.
+	RateCardAt(t *testing.T, cardID int64, rating string, reviewedAt time.Time) time.Time
 }
 
 // FSRSState — snapshot FSRS-полей одной строки review_schedules. test-only
@@ -344,5 +349,49 @@ func FSRSManualRateReplayAdvances(t *testing.T, p FSRSProvider, probe FSRSStateP
 	if secondDue.Before(firstDue) {
 		t.Fatalf("replay should advance nextReviewAt forward or equal: first=%v, second=%v",
 			firstDue, secondDue)
+	}
+}
+
+// FSRSReviewedAtClamped — инвариант W1: клиентская метка reviewedAt не может
+// исказить FSRS-состояние. Метка в будущем клампится к now (защита от
+// бесплатного «отдаления» повторений), метка раньше last_review_at — к
+// last_review_at (оффлайн-очередь extension с честным occurredAt в прошлом
+// легитимна, но elapsed не может быть отрицательным). Без clamp в scheduler
+// rate с reviewedAt=now+24h разведёт интервалы двух одинаковых карточек на
+// ~сутки — это RED-условие спеки.
+func FSRSReviewedAtClamped(t *testing.T, provider FSRSProvider) {
+	t.Helper()
+	const rating = "easy"
+
+	base := uniqueEmail(t)
+	user := provider.Register(t, withTag(base, ".base"), "AcceptanceTest-2026!")
+
+	fu := provider.FSRSUser(user)
+
+	cardA := fu.CreateUnratedCard(t,
+		"What is a closure?",
+		"A function that captures its environment",
+		"pattern_recognition")
+	cardB := fu.CreateUnratedCard(t,
+		"What is a Two pointers?",
+		"Two pointers uses two indices to optimize array problems.",
+		"pattern_recognition")
+
+	// Часть 1: метка в будущем клампится к now
+	future := time.Now().UTC().Add(24 * time.Hour)
+	nextA := fu.RateCardAt(t, cardA, rating, future)
+	nextB := fu.RateCardAt(t, cardB, rating, time.Now().UTC())
+
+	if math.Abs(nextA.Sub(nextB).Seconds()) > 60 {
+		t.Fatalf("reviewedAt in future must be clamped to now: cardA next=%v, cardB next=%v", nextA, nextB)
+	}
+
+	// Часть 2: метка раньше last_review_at клампится к last_review_at (elapsed=0),
+	// состояние не откатывается назад, rate не отклоняется.
+	past := time.Now().UTC().Add(-24 * time.Hour)
+	nextA2 := fu.RateCardAt(t, cardA, rating, past)
+
+	if nextA2.Before(nextA) {
+		t.Fatalf("reviewedAt before last_review_at must clamp, not rewind: before=%v, after=%v", nextA, nextA2)
 	}
 }
