@@ -48,6 +48,9 @@ func (a *FSRSAdapter) Next(rating Rating, now time.Time) (Decision, error) {
 // NextWithState computes a decision for a card with prior FSRS history.
 // An empty state is treated as a new card.
 func (a *FSRSAdapter) NextWithState(state SchedulerState, rating Rating, now time.Time) (Decision, error) {
+	// now здесь — клиентская метка reviewedAt; нормализуем её относительно
+	// реального времени сервера. Дальше по коду now — уже clamped-метка.
+	now = clampReviewTime(now, state.LastReview, time.Now())
 	fsrsRating, err := toFSRSRating(rating)
 	if err != nil {
 		return Decision{}, err
