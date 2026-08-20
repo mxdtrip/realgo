@@ -147,6 +147,7 @@ func Run(ctx context.Context) error {
 	}
 	eng.HTML(http.MethodGet, "/admin", adminui.Dashboard)
 	handler.Handle("/admin", adminRouter)
+	handler.Handle("/admin/", http.RedirectHandler("/admin", http.StatusPermanentRedirect))
 	handler.Handle("/admin/*", adminRouter)
 
 	srv := &http.Server{
