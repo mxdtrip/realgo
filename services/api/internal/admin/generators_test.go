@@ -3,6 +3,7 @@ package admin
 import (
 	"testing"
 
+	"github.com/GoAdminGroup/go-admin/modules/db"
 	formValues "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 )
 
@@ -43,6 +44,16 @@ func TestGeneratorPermissions(t *testing.T) {
 		if table.GetCanAdd() || table.GetEditable() || table.GetDeletable() {
 			t.Errorf("%s permissions = add:%v edit:%v delete:%v, want read-only", name, table.GetCanAdd(), table.GetEditable(), table.GetDeletable())
 		}
+	}
+}
+
+func TestLearningMaterialKeepsPrimaryKeyOnEdit(t *testing.T) {
+	fields := PatternLearningMaterials(nil).GetForm().FieldsWithValue(
+		"pattern_id", "160", nil, map[string]interface{}{}, func() *db.SQL { return nil },
+	)
+	field := fields.FindByFieldName("pattern_id")
+	if field == nil || !field.Hide || string(field.Value) != "160" {
+		t.Fatal("pattern_id must be submitted as a hidden field on edit")
 	}
 }
 

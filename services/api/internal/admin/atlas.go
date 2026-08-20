@@ -71,7 +71,7 @@ func PatternLearningMaterials(ctx *context.Context) table.Table {
 	info.SetTable("pattern_learning_materials").SetTitle("Learning materials").SetDescription("Pattern methodology content")
 	f := t.GetForm()
 	f.AddField("Pattern", "pattern_id", db.Bigint, form.SelectSingle).
-		FieldOptionsFromTable("patterns", "name", "id").FieldDisplayButCanNotEditWhenUpdate().FieldMust()
+		FieldOptionsFromTable("patterns", "name", "id").FieldDisableWhenUpdate().FieldMust()
 	f.AddField("What it is", "what_it_is", db.Text, form.TextArea).FieldMust()
 	f.AddField("Mental model", "mental_model", db.Text, form.TextArea)
 	f.AddField("Recognition cues", "recognition_cues", db.Text, form.Array).FieldPostFilterFn(postgresTextArray)
