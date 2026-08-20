@@ -12,12 +12,10 @@ import (
 	"github.com/GoAdminGroup/go-admin/template/types/form"
 )
 
-// Problems exposes problem metadata without allowing records to be created or deleted.
+// Problems exposes the problem catalog with protected CRUD.
 func Problems(ctx *context.Context) table.Table {
 	cfg := table.DefaultConfigWithDriver(db.DriverPostgresql).
-		SetPrimaryKey("id", db.Bigint).
-		SetCanAdd(false).
-		SetDeletable(false)
+		SetPrimaryKey("id", db.Bigint)
 
 	problems := table.NewDefaultTable(ctx, cfg)
 	info := problems.GetInfo()
@@ -35,14 +33,16 @@ func Problems(ctx *context.Context) table.Table {
 	info.AddField("Updated", "updated_at", db.Timestamp).FieldSortable()
 	info.SetTable("problems").
 		SetTitle("Problems").
-		SetDescription("Problem catalog").
-		HideNewButton().
-		HideDeleteButton()
+		SetDescription("Problem catalog")
 
 	edit := problems.GetForm()
 	edit.AddField("ID", "id", db.Bigint, form.Default).
 		FieldDisplayButCanNotEditWhenUpdate().
 		FieldDisableWhenCreate()
+	edit.AddField("Platform", "platform_id", db.Bigint, form.SelectSingle).
+		FieldOptionsFromTable("platforms", "name", "id").
+		FieldMust()
+	edit.AddField("External slug", "external_slug", db.Text, form.Text).FieldMust()
 	edit.AddField("Title", "title", db.Text, form.Text).FieldMust()
 	edit.AddField("Difficulty", "difficulty", db.Varchar, form.SelectSingle).
 		FieldOptions(types.FieldOptions{
@@ -51,12 +51,23 @@ func Problems(ctx *context.Context) table.Table {
 			{Text: "Hard", Value: "hard"},
 		})
 	edit.AddField("URL", "url", db.Text, form.Text).FieldMust()
+	edit.AddField("Source", "source_type", db.Varchar, form.SelectSingle).
+		FieldOptions(types.FieldOptions{
+			option("Roadmap", "roadmap"), option("Manual", "manual"),
+			option("Extension", "extension"), option("AI", "ai"), option("Dataset", "dataset"),
+		})
+	edit.AddField("Created by user", "created_by_user_id", db.Bigint, form.SelectSingle).
+		FieldOptionsFromTable("users", "email", "id").
+		FieldOptionsTableProcessFn(blankOption).
+		FieldPostFilterFn(nullableValue)
+	edit.AddField("External ID", "external_id", db.Text, form.Text).
+		FieldPostFilterFn(nullableValue)
 	edit.SetTable("problems").
 		SetTitle("Problems").
-		SetDescription("Edit problem metadata").
+		SetDescription("Create and edit problem metadata").
 		SetPostValidator(func(values formValues.Values) error {
-			if strings.TrimSpace(values.Get("title")) == "" || strings.TrimSpace(values.Get("url")) == "" {
-				return errors.New("title and URL must not be empty")
+			if strings.TrimSpace(values.Get("external_slug")) == "" || strings.TrimSpace(values.Get("title")) == "" || strings.TrimSpace(values.Get("url")) == "" {
+				return errors.New("external slug, title and URL must not be empty")
 			}
 			return nil
 		})
