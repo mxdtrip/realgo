@@ -23,7 +23,14 @@ const API_BASE = configuredApiBase ? configuredApiBase.replace(/\/$/, "") : "";
 const API_PREFIX = "/api/v1";
 const REFRESH_LEASE_KEY = "realgo:auth-refresh-lease:v1";
 const REFRESH_LEASE_TTL_MS = 30_000;
-const REFRESH_LEASE_SETTLE_MS = 40;
+// Two tabs that both observe an expired lease write their own owner id, then
+// wait this long before re-reading to see whose write survived. 40ms worked
+// locally but was too tight under CI's noisier scheduling/storage IPC, so
+// both tabs sometimes still saw themselves as owner (2 refreshes instead of
+// 1). This path only runs for browsers without the Web Locks API (Safari,
+// embedded webviews), so the extra latency here is not user-visible in the
+// common case.
+const REFRESH_LEASE_SETTLE_MS = 200;
 const REFRESH_LEASE_RETRY_MS = 100;
 
 export type RequestOptions = {
