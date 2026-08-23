@@ -5,7 +5,10 @@ import { notFound } from "next/navigation";
 import { getDictionary } from "../_content/i18n";
 import { CheckoutAction } from "./CheckoutAction";
 
-export const metadata: Metadata = { title: "Оформление лицензии" };
+export const metadata: Metadata = {
+  title: "Оформление лицензии",
+  robots: { index: false, follow: true },
+};
 
 /**
  * Минимальный платёжный экран. Открывается из карточек тарифов на лендинге

@@ -2,6 +2,15 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "О команде",
+  description:
+    "ReAlgo делает небольшая команда, которая сама готовилась к техническим собеседованиям и знает разницу между «решить один раз» и «помнить через месяц».",
+  alternates: { canonical: "/about" },
+  openGraph: {
+    title: "О команде ReAlgo",
+    description:
+      "Команда, которая сама проходила технические собеседования и построила ReAlgo как память подготовки, а не ещё один список задач.",
+    url: "/about",
+  },
 };
 
 const team = [
@@ -44,7 +53,7 @@ export default function AboutPage() {
       <article className="pattern-profile">
         <header className="pattern-profile__hero pattern-profile__hero--center">
           <span className="pattern-profile__code">Команда // About</span>
-          <h1>built by devs who bombed a few interviews first</h1>
+          <h1>Команда, которая сама заваливала технические собеседования</h1>
           <p className="pattern-profile__lead">
             ReAlgo делает небольшая команда, которая сама проходила
             технические собеседования и знает главную проблему: решить
