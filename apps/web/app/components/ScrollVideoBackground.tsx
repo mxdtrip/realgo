@@ -130,6 +130,12 @@ export function ScrollVideoBackground() {
     const host = hostRef.current;
     if (!host) return undefined;
 
+    // Show the CSS fallback while Three.js is booting as well as when WebGL is
+    // unavailable. Previously the host stayed in `loading` with an invisible
+    // canvas, so any setup exception or slow dev hydration looked like a
+    // missing background instead of a graceful fallback.
+    host.dataset.state = "fallback";
+
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({

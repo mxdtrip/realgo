@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 
+import { keepShortWords } from "../_content/i18n";
+import { LandingCTA } from "../components/LandingCTA";
+
 type FAQSectionCopy = Readonly<{
   kicker: string;
   title: string;
   description: string;
+  cta: string;
   items: readonly Readonly<{
     question: string;
     answer: string;
@@ -21,12 +25,13 @@ export function LandingFAQ({ section }: { section: FAQSectionCopy }) {
   return (
     <section className="landing-section faq-section" id="faq">
       <div className="section-kicker" data-reveal="blur">
-        {section.kicker}
+        {keepShortWords(section.kicker)}
       </div>
       <div className="faq-layout">
         <div className="section-copy faq-intro" data-reveal="left">
-          <h2 id="faq-title">{section.title}</h2>
-          <p>{section.description}</p>
+          <h2 id="faq-title">{keepShortWords(section.title)}</h2>
+          <p>{keepShortWords(section.description)}</p>
+          <LandingCTA label={section.cta} intent="faq" align="center" />
         </div>
 
         <div aria-labelledby="faq-title" className="faq-list" data-reveal="right">
@@ -46,7 +51,7 @@ export function LandingFAQ({ section }: { section: FAQSectionCopy }) {
                     type="button"
                     onClick={() => setOpenIndex(isOpen ? -1 : index)}
                   >
-                    <span>{item.question}</span>
+                    <span>{keepShortWords(item.question)}</span>
                     <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
                       <path d="M12 5v14M5 12h14" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
                     </svg>
@@ -60,7 +65,7 @@ export function LandingFAQ({ section }: { section: FAQSectionCopy }) {
                   role="region"
                 >
                   <div className="faq-answer__inner">
-                    <p>{item.answer}</p>
+                    <p>{keepShortWords(item.answer)}</p>
                   </div>
                 </div>
               </article>

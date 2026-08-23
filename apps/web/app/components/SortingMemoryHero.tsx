@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../_api/AuthProvider";
 import { ApiError } from "../_api/types";
 import { ReportProblemLauncher, openReportProblemDialog } from "../(cabinet)/ReportProblemDialog";
-import { getDictionary } from "../_content/i18n";
+import { getDictionary, keepShortWords } from "../_content/i18n";
 import { AccountUserMenu } from "./AccountUserMenu";
 
 const WORD = "realgo";
@@ -42,10 +42,12 @@ function measureMonoAdvanceRatio(): number | null {
   probe.remove();
   return Number.isFinite(ratio) && ratio > 0 ? ratio : null;
 }
-const GATHER_MS = 980;
-const COMPARE_MS = 90;
-const SWAP_MS = 430;
-const SWAP_PAUSE_MS = 45;
+// Keep the intro demonstrative without leaving the hero in an apparently empty
+// state for several seconds on a fresh load.
+const GATHER_MS = 600;
+const COMPARE_MS = 55;
+const SWAP_MS = 260;
+const SWAP_PAUSE_MS = 25;
 const DEFAULT_CODE = `function bubbleSort(a) {
   for (let i = 0; i < a.length; i++) {
     for (let j = 0; j < a.length - i - 1; j++) {
@@ -86,6 +88,10 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function stageCenter(size: SceneSize) {
+  return size.width <= 640 ? 0.46 : 0.5;
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -120,7 +126,7 @@ function geometry(size: SceneSize) {
     widths,
     startX: (size.width - total) / 2,
     // Sit the word above the vertical centre (0.5 = middle, lower = higher).
-    y: size.height * 0.4 - font * 0.56,
+    y: size.height * stageCenter(size) - font * 0.56,
   };
 }
 
@@ -145,7 +151,7 @@ const CHAOS_JITTER = 50;
 function chaosPoses(size: SceneSize, order: number[]) {
   const g = geometry(size);
   const centerX = size.width / 2;
-  const centerY = size.height * 0.4;
+  const centerY = size.height * stageCenter(size);
   const radiusX = size.width * 0.42;
   const radiusY = size.height * 0.32;
 
@@ -299,8 +305,14 @@ export function SortingMemoryHero() {
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [authPending, setAuthPending] = useState(false);
-  const [order, setOrder] = useState(() => shuffle([0, 1, 2, 3, 4, 5]));
-  const [poses, setPoses] = useState<Pose[]>([]);
+  // Deterministic first-frame values are intentional. The old empty array
+  // meant that no letters existed in the server HTML until ResizeObserver ran;
+  // a slow hydration or a dev-server hiccup therefore produced a blank hero.
+  // We replace this row with the measured/scattered scene on the first client
+  // measurement below.
+  const initialOrder = [0, 1, 2, 3, 4, 5];
+  const [order, setOrder] = useState(initialOrder);
+  const [poses, setPoses] = useState<Pose[]>(() => rowPoses({ width: 1200, height: 760 }, initialOrder));
   const [activeKeys, setActiveKeys] = useState<number[]>([]);
   const [activeLines, setActiveLines] = useState<number[]>([]);
   const [isSorting, setIsSorting] = useState(false);
@@ -314,6 +326,7 @@ export function SortingMemoryHero() {
   // they appear already scattered at the edges instead of flying out from the
   // default-size centre on screen.
   const [measured, setMeasured] = useState(false);
+  const initialPlacementRef = useRef(false);
   // Set when the editor code fails to compile, to show a notice to the user.
   const [codeError, setCodeError] = useState(false);
   const codeLinesRef = useRef<HTMLPreElement | null>(null);
@@ -530,15 +543,19 @@ export function SortingMemoryHero() {
   }, []);
 
   useEffect(() => {
-    // Wait for the real measured size before placing the letters, so they never
-    // first paint at the default-size centre and then visibly fly outward.
-    if (!measured || poses.length > 0 || isSorting) return;
+    // The letters are already present in the server-rendered row. Once the
+    // actual scene size is known, move them to the intended intro state and
+    // randomise the order on the client (never during SSR, which would make
+    // hydration nondeterministic).
+    if (!measured || initialPlacementRef.current || isSorting) return;
+    initialPlacementRef.current = true;
+    const next = shuffle(order);
+    setOrder(next);
     setPoses(
-      introRef.current && !prefersReducedMotionRef.current
-        ? chaosPoses(size, order)
-        : rowPoses(size, order),
+      prefersReducedMotionRef.current ? rowPoses(size, next) : chaosPoses(size, next),
     );
-  }, [measured, isSorting, order, poses.length, size]);
+    setScattered(!prefersReducedMotionRef.current);
+  }, [measured, isSorting, order, size]);
 
   useEffect(() => {
     // Re-scatter onto the oval for the new viewport while the word is apart;
@@ -628,8 +645,8 @@ export function SortingMemoryHero() {
         </a>
         <nav className="site-nav" aria-label={copy.navAria}>
           {copy.nav.map((item) => (
-            <a href={`#${item.toLowerCase()}`} key={item}>
-              {item}
+            <a href={`#${item.href}`} key={item.href}>
+              {keepShortWords(item.label)}
             </a>
           ))}
         </nav>
@@ -642,7 +659,7 @@ export function SortingMemoryHero() {
                 onReport={openReportProblemDialog}
               />
               <a className="site-auth__dashboard" href="/dashboard">
-                {copy.auth.dashboard}
+                {keepShortWords(copy.auth.dashboard)}
               </a>
               <ReportProblemLauncher copy={dictionary.cabinet.shell.report} showTrigger={false} />
             </>
@@ -655,7 +672,7 @@ export function SortingMemoryHero() {
                   setAuthOpen(true);
                 }}
               >
-                {copy.auth.login}
+                {keepShortWords(copy.auth.login)}
               </button>
               <button
                 type="button"
@@ -664,7 +681,7 @@ export function SortingMemoryHero() {
                   setAuthOpen(true);
                 }}
               >
-                {copy.auth.signup}
+                {keepShortWords(copy.auth.signup)}
               </button>
             </>
           )}
@@ -703,14 +720,19 @@ export function SortingMemoryHero() {
         />
         {codeError ? (
           <p className="code-error" role="alert">
-            {copy.codeError}
+            {keepShortWords(copy.codeError)}
           </p>
         ) : null}
       </div>
 
       <div className="hero-tagline">
-        <p className="eyebrow">{copy.eyebrow}</p>
-        <p>{copy.tagline}</p>
+        <h1 className="hero-title">{keepShortWords(copy.title)}</h1>
+        <div className="hero-cta">
+          <a href="/register?intent=hero">
+            {keepShortWords(copy.cta)}
+            <span aria-hidden="true">→</span>
+          </a>
+        </div>
       </div>
 
       <div className="word-stage" aria-label={copy.wordAria}>
@@ -726,7 +748,7 @@ export function SortingMemoryHero() {
           // and fades — so scattered letters dissolve and sharpen as they gather.
           const width = g.widths[pose.key];
           const dx = pose.x + width / 2 - size.width / 2;
-          const dy = pose.y + g.font * 0.54 - size.height * 0.4;
+          const dy = pose.y + g.font * 0.54 - size.height * stageCenter(size);
           // Vertical offset counts double, so letters drifting up/down fade and
           // blur twice as hard as those spreading sideways.
           const distance = Math.hypot(dx, dy * 2);

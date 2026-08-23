@@ -9,7 +9,6 @@ const publicRoutes = [
   // public, linked, indexable page — the sitemap describes the site, not this
   // app's router. Trailing slash is canonical; the bare path 308s to it.
   { path: "/presentation/", priority: 0.6, changeFrequency: "monthly" },
-  { path: "/checkout", priority: 0.5, changeFrequency: "monthly" },
   { path: "/login", priority: 0.3, changeFrequency: "monthly" },
   { path: "/register", priority: 0.4, changeFrequency: "monthly" },
 ] as const;
@@ -20,7 +19,7 @@ function getSiteUrl() {
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const siteUrl = getSiteUrl();
-  const lastModified = new Date("2026-07-01T00:00:00.000Z");
+  const lastModified = new Date("2026-08-22T00:00:00.000Z");
 
   return publicRoutes.map((route) => ({
     url: new URL(route.path, siteUrl).toString(),

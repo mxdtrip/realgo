@@ -1,0 +1,10 @@
+{
+  "name": "realgo-local",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix apps/web run dev -- --hostname 127.0.0.1 --port 3000",
+    "build": "npm --prefix apps/web run build",
+    "lint": "npm --prefix apps/web run lint",
+    "e2e": "npm --prefix apps/web run e2e"
+  }
+}

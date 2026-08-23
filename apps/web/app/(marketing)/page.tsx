@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 
-import { getDictionary } from "../_content/i18n";
+import { getDictionary, keepShortWords } from "../_content/i18n";
 import { FlipReviewCard } from "../components/FlipReviewCard";
-import { KodikWinNotice } from "../components/KodikWinNotice";
-import { MemoryExtensionDemo } from "../components/MemoryExtensionDemo";
+import { LandingCTA } from "../components/LandingCTA";
+import { MemoryJourney } from "../components/MemoryJourney";
+import { RoadmapDemo } from "../components/RoadmapDemo";
 import { ScrollReveal } from "../components/ScrollReveal";
 import { ScrollVideoBackground } from "../components/ScrollVideoBackground";
+import { SmoothWheelScroll } from "../components/SmoothWheelScroll";
 import { SiteFooter } from "../components/SiteFooter";
 import { SortingMemoryHero } from "../components/SortingMemoryHero";
 import { LandingFAQ } from "./LandingFAQ";
@@ -48,38 +50,59 @@ export const metadata: Metadata = {
 export default function Home() {
   const dictionary = getDictionary();
   const copy = dictionary.marketing;
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: copy.sections.faq.items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
+  };
+  const applicationSchema = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: dictionary.common.brand,
+    applicationCategory: "EducationalApplication",
+    operatingSystem: "Web, Chrome",
+    url: dictionary.common.metadata.siteUrl,
+    description: dictionary.common.metadata.description,
+    inLanguage: "ru",
+    offers: { "@type": "Offer", name: "Free", price: "0", priceCurrency: "RUB" },
+  };
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(applicationSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       <ScrollVideoBackground />
       <ScrollReveal />
+      <SmoothWheelScroll />
       <SortingMemoryHero />
 
-      <section className="landing-section" id="memory">
-        <div className="section-kicker" data-reveal="blur">
-          {copy.sections.memory.kicker}
-        </div>
-        <div className="section-grid">
-          <div className="section-copy" data-reveal="left">
-            <h2>{copy.sections.memory.title}</h2>
-            <p>{copy.sections.memory.description}</p>
+      <aside className="landing-proof" aria-label="ReAlgo в цифрах">
+        {copy.proof.map((item) => (
+          <div key={item.label}>
+            <strong>{item.value}</strong>
+            <span>{keepShortWords(item.label)}</span>
           </div>
-          <div className="memory-ext-demo" data-reveal="right">
-            <MemoryExtensionDemo />
-          </div>
-        </div>
-      </section>
+        ))}
+      </aside>
+
+      <MemoryJourney section={copy.sections.memory} />
 
       <section className="landing-section" id="roadmap">
         <div className="section-kicker" data-reveal="blur">
-          {copy.sections.roadmap.kicker}
+          {keepShortWords(copy.sections.roadmap.kicker)}
         </div>
         <div className="section-grid reverse">
-          <div className="product-demo roadmap-demo" data-reveal="left">
-            <div className="roadmap-head">
-              <span>{copy.sections.roadmap.head}</span>
-              <strong>{copy.sections.roadmap.readiness}</strong>
-            </div>
+          <RoadmapDemo>
             {copy.roadmapWeeks.map((week, index) => (
               <article
                 className="roadmap-row"
@@ -87,13 +110,13 @@ export default function Home() {
                 style={{ "--week-index": index, "--progress": `${week.progress}%` } as CSSProperties}
               >
                 <div className="roadmap-row__meta">
-                  <span>{week.label}</span>
+                  <span>{keepShortWords(week.label)}</span>
                   <span className={`roadmap-row__state roadmap-row__state--${week.tone}`}>
-                    {week.state}
+                    {keepShortWords(week.state)}
                   </span>
                 </div>
-                <strong>{week.title}</strong>
-                <p>{week.focus}</p>
+                <strong>{keepShortWords(week.title)}</strong>
+                <p>{keepShortWords(week.focus)}</p>
                 <div className="roadmap-progress" aria-hidden="true">
                   <span className="roadmap-progress__track">
                     <i className="roadmap-progress__fill" />
@@ -102,21 +125,25 @@ export default function Home() {
                 </div>
               </article>
             ))}
-          </div>
+          </RoadmapDemo>
           <div className="section-copy" data-reveal="right">
-            <h2>{copy.sections.roadmap.title}</h2>
-            <p>{copy.sections.roadmap.description}</p>
+            <h2>{keepShortWords(copy.sections.roadmap.title)}</h2>
+            <p>{keepShortWords(copy.sections.roadmap.description)}</p>
+            <LandingCTA
+              label={copy.sections.roadmap.cta}
+              intent="roadmap"
+            />
           </div>
         </div>
       </section>
 
       <section className="landing-section" id="reviews">
         <div className="section-kicker" data-reveal="blur">
-          {copy.sections.reviews.kicker}
+          {keepShortWords(copy.sections.reviews.kicker)}
         </div>
         <div className="section-copy wide" data-reveal="up">
-          <h2>{copy.sections.reviews.title}</h2>
-          <p>{copy.sections.reviews.description}</p>
+          <h2>{keepShortWords(copy.sections.reviews.title)}</h2>
+          <p>{keepShortWords(copy.sections.reviews.description)}</p>
         </div>
         <div className="review-grid">
           {copy.reviewCards.map(([type, front, back], index) => (
@@ -133,16 +160,21 @@ export default function Home() {
             </div>
           ))}
         </div>
+        <LandingCTA
+          label={copy.sections.reviews.cta}
+          intent="reviews"
+          align="center"
+        />
       </section>
 
       <section className="landing-section" id="pricing">
         <div className="section-kicker" data-reveal="blur">
-          {copy.sections.pricing.kicker}
+          {keepShortWords(copy.sections.pricing.kicker)}
         </div>
         <div className="section-grid">
           <div className="section-copy" data-reveal="left">
-            <h2>{copy.sections.pricing.title}</h2>
-            <p>{copy.sections.pricing.description}</p>
+            <h2>{keepShortWords(copy.sections.pricing.title)}</h2>
+            <p>{keepShortWords(copy.sections.pricing.description)}</p>
           </div>
           <div className="pricing-grid">
             {copy.pricing.map(([name, price, features, cta, period], index) => (
@@ -152,22 +184,22 @@ export default function Home() {
                 data-reveal-delay={index * 110}
                 key={name}
               >
-                <span>{name}</span>
+                <span>{keepShortWords(name)}</span>
                 <strong>
-                  {price}
+                  {keepShortWords(price)}
                   {/* Pro — разовая бессрочная лицензия. Без этой подписи цена
                       рядом с бесплатным планом читается как ежемесячная: это
                       то, чего посетитель ждёт от таблицы тарифов по умолчанию. */}
-                  {period ? <span className="price-period">{period}</span> : null}
+                  {period ? <span className="price-period">{keepShortWords(period)}</span> : null}
                 </strong>
                 <ul className="price-features">
                   {features.map((feature) => (
-                    <li key={feature}>{feature}</li>
+                    <li key={feature}>{keepShortWords(feature)}</li>
                   ))}
                 </ul>
                 <a
                   className="price-cta"
-                  href={`/checkout?plan=${name.toLowerCase()}`}
+                  href={`/register?intent=pricing-${name.toLowerCase()}`}
                 >
                   {cta}
                 </a>
@@ -181,10 +213,6 @@ export default function Home() {
 
       <SiteFooter />
 
-      {/* Mounted here rather than in the root layout on purpose: the notice is
-          marketing, so it must not follow a signed-in user into the cabinet,
-          the docs pages or a focused review session. */}
-      <KodikWinNotice />
     </>
   );
 }

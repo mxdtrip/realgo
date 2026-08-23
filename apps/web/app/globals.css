@@ -2,6 +2,14 @@
    realgo — dark, digital, developer-grade landing
    ============================================================ */
 
+@font-face {
+  font-family: "Snell Roundhand";
+  src: url("/fonts/SnellRoundhand-Bold.otf") format("opentype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
   /* surfaces — GitHub Primer dark */
   --bg: #0d1117;
@@ -53,6 +61,11 @@ html {
   text-size-adjust: 100%;
 }
 
+/* The landing page uses a small JS easing layer for desktop wheel input. */
+html.smooth-wheel-scroll {
+  scroll-behavior: auto;
+}
+
 /* In an installed PWA the rubber-band overscroll (and Android pull-to-refresh)
    makes the shell feel like a web page rather than an app. */
 @media (display-mode: standalone) {
@@ -91,7 +104,9 @@ body {
   display: block;
   width: 100%;
   height: 100%;
-  transform: translateY(-33px);
+  /* Keep the card flow centred in the viewport at the top of the landing
+     page. The previous -33px lift made the scene visibly sit too high. */
+  transform: translateY(-20px);
   opacity: 0;
   transition: opacity 180ms ease-out;
 }
@@ -109,6 +124,41 @@ body {
     rgba(5, 8, 12, 0.52) 55%,
     rgba(1, 3, 6, 0.72) 100%
   );
+}
+
+/* A visible, GPU-free fallback keeps the hero's card-flow idea present when
+   WebGL is disabled (common in a fresh local browser profile or a remote
+   desktop). The real Three.js canvas replaces this as soon as it reaches
+   data-state="ready". */
+.scroll-card-flow-bg[data-state="loading"]::before,
+.scroll-card-flow-bg[data-state="loading"]::after,
+.scroll-card-flow-bg[data-state="fallback"]::before,
+.scroll-card-flow-bg[data-state="fallback"]::after {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: calc(26% - 20px);
+  height: 38%;
+  border-radius: 50%;
+  transform: perspective(900px) rotateX(58deg) rotateZ(-8deg);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(240, 246, 252, 0.01) 0 20px,
+      rgba(240, 246, 252, 0.28) 21px 24px,
+      rgba(240, 246, 252, 0.01) 25px 46px
+    );
+  filter: blur(0.2px);
+  opacity: 0.52;
+}
+
+.scroll-card-flow-bg[data-state="loading"]::after,
+.scroll-card-flow-bg[data-state="fallback"]::after {
+  top: calc(31% - 20px);
+  transform: perspective(900px) rotateX(58deg) rotateZ(-8deg) scale(0.92);
+  opacity: 0.2;
+  filter: blur(8px);
 }
 
 .site-shell {
@@ -387,6 +437,7 @@ h3 {
   inset: 0;
   z-index: 2;
   pointer-events: none;
+  transform: translateY(-30px);
 }
 
 .word-letter {
@@ -551,13 +602,54 @@ h3 {
 }
 
 /* --- hero tagline + controls --- */
+.hero-offer {
+  position: absolute;
+  top: calc(clamp(104px, 12vh, 132px) - 20px);
+  left: 50%;
+  z-index: 4;
+  width: min(1400px, 78vw);
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.hero-title {
+  max-width: min(720px, 100%);
+  margin: 0 auto;
+  color: transparent;
+  font-family: var(--font-stack-display);
+  font-size: clamp(20px, 1.6vw, 25px);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.55;
+  text-wrap: balance;
+  text-shadow: 0 4px 26px rgba(1, 4, 9, 0.82);
+  background: linear-gradient(90deg, var(--accent-bright) 0%, var(--accent) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-offer p {
+  display: inline-block;
+  width: min(100%, 66ch);
+  margin: 16px auto 0;
+  padding: 7px 16px;
+  border-radius: 12px;
+  background: rgba(13, 17, 23, 0.52);
+  color: var(--text-dim);
+  font-size: clamp(14px, 1.25vw, 18px);
+  line-height: 1.55;
+  text-shadow: 0 2px 18px rgba(1, 4, 9, 0.96);
+  text-wrap: balance;
+}
+
 .hero-tagline {
   position: absolute;
   left: 50%;
-  bottom: 16%;
+  bottom: 11%;
   transform: translateX(-50%);
   z-index: 3;
-  width: min(560px, 86vw);
+  width: min(720px, 86vw);
   text-align: center;
 }
 
@@ -575,6 +667,81 @@ h3 {
   color: var(--text-dim);
   font-size: clamp(14px, 1.6vw, 16.5px);
   line-height: 1.55;
+}
+
+.hero-cta-lead {
+  max-width: 720px;
+  margin: 0 auto !important;
+  font-size: clamp(13px, 1.05vw, 15.5px) !important;
+  text-shadow: 0 2px 18px rgba(1, 4, 9, 0.96);
+  text-wrap: balance;
+}
+
+.hero-cta {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  margin-top: 22px;
+}
+
+.hero-cta a,
+.landing-cta__button,
+.price-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 50px;
+  border: 1px solid rgba(88, 166, 255, 0.72);
+  border-radius: 10px;
+  padding: 13px 22px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-stack-mono);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: 0 18px 46px -24px var(--accent-glow);
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.hero-cta a:hover,
+.landing-cta__button:hover,
+.price-cta:hover {
+  border-color: #8cbdff;
+  background: var(--accent-bright);
+  box-shadow: 0 22px 52px -22px rgba(88, 166, 255, 0.68);
+  transform: translateY(-2px);
+}
+
+.hero-cta a:focus-visible,
+.landing-cta__button:focus-visible,
+.price-cta:focus-visible {
+  outline: 3px solid rgba(88, 166, 255, 0.42);
+  outline-offset: 3px;
+}
+
+.hero-cta a span,
+.landing-cta__button span {
+  font-size: 17px;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+.hero-cta a:hover span,
+.landing-cta__button:hover span {
+  transform: translateX(3px);
+}
+
+.hero-cta small {
+  color: var(--text-faint);
+  font-family: var(--font-stack-mono);
+  font-size: 10.5px;
+  line-height: 1.4;
 }
 
 /* ============================================================
@@ -766,7 +933,7 @@ h3 {
   padding: 12px;
   border: 0;
   border-radius: 10px;
-  background: var(--success);
+  background: var(--accent);
   color: #ffffff;
   font-family: var(--font-stack-mono);
   font-weight: 600;
@@ -775,6 +942,17 @@ h3 {
 }
 
 .auth-form button[type="submit"]:hover {
+  background: var(--accent-bright);
+}
+
+/* The landing modal follows the landing CTA treatment. Standalone auth pages
+   keep the blue submit action for a clear primary form affordance. */
+.auth-layer:not(.auth-layer--page) .auth-form button[type="submit"] {
+  background: var(--success);
+  color: #ffffff;
+}
+
+.auth-layer:not(.auth-layer--page) .auth-form button[type="submit"]:hover {
   background: var(--success-bright);
 }
 
@@ -869,6 +1047,46 @@ h3 {
   border-top: 0;
 }
 
+.landing-proof {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: calc(var(--maxw) - var(--pad) * 2);
+  margin: clamp(26px, 5vw, 58px) auto 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(22, 27, 34, 0.74);
+  box-shadow: 0 28px 70px -48px rgba(1, 4, 9, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.landing-proof > div {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 23px 18px;
+  text-align: center;
+}
+
+.landing-proof > div + div {
+  border-left: 1px solid var(--border);
+}
+
+.landing-proof strong {
+  color: var(--accent-bright);
+  font-family: var(--font-stack-mono);
+  font-size: clamp(22px, 2.4vw, 31px);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.landing-proof span {
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
 .section-kicker {
   display: inline-flex;
   align-items: center;
@@ -903,12 +1121,134 @@ h3 {
   order: 2;
 }
 
+/* Section 01 is a scroll-driven three-column story. At the start the viewport
+   contains AI copy + the extension; at the end it contains that same extension
+   + the original save/rating copy. One transformed track keeps all three
+   elements moving at exactly the same speed. */
+.memory-journey {
+  --memory-journey-gap: clamp(36px, 6vw, 84px);
+  --memory-mask-gutter: max(24px, calc(var(--memory-journey-gap) - 8px));
+  --memory-track-width: calc(100% - var(--memory-mask-gutter) * 2);
+  --memory-edge-width: var(--memory-mask-gutter);
+  --memory-journey-shift: 0px;
+  --memory-agent-header-y: 0px;
+  --memory-agent-task-x: 0px;
+  --memory-agent-messages-x: 0px;
+  --memory-agent-actions-y: 0px;
+  --memory-rating-header-y: -62px;
+  --memory-rating-task-x: 430px;
+  --memory-rating-body-y: 390px;
+  min-height: 205svh;
+  padding-block: 0;
+}
+
+.memory-journey__sticky {
+  position: sticky;
+  top: 0;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.memory-journey__viewport {
+  position: relative;
+  width: calc(100% + var(--memory-mask-gutter) * 2);
+  margin-left: calc(var(--memory-mask-gutter) * -1);
+  overflow: clip;
+}
+
+.memory-journey__viewport::before,
+.memory-journey__viewport::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  width: var(--memory-edge-width);
+  opacity: 1;
+  pointer-events: none;
+}
+
+.memory-journey__viewport::before {
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    var(--bg) 0%,
+    var(--bg) 24%,
+    rgba(13, 17, 23, 0.94) 38%,
+    rgba(13, 17, 23, 0.68) 58%,
+    rgba(13, 17, 23, 0.34) 76%,
+    rgba(13, 17, 23, 0) 100%
+  );
+}
+
+.memory-journey__viewport::after {
+  right: 0;
+  background: linear-gradient(
+    270deg,
+    var(--bg) 0%,
+    var(--bg) 24%,
+    rgba(13, 17, 23, 0.94) 38%,
+    rgba(13, 17, 23, 0.68) 58%,
+    rgba(13, 17, 23, 0.34) 76%,
+    rgba(13, 17, 23, 0) 100%
+  );
+}
+
+.memory-journey__track {
+  width: var(--memory-track-width);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: repeat(3, calc((100% - var(--memory-journey-gap)) / 2));
+  column-gap: var(--memory-journey-gap);
+  align-items: center;
+  transform: translate3d(var(--memory-journey-shift), 0, 0);
+  will-change: transform;
+}
+
+.memory-journey__copy {
+  min-width: 0;
+}
+
+.memory-journey__demo {
+  min-width: 0;
+}
+
 .section-copy h2 {
   font-family: var(--font-stack-mono);
   font-size: clamp(26px, 3.4vw, 40px);
   line-height: 1.12;
   font-weight: 600;
   letter-spacing: 0;
+  text-wrap: balance;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+.section-copy h2,
+.roadmap-row strong,
+.review-flip__face h3,
+.faq-question span {
+  word-spacing: -0.33em;
+}
+
+.memory-journey__copy--rating h2 {
+  white-space: pre;
+}
+
+.memory-journey__copy--rating {
+  transform: translateX(-40px);
+}
+
+.memory-journey__script-phrase {
+  font-family: "Snell Roundhand", "Bradley Hand", "Segoe Print", cursive;
+  font-size: 1.2em;
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  word-spacing: normal;
 }
 
 .section-copy p {
@@ -916,6 +1256,10 @@ h3 {
   color: var(--text-dim);
   font-size: 16px;
   max-width: 46ch;
+  text-wrap: pretty;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
 }
 
 .section-copy.wide {
@@ -923,15 +1267,193 @@ h3 {
   margin-bottom: 48px;
 }
 
+.landing-cta {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  margin-top: 28px;
+  text-align: center;
+}
+
+.landing-cta--center {
+  justify-items: center;
+  margin-top: clamp(32px, 5vw, 52px);
+  text-align: center;
+}
+
+/* Текст лендинга не должен разрываться внутри слов. Заголовки балансируем
+   между строками без дефисов, а длинные русские абзацы переносим по правилам
+   языка. Технические названия и CTA оставляем цельными. */
+.landing-section h3,
+.hero-title,
+.review-flip__face h3,
+.faq-question span {
+  text-wrap: balance;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+.landing-proof span,
+.review-flip__face p,
+.faq-answer p,
+.price-features li {
+  text-wrap: pretty;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+.hero-cta a,
+.landing-cta__button,
+.price-cta {
+  white-space: normal;
+  text-wrap: balance;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
 /* ============================================================
    PRODUCT DEMOS (terminal windows)
    ============================================================ */
 
+@property --roadmap-glow-x {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 82%;
+}
+
+@property --roadmap-glow-y {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 14%;
+}
+
+@property --demo-gradient-shift-x {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --demo-gradient-shift-y {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --demo-gradient-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 128deg;
+}
+
 .product-demo {
+  position: relative;
+  isolation: isolate;
   border-radius: 14px;
   background: var(--panel);
-  box-shadow: 0 30px 70px -38px rgba(1, 4, 9, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 32px 74px -42px rgba(1, 4, 9, 0.96);
   overflow: hidden;
+}
+
+.roadmap-demo,
+.memory-ext-demo .realgo-popup {
+  --roadmap-glow-x: 82%;
+  --roadmap-glow-y: 14%;
+  --demo-gradient-shift-x: 0px;
+  --demo-gradient-shift-y: 0px;
+  --demo-gradient-angle: 128deg;
+  position: relative;
+  isolation: isolate;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(118deg, transparent 18%, rgba(47, 129, 247, 0.028) 38%, rgba(88, 166, 255, 0.07) 54%, rgba(105, 77, 164, 0.055) 68%, transparent 88%) padding-box,
+    radial-gradient(86% 112% at 108% -12%, rgba(47, 129, 247, 0.15), transparent 60%) padding-box,
+    radial-gradient(78% 98% at -14% 112%, rgba(92, 67, 151, 0.1), transparent 64%) padding-box,
+    linear-gradient(145deg, rgba(7, 11, 18, 0.99), rgba(15, 21, 31, 0.98) 52%, rgba(8, 12, 19, 0.99)) padding-box,
+    linear-gradient(125deg, rgba(88, 166, 255, 0.38), rgba(88, 166, 255, 0.09) 38%, rgba(119, 91, 179, 0.18) 72%, rgba(88, 166, 255, 0.28)) border-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.065),
+    inset 0 -1px 0 rgba(88, 166, 255, 0.055),
+    0 30px 68px -40px rgba(47, 129, 247, 0.2),
+    0 24px 62px -38px rgba(1, 4, 9, 0.98);
+  transition:
+    --roadmap-glow-x 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    --roadmap-glow-y 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    --demo-gradient-shift-x 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+    --demo-gradient-shift-y 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+    --demo-gradient-angle 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.35s ease;
+}
+
+.roadmap-demo::before,
+.memory-ext-demo .realgo-popup::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      var(--demo-gradient-angle),
+      transparent 27%,
+      rgba(47, 129, 247, 0.04) 37%,
+      rgba(88, 166, 255, 0.14) 49%,
+      rgba(113, 82, 174, 0.1) 58%,
+      transparent 72%
+    ),
+    linear-gradient(
+      calc(var(--demo-gradient-angle) + 74deg),
+      transparent 42%,
+      rgba(47, 129, 247, 0.06) 51%,
+      rgba(88, 166, 255, 0.035) 57%,
+      transparent 66%
+    );
+  opacity: 0.66;
+  mix-blend-mode: screen;
+  filter: blur(17px) saturate(118%);
+  transform: translate3d(var(--demo-gradient-shift-x), var(--demo-gradient-shift-y), 0) scale(1.18);
+  transform-origin: center;
+  transition: opacity 0.3s ease;
+}
+
+.roadmap-demo::after,
+.memory-ext-demo .realgo-popup::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(88, 166, 255, 0.026) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(88, 166, 255, 0.022) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.42;
+  mask-image: linear-gradient(145deg, rgba(0, 0, 0, 0.78), transparent 78%);
+  -webkit-mask-image: linear-gradient(145deg, rgba(0, 0, 0, 0.78), transparent 78%);
+}
+
+.roadmap-demo > *,
+.memory-ext-demo .realgo-popup > :not(style) {
+  position: relative;
+  z-index: 1;
+}
+
+.roadmap-demo:hover,
+.memory-ext-demo .realgo-popup:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.085),
+    inset 0 -1px 0 rgba(88, 166, 255, 0.08),
+    0 34px 78px -40px rgba(47, 129, 247, 0.28),
+    0 26px 66px -38px rgba(1, 4, 9, 1);
+}
+
+.roadmap-demo:hover::before,
+.memory-ext-demo .realgo-popup:hover::before {
+  opacity: 1;
 }
 
 /* Memory section — live extension-popup demo (MemoryExtensionDemo).
@@ -942,6 +1464,92 @@ h3 {
   justify-content: center;
   align-items: flex-start;
 }
+
+.memory-ext-demo .realgo-popup {
+  overflow: hidden;
+  border-color: rgba(88, 166, 255, 0.2);
+  background: #080d15;
+}
+
+.memory-ext-demo .realgo-popup::before,
+.memory-ext-demo .realgo-popup::after {
+  display: none;
+}
+
+.memory-ext-demo .realgo-popup > .memory-demo-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.memory-ext-demo .realgo-popup > .memory-demo-layer--agent {
+  z-index: 2;
+}
+
+.memory-ext-demo .realgo-popup > .memory-demo-layer--rating {
+  z-index: 1;
+}
+
+.memory-ext-demo .realgo-popup .realgo-header {
+  border-color: rgba(88, 166, 255, 0.12);
+  background: rgba(3, 7, 13, 0.62);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.memory-ext-demo .realgo-popup .realgo-task {
+  border-color: rgba(88, 166, 255, 0.11);
+  background: linear-gradient(180deg, rgba(8, 13, 21, 0.62), rgba(4, 8, 14, 0.42));
+}
+
+.memory-ext-demo .realgo-popup .realgo-choices {
+  border-color: rgba(88, 166, 255, 0.17);
+  background: rgba(11, 17, 26, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 12px 30px -26px rgba(47, 129, 247, 0.7);
+}
+
+@media (max-width: 920px) {
+  .memory-journey {
+    min-height: auto;
+    padding-block: clamp(72px, 11vw, 140px);
+  }
+
+  .memory-journey__sticky {
+    position: static;
+    min-height: 0;
+  }
+
+  .memory-journey__viewport {
+    width: 100%;
+    margin-left: 0;
+    overflow: visible;
+  }
+
+  .memory-journey__viewport::before,
+  .memory-journey__viewport::after {
+    display: none;
+  }
+
+  .memory-journey__track {
+    width: 100%;
+    margin-inline: 0;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: clamp(42px, 8vw, 68px);
+    transform: none;
+    will-change: auto;
+  }
+
+  .memory-journey__copy--rating h2 {
+    white-space: pre-line;
+  }
+
+  .memory-journey__copy--rating {
+    transform: none;
+  }
+}
+
 @media (max-width: 520px) {
   .memory-ext-demo {
     transform: scale(0.82);
@@ -1027,26 +1635,20 @@ h3 {
   color: var(--accent);
 }
 
-/* roadmap */
-.roadmap-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-  font-family: var(--font-stack-mono);
-  font-size: 11.5px;
-  color: var(--text-dim);
-}
-
-.roadmap-head strong {
-  color: var(--accent-bright);
-  font-weight: 500;
-}
-
 .roadmap-row {
+  position: relative;
+  z-index: 1;
   padding: 18px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(88, 166, 255, 0.1);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.018), transparent 76%);
+  transition:
+    background 0.28s ease,
+    box-shadow 0.28s ease;
+}
+
+.roadmap-row:hover {
+  background: linear-gradient(90deg, rgba(47, 129, 247, 0.075), rgba(88, 166, 255, 0.018) 58%, transparent 100%);
+  box-shadow: inset 2px 0 0 rgba(88, 166, 255, 0.42);
 }
 
 .roadmap-row:last-child {
@@ -1110,6 +1712,7 @@ h3 {
   height: 4px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 2px rgba(1, 4, 9, 0.72);
   overflow: hidden;
 }
 
@@ -1119,6 +1722,7 @@ h3 {
   border-radius: inherit;
   width: var(--progress);
   background: linear-gradient(90deg, rgba(56, 139, 253, 0.75), var(--accent-bright));
+  box-shadow: 0 0 12px rgba(88, 166, 255, 0.34);
 }
 
 .roadmap-progress__value {
@@ -1163,6 +1767,27 @@ h3 {
 
 .review-card {
   position: relative;
+}
+
+#memory .landing-cta {
+  width: 100%;
+  justify-items: center;
+}
+
+#memory .landing-cta__button {
+  justify-self: center;
+  margin-inline: auto;
+}
+
+@media (min-width: 641px) {
+  #memory .landing-cta__button {
+    position: relative;
+    left: -30px;
+  }
+}
+
+#reviews .landing-cta__button {
+  width: calc((100% - 36px) / 3);
 }
 
 .price-card {
@@ -1387,18 +2012,158 @@ h3 {
   margin-bottom: 22px;
 }
 
-/* Pricing: give the two plans the full section width so they breathe. */
+/* Pricing is a compact comparison: the offer stays on the left while both
+   plans occupy the otherwise empty right-hand side of the section. */
 #pricing .section-grid {
-  grid-template-columns: 1fr;
-  gap: clamp(28px, 4vw, 48px);
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.28fr);
+  gap: clamp(36px, 4.5vw, 64px);
+  align-items: start;
+}
+
+#pricing .section-copy {
+  max-width: 370px;
+  padding-top: 6px;
+}
+
+#pricing .section-copy h2 {
+  font-size: clamp(23px, 2.1vw, 30px);
+  line-height: 1.18;
+}
+
+#pricing .section-copy p {
+  max-width: 42ch;
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.58;
 }
 
 #pricing .pricing-grid {
   width: 100%;
-  max-width: 920px;
-  margin: 0 auto;
-  gap: clamp(20px, 2.4vw, 32px);
+  max-width: none;
+  margin: 0;
+  gap: clamp(14px, 1.5vw, 20px);
   align-items: stretch;
+}
+
+#pricing .price-card {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  padding: clamp(20px, 1.7vw, 24px);
+  --pricing-reveal-distance: 76px;
+}
+
+#pricing .price-card > span {
+  margin-bottom: 12px;
+  font-size: 10px;
+}
+
+#pricing .price-card strong {
+  margin-bottom: 10px;
+  font-size: clamp(27px, 2.2vw, 32px);
+}
+
+#pricing .price-card .price-period {
+  margin-top: 4px;
+  font-size: 10.5px;
+}
+
+#pricing .price-features {
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+#pricing .price-features li {
+  padding-left: 21px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.42;
+  color: var(--text-dim);
+}
+
+#pricing .price-card > .price-features {
+  position: relative;
+  z-index: 1;
+  /* The plan details start low and rise together with the CTA on intent. */
+  transform: translateY(calc(var(--pricing-reveal-distance) - 12px));
+  transition: transform 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#pricing .price-card > .price-cta {
+  opacity: 1;
+  pointer-events: none;
+  /* Keep the CTA below the clipped card until the plan is hovered/focused. */
+  transform: translateY(var(--pricing-reveal-distance));
+  transition:
+    transform 1.5s cubic-bezier(0.16, 1, 0.3, 1),
+    --landing-cta-rim-blue-half-span 0.5s ease,
+    --landing-cta-rim-base-color 0.5s ease;
+}
+
+#pricing .price-card:hover > .price-features,
+#pricing .price-card:focus-within > .price-features {
+  transform: translateY(-12px);
+}
+
+#pricing .price-card:hover > .price-cta,
+#pricing .price-card:focus-within > .price-cta {
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+@media (max-width: 1100px) {
+  #pricing .section-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  #pricing .section-copy {
+    max-width: 620px;
+    padding-top: 0;
+  }
+
+  #pricing .pricing-grid {
+    max-width: 820px;
+  }
+}
+
+@media (max-width: 920px) {
+  #pricing .pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+  }
+}
+
+@media (hover: none), (max-width: 920px) {
+  #pricing .price-card > .price-features,
+  #pricing .price-card:hover > .price-features {
+    transform: none;
+  }
+
+  #pricing .price-card > .price-cta {
+    pointer-events: auto;
+    transform: none;
+  }
+}
+
+/* Reviews is a compact interaction block: keep the three cards and CTA in
+   one desktop viewport instead of surrounding them with the full section
+   spacing used by the longer product sections. */
+#reviews {
+  padding-top: clamp(40px, 5vw, 72px);
+  padding-bottom: clamp(40px, 5vw, 72px);
+}
+
+#reviews .section-kicker {
+  margin-bottom: 24px;
+}
+
+#reviews .section-copy.wide {
+  margin-bottom: 32px;
+}
+
+#reviews .landing-cta--center {
+  margin-top: 28px;
 }
 
 .price-card {
@@ -1417,7 +2182,8 @@ h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  width: fit-content;
+  align-self: center;
   padding: 13px 18px;
   border-radius: 10px;
   background: var(--accent);
@@ -1602,6 +2368,12 @@ h3 {
   .docs-pager__prev,
   .docs-pager__next {
     justify-self: center;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1199px) {
+  .hero-title {
+    max-width: 600px;
   }
 }
 
@@ -1969,7 +2741,7 @@ h3 {
 @keyframes user-menu-in {
   from {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(-110px);
   }
   to {
     opacity: 1;
@@ -5099,7 +5871,7 @@ a.roadmap-step__practice-card:hover {
 
 .focus-card__content {
   min-width: 0;
-  min-height: 0;
+  min-height: 44px;
   align-self: center;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -6069,6 +6841,48 @@ a.roadmap-step__practice-card:hover {
    RESPONSIVE
    ============================================================ */
 
+/* Editorial first-screen composition: on wide displays the copy gets a clear
+   visual field while the interactive letters and card flow form one enlarged
+   object band along the lower edge of the hero. */
+@media (min-width: 1200px) {
+  .word-stage {
+    transform: translateY(-70px) scale(0.88);
+    transform-origin: center center;
+  }
+
+  .scroll-card-flow-bg canvas {
+    transform: translateY(-20px);
+  }
+
+  .scroll-card-flow-bg[data-state="loading"]::before,
+  .scroll-card-flow-bg[data-state="loading"]::after,
+  .scroll-card-flow-bg[data-state="fallback"]::before,
+  .scroll-card-flow-bg[data-state="fallback"]::after {
+    top: calc(26% - 20px);
+    height: 38%;
+  }
+
+  .scroll-card-flow-bg[data-state="loading"]::after,
+  .scroll-card-flow-bg[data-state="fallback"]::after {
+    top: calc(31% - 20px);
+  }
+
+  .hero-offer {
+    top: calc(clamp(150px, 18vh, 210px) - 20px);
+  }
+
+  .hero-tagline {
+    top: 64vh;
+    bottom: auto;
+    width: min(960px, 86vw);
+  }
+
+  .hero-cta-lead {
+    max-width: 920px;
+    color: rgba(182, 176, 203, 0.86);
+  }
+}
+
 @media (max-width: 1360px) {
   .heatmap-layout {
     grid-template-columns: auto minmax(0, 1fr);
@@ -6079,6 +6893,112 @@ a.roadmap-step__practice-card:hover {
     max-width: 340px;
     justify-self: end;
     margin: 0 16px 16px;
+  }
+}
+
+/* Large desktop hero scale. The 2048px reference uses a more editorial,
+   spacious composition; keep the compact laptop layout unchanged below this
+   breakpoint and scale only the hero's typography/controls here. */
+@media (min-width: 1600px) {
+  .site-strip {
+    padding-top: 24px;
+    padding-bottom: 24px;
+  }
+
+  .site-brand {
+    font-size: 27px;
+    gap: 13px;
+  }
+
+  .site-brand::before {
+    width: 42px;
+    height: 42px;
+  }
+
+  .site-nav {
+    gap: 44px;
+  }
+
+  .site-nav a,
+  .site-auth > button,
+  .site-auth > a.site-auth__cta,
+  .site-auth .site-auth__dashboard {
+    font-size: 17px;
+  }
+
+  .site-auth > button,
+  .site-auth > a.site-auth__cta,
+  .site-auth .site-auth__dashboard {
+    padding: 13px 22px;
+    border-radius: 11px;
+  }
+
+  .code-editor {
+    top: 210px;
+    width: min(440px, 36vw);
+    height: 320px;
+  }
+
+  .hero-offer {
+    top: 150px;
+    width: min(1200px, 82vw);
+  }
+
+  .word-stage {
+    transform: translateY(-130px) scale(0.78);
+    transform-origin: center center;
+  }
+
+  .scroll-card-flow-bg canvas {
+    transform: translateY(-20px);
+  }
+
+  .scroll-card-flow-bg[data-state="loading"]::before,
+  .scroll-card-flow-bg[data-state="loading"]::after,
+  .scroll-card-flow-bg[data-state="fallback"]::before,
+  .scroll-card-flow-bg[data-state="fallback"]::after {
+    top: calc(26% - 20px);
+    height: 38%;
+  }
+
+  .scroll-card-flow-bg[data-state="loading"]::after,
+  .scroll-card-flow-bg[data-state="fallback"]::after {
+    top: calc(31% - 20px);
+  }
+
+  .hero-title {
+    max-width: 920px;
+    font-size: clamp(25px, 1.5vw, 32px);
+    line-height: 1.4;
+  }
+
+  .hero-tagline {
+    top: 620px;
+    bottom: auto;
+    width: min(960px, 82vw);
+  }
+
+  .hero-cta-lead {
+    max-width: 960px;
+    color: rgba(182, 176, 203, 0.86);
+    font-size: clamp(18px, 1.1vw, 22px) !important;
+    line-height: 1.5;
+  }
+
+  .hero-cta {
+    margin-top: 34px;
+  }
+
+  .hero-cta a {
+    min-height: 72px;
+    padding: 19px 36px;
+    border-radius: 12px;
+    font-size: 20px;
+    gap: 20px;
+  }
+
+  .hero-cta a span {
+    font-size: 24px;
   }
 }
 
@@ -6172,6 +7092,11 @@ a.roadmap-step__practice-card:hover {
      showing once it's gone. */
   .code-editor {
     display: none;
+  }
+
+  .hero-offer {
+    left: 50%;
+    width: min(760px, 88vw);
   }
 
   .site-strip {
@@ -6279,7 +7204,62 @@ a.roadmap-step__practice-card:hover {
   }
 
   .hero-tagline {
-    bottom: 19%;
+    bottom: 27%;
+    width: min(560px, 90vw);
+  }
+
+  .hero-offer {
+    top: 72px;
+    width: 92vw;
+  }
+
+  .hero-title {
+    font-size: 19px;
+  }
+
+  .hero-offer p {
+    margin-top: 12px;
+    font-size: 13px;
+  }
+
+  .hero-cta-lead {
+    font-size: 13px !important;
+  }
+
+  .hero-tagline .eyebrow {
+    display: none;
+  }
+
+  .hero-tagline p {
+    font-size: 13.5px;
+  }
+
+  .hero-cta {
+    margin-top: 17px;
+  }
+
+  .hero-cta a,
+  .landing-cta__button {
+    width: 100%;
+  }
+
+  .landing-proof {
+    grid-template-columns: 1fr;
+    margin-right: 20px;
+    margin-left: 20px;
+  }
+
+  .landing-proof > div {
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-items: start;
+    align-items: center;
+    padding: 16px 18px;
+    text-align: left;
+  }
+
+  .landing-proof > div + div {
+    border-top: 1px solid var(--border);
+    border-left: 0;
   }
 
   .task-row {
@@ -7480,7 +8460,29 @@ a.roadmap-step__practice-card:hover {
   display: grid;
   grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
   gap: clamp(32px, 6vw, 76px);
-  align-items: start;
+  align-items: stretch;
+}
+
+.faq-intro {
+  display: flex;
+  flex-direction: column;
+}
+
+.faq-intro .landing-cta {
+  width: min(100%, 46ch);
+  justify-items: stretch;
+  margin-top: 28px;
+  text-align: left;
+}
+
+.faq-intro .landing-cta {
+  margin-top: auto;
+}
+
+.faq-intro .landing-cta__button {
+  width: 100%;
+  min-height: 66px;
+  height: 66px;
 }
 
 .faq-list {
@@ -7508,6 +8510,7 @@ a.roadmap-step__practice-card:hover {
   width: 100%;
   border: 0;
   padding: 22px 24px;
+  min-height: 66px;
   background: transparent;
   color: var(--text);
   text-align: left;
@@ -7581,15 +8584,29 @@ a.roadmap-step__practice-card:hover {
 }
 
 @media (max-width: 920px) {
+  #reviews .landing-cta__button {
+    width: 100%;
+  }
+
   .faq-layout {
     grid-template-columns: 1fr;
+  }
+
+  .faq-intro .landing-cta {
+    margin-top: 28px;
   }
 }
 
 @media (max-width: 640px) {
+  .faq-intro .landing-cta__button {
+    min-height: 58px;
+    height: 58px;
+  }
+
   .faq-question {
     gap: 14px;
     padding: 18px;
+    min-height: 58px;
   }
 
   .faq-answer {
@@ -10895,4 +11912,213 @@ a.roadmap-step__practice-card:hover {
     transform: none;
     transition: none;
   }
+}
+
+/* Landing CTAs use a border-box gradient so the animated color is physically
+   confined to the outline; the center remains a separate padding-box layer. */
+@property --landing-cta-rim-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@property --landing-cta-rim-blue-half-span {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 21deg;
+}
+
+@property --landing-cta-rim-base-color {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: rgba(47, 129, 247, 0.34);
+}
+
+/* Header actions are intentionally excluded. Landing CTAs keep the same compact
+   geometry, with a black center and an animated gradient confined to the rim. */
+.hero-cta a,
+.landing-cta__button,
+.price-cta,
+.price-card:first-child .price-cta {
+  position: relative;
+  isolation: isolate;
+  --landing-cta-rim-blue-half-span: 21deg;
+  --landing-cta-rim-base-color: rgba(47, 129, 247, 0.34);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 40px;
+  width: fit-content;
+  align-self: center;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 11px 22px;
+  background:
+    linear-gradient(#05070c, #05070c) padding-box,
+    conic-gradient(
+      from var(--landing-cta-rim-angle),
+      var(--accent-bright) 0deg,
+      var(--accent) calc(var(--landing-cta-rim-blue-half-span) - 10deg),
+      var(--landing-cta-rim-base-color) var(--landing-cta-rim-blue-half-span),
+      var(--landing-cta-rim-base-color) calc(360deg - var(--landing-cta-rim-blue-half-span)),
+      var(--accent) calc(370deg - var(--landing-cta-rim-blue-half-span)),
+      var(--accent-bright) 360deg
+    ) border-box;
+  color: #f4f6fb;
+  font-family: var(--font-stack-sans);
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    0 12px 34px -24px rgba(0, 0, 0, 0.9);
+  animation: landing-cta-rim 4.8s linear infinite;
+  transition:
+    --landing-cta-rim-blue-half-span 0.5s ease,
+    --landing-cta-rim-base-color 0.5s ease,
+    color 0.2s ease,
+    box-shadow 0.35s ease,
+    transform 0.22s ease;
+}
+
+/* Верхняя CTA повторяет визуальную ширину собранного слова `realgo`. */
+.hero-cta a {
+  width: min(100%, 450px, 40vw);
+}
+
+@media (min-width: 1200px) and (max-width: 1599px) {
+.hero-cta a {
+    width: 350px;
+  }
+}
+
+.hero-cta a:hover,
+.landing-cta__button:hover,
+.price-cta:hover,
+.price-card:first-child .price-cta:hover {
+  border-color: transparent;
+  --landing-cta-rim-blue-half-span: 180deg;
+  --landing-cta-rim-base-color: var(--accent);
+  background:
+    linear-gradient(#05070c, #05070c) padding-box,
+    conic-gradient(
+      from var(--landing-cta-rim-angle),
+      var(--accent-bright) 0deg,
+      var(--accent) calc(var(--landing-cta-rim-blue-half-span) - 10deg),
+      var(--landing-cta-rim-base-color) var(--landing-cta-rim-blue-half-span),
+      var(--landing-cta-rim-base-color) calc(360deg - var(--landing-cta-rim-blue-half-span)),
+      var(--accent) calc(370deg - var(--landing-cta-rim-blue-half-span)),
+      var(--accent-bright) 360deg
+    ) border-box;
+  color: #ffffff;
+  box-shadow:
+    0 16px 44px -22px rgba(98, 75, 162, 0.65);
+  transform: translateY(-1px);
+}
+
+.hero-cta a:focus-visible,
+.landing-cta__button:focus-visible,
+.price-cta:focus-visible {
+  outline: 2px solid rgba(177, 192, 255, 0.78);
+  outline-offset: 4px;
+}
+
+.hero-cta a span,
+.landing-cta__button span,
+.price-cta::after {
+  position: relative;
+  z-index: 1;
+  font-size: 20px;
+  line-height: 1;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.price-cta::after {
+  content: "→";
+  margin-left: 2px;
+}
+
+.hero-cta a:hover span,
+.landing-cta__button:hover span,
+.price-cta:hover::after {
+  transform: translateX(6px);
+}
+
+@keyframes landing-cta-rim {
+  to {
+    --landing-cta-rim-angle: 360deg;
+  }
+}
+
+@media (min-width: 1600px) {
+  .hero-cta a {
+    width: 300px;
+  }
+
+  .hero-cta a,
+  .landing-cta__button,
+  .price-cta,
+  .price-card:first-child .price-cta {
+    min-height: 52px;
+    padding: 15px 26px;
+    border-radius: 11px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-cta a {
+    width: 100%;
+  }
+
+  .hero-cta a,
+  .landing-cta__button,
+  .price-cta,
+  .price-card:first-child .price-cta {
+    min-height: 40px;
+    padding: 10px 18px;
+    font-size: 14px;
+  }
+
+  .hero-cta a span,
+  .landing-cta__button span,
+  .price-cta::after {
+    font-size: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-cta a,
+  .landing-cta__button,
+  .price-cta {
+    animation: none;
+  }
+}
+
+/* Pricing actions match the header's «Регистрация» button: solid accent fill,
+   white label, no animated rim. Their larger landing dimensions and the
+   reveal-from-below transition remain scoped to the pricing cards. */
+#pricing .price-card > .price-cta {
+  border: 0;
+  background: var(--accent);
+  color: #ffffff;
+  font-family: var(--font-stack-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  box-shadow: none;
+  animation: none;
+  transition:
+    transform 1.5s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+#pricing .price-card:hover > .price-cta,
+#pricing .price-card:focus-within > .price-cta {
+  border: 0;
+  background: var(--accent-bright);
+  color: #ffffff;
+  box-shadow: none;
 }

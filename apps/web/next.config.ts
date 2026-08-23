@@ -13,9 +13,20 @@ import { join } from "node:path";
 //   docker compose up -d presentation caddy   # deck on :8080/presentation/
 //   PRESENTATION_ORIGIN=http://127.0.0.1:8080/presentation npm run dev
 //
-// Unset (the default, and what the Docker build uses) the rewrites list stays
-// empty and nothing about the production request path changes.
+// Unset (the default) the presentation rewrite stays empty. The Docker build
+// also keeps the API rewrite disabled because it runs with NODE_ENV=production.
 const presentationOrigin = process.env.PRESENTATION_ORIGIN?.replace(/\/+$/, "");
+const configuredApiBase = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+// `npm run dev` serves the web app directly on :3000 while the local API is
+// exposed by Caddy on :8080. The browser must still use relative `/api/*`
+// requests (the same code is built for realgo.dev), so proxy those requests
+// only in the dev server. Production builds keep the list empty and continue
+// to rely on Caddy's same-origin API route.
+const localApiOrigin =
+  process.env.NODE_ENV === "development" && !configuredApiBase
+    ? (process.env.LOCAL_API_ORIGIN ?? "http://127.0.0.1:8080").replace(/\/+$/, "")
+    : undefined;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -26,11 +37,20 @@ const nextConfig: NextConfig = {
     root: join(__dirname),
   },
   async rewrites() {
-    if (!presentationOrigin) return [];
-    return [
-      { source: "/presentation", destination: `${presentationOrigin}/` },
-      { source: "/presentation/:path*", destination: `${presentationOrigin}/:path*` },
-    ];
+    const rewrites = [];
+
+    if (presentationOrigin) {
+      rewrites.push(
+        { source: "/presentation", destination: `${presentationOrigin}/` },
+        { source: "/presentation/:path*", destination: `${presentationOrigin}/:path*` },
+      );
+    }
+
+    if (localApiOrigin) {
+      rewrites.push({ source: "/api/:path*", destination: `${localApiOrigin}/api/:path*` });
+    }
+
+    return rewrites;
   },
 };
 
