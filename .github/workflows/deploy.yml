@@ -51,6 +51,16 @@ jobs:
           # --no-deps so this does not churn the app containers behind it.
           docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo up -d --force-recreate --no-deps caddy
 
+      - name: Diagnose staging stack failure
+        if: ${{ failure() }}
+        run: |
+          echo "--- staging containers ---"
+          docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo ps -a
+          echo "--- migrate logs ---"
+          docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo logs --no-color --tail=300 migrate || true
+          echo "--- api logs ---"
+          docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo logs --no-color --tail=120 api || true
+
       - name: Smoke check
         run: |
           sleep 5
