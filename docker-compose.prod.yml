@@ -90,6 +90,8 @@ services:
   # Everything else is identical to the base file; keep the two in sync.
   ready:
     depends_on: !override
+      startup-clock:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
       seed-roadmap:

@@ -11,18 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const clearExpiredProblemReportScreenshots = `-- name: ClearExpiredProblemReportScreenshots :execrows
+const clearExpiredProblemReportAttachments = `-- name: ClearExpiredProblemReportAttachments :execrows
 UPDATE problem_reports
-SET screenshot = NULL,
-    screenshot_mime = NULL,
-    screenshot_width = NULL,
-    screenshot_height = NULL
-WHERE screenshot IS NOT NULL
-  AND screenshot_expires_at <= CURRENT_TIMESTAMP
+SET attachment = NULL,
+    attachment_mime = NULL,
+    attachment_filename = NULL,
+    attachment_size = NULL
+WHERE attachment IS NOT NULL
+  AND attachment_expires_at <= CURRENT_TIMESTAMP
 `
 
-func (q *Queries) ClearExpiredProblemReportScreenshots(ctx context.Context) (int64, error) {
-	result, err := q.db.Exec(ctx, clearExpiredProblemReportScreenshots)
+func (q *Queries) ClearExpiredProblemReportAttachments(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, clearExpiredProblemReportAttachments)
 	if err != nil {
 		return 0, err
 	}
@@ -39,10 +39,10 @@ INSERT INTO problem_reports (
     release_version,
     commit_sha,
     source_request_id,
-    screenshot,
-    screenshot_mime,
-    screenshot_width,
-    screenshot_height
+    attachment,
+    attachment_mime,
+    attachment_filename,
+    attachment_size
 ) VALUES (
     $1,
     $2,
@@ -61,18 +61,18 @@ RETURNING id::text AS report_id, created_at
 `
 
 type CreateProblemReportParams struct {
-	UserID           int64
-	SchemaVersion    int16
-	Description      string
-	Diagnostics      []byte
-	Fingerprint      string
-	ReleaseVersion   pgtype.Text
-	CommitSha        pgtype.Text
-	SourceRequestID  string
-	Screenshot       []byte
-	ScreenshotMime   pgtype.Text
-	ScreenshotWidth  pgtype.Int4
-	ScreenshotHeight pgtype.Int4
+	UserID             int64
+	SchemaVersion      int16
+	Description        string
+	Diagnostics        []byte
+	Fingerprint        string
+	ReleaseVersion     pgtype.Text
+	CommitSha          pgtype.Text
+	SourceRequestID    string
+	Attachment         []byte
+	AttachmentMime     pgtype.Text
+	AttachmentFilename pgtype.Text
+	AttachmentSize     pgtype.Int4
 }
 
 type CreateProblemReportRow struct {
@@ -90,10 +90,10 @@ func (q *Queries) CreateProblemReport(ctx context.Context, arg CreateProblemRepo
 		arg.ReleaseVersion,
 		arg.CommitSha,
 		arg.SourceRequestID,
-		arg.Screenshot,
-		arg.ScreenshotMime,
-		arg.ScreenshotWidth,
-		arg.ScreenshotHeight,
+		arg.Attachment,
+		arg.AttachmentMime,
+		arg.AttachmentFilename,
+		arg.AttachmentSize,
 	)
 	var i CreateProblemReportRow
 	err := row.Scan(&i.ReportID, &i.CreatedAt)

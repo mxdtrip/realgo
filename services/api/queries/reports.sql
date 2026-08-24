@@ -8,10 +8,10 @@ INSERT INTO problem_reports (
     release_version,
     commit_sha,
     source_request_id,
-    screenshot,
-    screenshot_mime,
-    screenshot_width,
-    screenshot_height
+    attachment,
+    attachment_mime,
+    attachment_filename,
+    attachment_size
 ) VALUES (
     sqlc.arg(user_id),
     sqlc.arg(schema_version),
@@ -21,21 +21,21 @@ INSERT INTO problem_reports (
     sqlc.narg(release_version),
     sqlc.narg(commit_sha),
     sqlc.arg(source_request_id),
-    sqlc.narg(screenshot),
-    sqlc.narg(screenshot_mime),
-    sqlc.narg(screenshot_width),
-    sqlc.narg(screenshot_height)
+    sqlc.narg(attachment),
+    sqlc.narg(attachment_mime),
+    sqlc.narg(attachment_filename),
+    sqlc.narg(attachment_size)
 )
 RETURNING id::text AS report_id, created_at;
 
--- name: ClearExpiredProblemReportScreenshots :execrows
+-- name: ClearExpiredProblemReportAttachments :execrows
 UPDATE problem_reports
-SET screenshot = NULL,
-    screenshot_mime = NULL,
-    screenshot_width = NULL,
-    screenshot_height = NULL
-WHERE screenshot IS NOT NULL
-  AND screenshot_expires_at <= CURRENT_TIMESTAMP;
+SET attachment = NULL,
+    attachment_mime = NULL,
+    attachment_filename = NULL,
+    attachment_size = NULL
+WHERE attachment IS NOT NULL
+  AND attachment_expires_at <= CURRENT_TIMESTAMP;
 
 -- name: DeleteExpiredProblemReports :execrows
 DELETE FROM problem_reports

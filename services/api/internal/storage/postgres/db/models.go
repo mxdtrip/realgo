@@ -239,13 +239,13 @@ type ProblemReport struct {
 	ReleaseVersion      pgtype.Text
 	CommitSha           pgtype.Text
 	SourceRequestID     string
-	Screenshot          []byte
-	ScreenshotMime      pgtype.Text
-	ScreenshotWidth     pgtype.Int4
-	ScreenshotHeight    pgtype.Int4
-	ScreenshotExpiresAt pgtype.Timestamptz
+	Attachment          []byte
+	AttachmentMime      pgtype.Text
+	AttachmentExpiresAt pgtype.Timestamptz
 	CreatedAt           pgtype.Timestamptz
 	ExpiresAt           pgtype.Timestamptz
+	AttachmentFilename  pgtype.Text
+	AttachmentSize      pgtype.Int4
 }
 
 type ProblemSubpattern struct {

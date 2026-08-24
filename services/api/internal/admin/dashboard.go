@@ -15,6 +15,7 @@ func Dashboard(_ *context.Context) (types.Panel, error) {
 		Content: template.HTML(`<p>
 			<a class="btn btn-primary" href="/admin/info/users">Users</a>
 			<a class="btn btn-default" href="/admin/info/problems">Problems</a>
+			<a class="btn btn-default" href="/admin/info/problem_reports">Problem reports</a>
 		</p>`),
 	}, nil
 }

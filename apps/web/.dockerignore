@@ -3,6 +3,11 @@ node_modules
 .git
 .env
 .env.local
+AGENTS.md
+README.md
+e2e
+test-results
+playwright.config.mjs
 Dockerfile
 .dockerignore
 docker-compose.yml
