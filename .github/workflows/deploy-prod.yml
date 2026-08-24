@@ -41,8 +41,9 @@ jobs:
           AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
           FRP_VPS_HOST: ${{ secrets.FRP_VPS_HOST }}
           FRP_TOKEN: ${{ secrets.FRP_TOKEN }}
-          # Password for the re-seeded demo accounts. Optional: when the secret
-          # is unset the seed falls back to its local default (see DEMO.md).
+          # Password for the public demo accounts. Set this secret when the
+          # credentials need to rotate; the documented demo password is used
+          # otherwise so realgo.dev remains usable after a fresh deploy.
           SEED_USERS_PASSWORD: ${{ secrets.SEED_USERS_PASSWORD }}
           # Gemini key for AI card generation. Optional: when unset the api
           # boots normally with generation disabled.
@@ -67,6 +68,22 @@ jobs:
           # "config on disk ≠ config in memory". --no-deps so this does not
           # churn the app containers behind it.
           docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --force-recreate --no-deps caddy
+
+          # The seed job is deliberately kept out of `ready` and the normal
+          # prod-demo dependency graph because it resets only the reserved
+          # demo identities. Run it explicitly after the application is up so
+          # the three published demo accounts are present on every release.
+          # Production seed_users.py requires this variable; the fallback is
+          # the public credential documented in DEMO.md.
+          # `up -d` returns before one-shot seed jobs necessarily finish, so
+          # wait for the readiness banner first; it depends on every content
+          # seed and therefore guarantees the roadmap rows exist.
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+            --profile prod-demo wait ready
+          SEED_USERS_PASSWORD="${SEED_USERS_PASSWORD:-Password123!}" docker compose \
+            -f docker-compose.yml -f docker-compose.prod.yml \
+            --profile prod-demo --profile prod-demo-users \
+            run --rm --no-deps seed-users
 
       - name: Verify presentation routing
         if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl')

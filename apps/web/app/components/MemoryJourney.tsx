@@ -47,7 +47,11 @@ const WINDOW_MODE_TRANSITION_MS = 1050;
 const ANCHOR_EASING = 0.1;
 const ANCHOR_STOP_THRESHOLD = 0.45;
 const STORY_ENTRY_DISTANCE = 260;
-const GESTURE_END_MS = 120;
+// Wheel streams (especially trackpads) often contain alternating tail events.
+// Treat direction changes inside this quiet window as one gesture so they
+// cannot immediately reverse a just-finished scene transition.
+const GESTURE_END_MS = 280;
+const TRANSITION_COOLDOWN_MS = 1200;
 const WINDOW_MODE_TIMELINE_SPAN = WINDOW_MODE_TRANSITION_MS / SCENE_TRANSITION_MS;
 const WINDOW_MODE_TIMELINE_START = (1 - WINDOW_MODE_TIMELINE_SPAN) / 2;
 
@@ -97,6 +101,9 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
     let sceneProgress = 0;
     let lastScrollY = window.scrollY;
     let gestureLocked = false;
+    let gestureCooldownUntil = 0;
+    let wheelDirection: -1 | 0 | 1 = 0;
+    let lastWheelAt = 0;
     let queuedAnchorDirection: -1 | 0 | 1 = 0;
     let gestureReleaseTimer = 0;
     let anchorFrame = 0;
@@ -258,6 +265,10 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
         }
 
         transitionFrame = 0;
+        // Trackpad inertia can deliver the opposite sign after a transition
+        // has visually settled. Ignore that tail so one gesture cannot bounce
+        // the story back and forth between its two anchors.
+        gestureCooldownUntil = performance.now() + TRANSITION_COOLDOWN_MS;
         setAnchor(targetStage, false);
       };
 
@@ -271,6 +282,11 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
 
     const onWheel = (event: WheelEvent) => {
       if (!desktop.matches || event.ctrlKey || Math.abs(event.deltaY) < 0.1) return;
+
+      if (performance.now() < gestureCooldownUntil) {
+        consumeWheel(event);
+        return;
+      }
 
       if (phase === "outside") {
         const { top, end } = sectionBounds();
@@ -286,7 +302,23 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
           lockCurrentGesture();
           return;
         }
+
+        // The story only owns wheel input while it is anchored. Outside of
+        // it, leave normal page scrolling completely untouched.
+        return;
       }
+
+      const now = performance.now();
+      const direction = event.deltaY > 0 ? 1 : -1;
+      if (wheelDirection !== 0 && now - lastWheelAt < GESTURE_END_MS && direction !== wheelDirection) {
+        // Consume the opposite-sign tail, but keep extending the same gesture
+        // window while the device is still emitting inertia events.
+        lastWheelAt = now;
+        consumeWheel(event);
+        return;
+      }
+      wheelDirection = direction;
+      lastWheelAt = now;
 
       if (phase === "transition-forward" || phase === "transition-backward") {
         consumeWheel(event);
@@ -295,7 +327,9 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
       }
 
       if (phase === "anchoring-1" || phase === "anchoring-2") {
-        if (!gestureLocked) queuedAnchorDirection = event.deltaY > 0 ? 1 : -1;
+        if (!gestureLocked && performance.now() >= gestureCooldownUntil) {
+          queuedAnchorDirection = event.deltaY > 0 ? 1 : -1;
+        }
         consumeWheel(event);
         lockCurrentGesture();
         return;
@@ -345,6 +379,19 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
         return;
       }
 
+      if (performance.now() < gestureCooldownUntil) {
+        // A delayed scroll event from the wheel stream must not be interpreted
+        // as a fresh request to reverse the scene during the cooldown.
+        if (phase === "stage-1-ready" && Math.abs(currentY - top) > 0.75) {
+          window.scrollTo(0, top);
+          lastScrollY = top;
+        } else if (phase === "stage-2-ready" && Math.abs(currentY - end) > 0.75) {
+          window.scrollTo(0, end);
+          lastScrollY = end;
+        }
+        return;
+      }
+
       if (phase === "stage-1-ready") {
         if (currentY > top + 0.75) {
           stopSmoothScroll();
@@ -388,6 +435,7 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
         queuedAnchorDirection = 0;
         clearGestureReleaseTimer();
         gestureLocked = false;
+        gestureCooldownUntil = 0;
         if (anchorFrame) window.cancelAnimationFrame(anchorFrame);
         anchorFrame = 0;
         if (transitionFrame) window.cancelAnimationFrame(transitionFrame);
@@ -435,6 +483,7 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
     return () => {
       destroyed = true;
       clearGestureReleaseTimer();
+      gestureCooldownUntil = 0;
       if (anchorFrame) window.cancelAnimationFrame(anchorFrame);
       if (transitionFrame) window.cancelAnimationFrame(transitionFrame);
       window.removeEventListener("wheel", onWheel, { capture: true });

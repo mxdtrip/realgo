@@ -68,13 +68,20 @@ curl -s -X POST http://localhost:8080/api/v1/auth/register \
 ## 3. Поднять web
 
 ```sh
-cd apps/web
-cp .env.example .env
-npm install
+cd /Users/madtrip/realgo
+npm install --prefix apps/web
 npm run dev        # http://localhost:3000
 ```
 
 **Expected:** открывается лендинг; кабинет — `http://localhost:3000/dashboard`.
+
+В dev-режиме web автоматически проксирует запросы `/api/*` на локальный Caddy
+`http://127.0.0.1:8080`, поэтому вход из `:3000` использует тот же API, что и
+расширение. Если API опубликован на другом порту, задайте его явно:
+
+```sh
+LOCAL_API_ORIGIN=http://127.0.0.1:<порт> npm run dev
+```
 
 > ⚠️ Известный гэп интеграции: auth, `/reviews` и часть settings уже ходят в API,
 > но dashboard/problems/cards/roadmap/patterns пока частично остаются на моках.

@@ -17,6 +17,10 @@ reverse tunnel через `deploy/vps`.
   роутит `/api/*` в api (`api:8080` в dev, `vpngw:8080` на сервере — см.
   `Caddyfile.internal.prod`), `/presentation/*` в `presentation:80` со
   снятием префикса (`handle_path`), остальное в `web:3000`.
+- Изолированный staging-стек публикуется через тот же VPS edge на
+  `staging.realgo.dev` и тестовом алиасе `test.realgo.dev`; оба имени ведут на
+  туннель `frps:8081`. Для `test.realgo.dev` нужна DNS-only A-запись на IP VPS,
+  а edge Caddy добавляет `X-Robots-Tag: noindex, nofollow, noarchive`.
 - `presentation` — статический дек (`apps/presentation`) в собственном nginx.
   Он намеренно не входит в netns `vpngw`: исходящих запросов у него нет.
   Caddy зависит от него через `depends_on` без условия по health — сервис
@@ -174,10 +178,14 @@ task seed-cards
 task health
 ```
 
-`seed-users` не входит в production smoke: prod overlay помещает его в
+`seed-users` не входит в dependency graph `ready`: prod overlay помещает его в
 отдельный профиль `prod-demo-users`, потому что job сбрасывает данные demo
-email. Запускать его только для одноразового/диспозабельного демо с явно
-заданным `SEED_USERS_PASSWORD`:
+email. Production workflow запускает этот профиль отдельным шагом после
+старта стека. При ручном запуске передайте пароль явно (если переменная не
+задана, production seed откажется работать):
+
+Демо-аккаунты зарезервированы для публичного сценария: повторный seed
+сбрасывает только их прогресс, расписания и события к исходному демо-состоянию.
 
 ```sh
 SEED_USERS_PASSWORD='<strong-demo-password>' docker compose \

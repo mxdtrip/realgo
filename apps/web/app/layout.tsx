@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono, Manrope } from "next/font/google";
+import { Cormorant_Garamond, Inter, JetBrains_Mono, Manrope, Poppins } from "next/font/google";
 import { AuthProvider } from "./_api/AuthProvider";
 import { getDictionary } from "./_content/i18n";
 import { DiagnosticsCollector } from "./_diagnostics/DiagnosticsCollector";
@@ -19,6 +19,21 @@ const manrope = Manrope({
   subsets: ["latin", "cyrillic"],
   variable: "--font-display",
   weight: ["500", "600", "700"],
+  display: "swap",
+});
+
+const cormorantGaramond = Cormorant_Garamond({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-italic",
+  weight: ["400", "500", "600", "700"],
+  style: ["italic"],
+  display: "swap",
+});
+
+const poppins = Poppins({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-primary",
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -90,7 +105,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      className={`${inter.variable} ${manrope.variable} ${jetBrainsMono.variable}`}
+      className={`${inter.variable} ${manrope.variable} ${poppins.variable} ${cormorantGaramond.variable} ${jetBrainsMono.variable}`}
       lang="ru"
     >
       <body>

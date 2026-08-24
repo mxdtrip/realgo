@@ -1,7 +1,7 @@
 # frp client for the isolated ReAlgo STAGING stack on appbox.
 # Same VPS/frps as prod, but registers its own proxy on remotePort 8081, which
-# the VPS edge Caddy serves as staging.realgo.dev. See frpc.toml for the full
-# topology notes; deliberately NO homeserver-ssh proxy here — prod's frpc
+# the VPS edge Caddy serves as staging.realgo.dev and test.realgo.dev. See
+# frpc.toml for the full topology notes; deliberately NO homeserver-ssh proxy here — prod's frpc
 # already owns remotePort 2222 and a duplicate registration would be rejected.
 serverAddr = "{{ .Envs.FRP_VPS_HOST }}"
 serverPort = 7000

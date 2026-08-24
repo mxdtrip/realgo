@@ -30,3 +30,19 @@ staging.realgo.dev {
 	}
 	reverse_proxy frps:8081
 }
+
+# Test alias for the isolated staging stack. Keep it out of search indexes so
+# the copy used for QA cannot compete with the canonical realgo.dev landing.
+test.realgo.dev {
+	encode zstd gzip
+	header {
+		Content-Security-Policy "frame-ancestors 'none'"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		X-Robots-Tag "noindex, nofollow, noarchive"
+	}
+	reverse_proxy frps:8081
+}

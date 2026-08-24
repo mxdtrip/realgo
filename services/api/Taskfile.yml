@@ -71,6 +71,11 @@ tasks:
     cmds:
       - "{{.PROD_COMPOSE}} up -d --build"
 
+  prod-seed-users:
+    desc: Seed the reserved production demo accounts (requires SEED_USERS_PASSWORD)
+    cmds:
+      - "{{.PROD_COMPOSE}} --profile prod-demo-users run --rm --no-deps seed-users"
+
   down:
     desc: Stop the stack and remove its containers
     cmds:

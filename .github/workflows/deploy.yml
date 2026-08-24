@@ -1,10 +1,13 @@
 name: Deploy staging
-# Every push to dev rebuilds the isolated ReAlgo staging stack on appbox (see
-# docker-compose.staging.yml), served as staging.realgo.dev via the VPS edge.
+# Every push to dev rebuilds the isolated ReAlgo staging stack on appbox. The
+# landing-update branch is included deliberately so its current design can be
+# tested end-to-end at test.realgo.dev without touching production.
+# Both staging.realgo.dev and test.realgo.dev use this same isolated stack via
+# the VPS edge.
 # Production is deployed independently from main by deploy-prod.yml.
 on:
   push:
-    branches: [dev]
+    branches: [dev, feat/landing-page-updates]
   workflow_dispatch:
 
 concurrency:

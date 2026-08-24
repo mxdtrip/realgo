@@ -5,8 +5,8 @@
 # the product stack running alongside production
 # on the same docker daemon. Isolation comes from the project name below (own
 # containers/network/volumes, so its pgdata never touches prod data) plus
-# non-colliding host ports. Exposed to the internet as staging.realgo.dev
-# through the same VPS edge (frps:8081, see frpc.staging.toml).
+# non-colliding host ports. Exposed to the internet as staging.realgo.dev and
+# test.realgo.dev through the same VPS edge (frps:8081, see frpc.staging.toml).
 #
 # Differences from prod on purpose:
 #   - no vpngw: staging runs without the VLESS egress tunnel, so AI card
@@ -63,8 +63,9 @@ services:
   # No `presentation` override on purpose: the base definition needs nothing
   # environment-specific, and it publishes no host port, so it cannot collide
   # with the prod stack sharing this docker daemon. It is built and started by
-  # inheritance, and reached at staging.realgo.dev/presentation/ through this
-  # stack's own caddy — verify with `docker compose ps presentation`.
+  # inheritance, and reached at staging.realgo.dev/presentation/ (or
+  # test.realgo.dev/presentation/) through this stack's own caddy — verify with
+  # `docker compose ps presentation`.
 
   # Every seed job is parked behind the unused `seeds` profile above, so none
   # of them exist in this stack. depends_on entries merge rather than replace,

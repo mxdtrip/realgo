@@ -7,9 +7,10 @@
 # unbuildable image here would break that for everyone (as it briefly did).
 
 services:
-  # Demo identities stay available in the base local stack, but are not
-  # started by the production `prod-demo` profile. Run this separate profile
-  # explicitly only when a disposable public demo really needs seeded users.
+  # Keep demo identities in a separate profile so `ready` and the application
+  # can start independently. The production deploy workflow invokes this
+  # profile explicitly after the stack is up; local `docker compose up` keeps
+  # the base seed-users service unchanged.
   seed-users:
     profiles: ["prod-demo-users"]
     environment:

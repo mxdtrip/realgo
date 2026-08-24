@@ -12,18 +12,16 @@ import { AccountUserMenu } from "./AccountUserMenu";
 const WORD = "realgo";
 const LETTER_COUNT = WORD.length;
 
-// The animated word uses the same monospaced brand font as the top-bar logo.
-// Keep one identical advance slot per letter so every inter-letter interval is
-// equal. The fallback is close to JetBrains Mono 700; the measured value is read
-// from an actual .word-letter probe after fonts load.
-const FALLBACK_MONO_ADVANCE_RATIO = 0.62;
-let monoAdvanceRatio: number | null = null;
+// Measure each glyph so its real advance plus one shared gap controls the row.
+// The fallback matches the monospace logo stack and is replaced after the font
+// finishes loading.
+const FALLBACK_WORD_GLYPH_RATIO = 0.62;
+let wordGlyphRatios: number[] | null = null;
 
-function measureMonoAdvanceRatio(): number | null {
+function measureWordGlyphRatios(): number[] | null {
   if (typeof document === "undefined") return null;
   const probe = document.createElement("span");
   probe.className = "word-letter";
-  probe.textContent = WORD;
   probe.style.position = "fixed";
   probe.style.left = "-10000px";
   probe.style.top = "-10000px";
@@ -38,9 +36,12 @@ function measureMonoAdvanceRatio(): number | null {
   probe.style.visibility = "hidden";
 
   document.body.appendChild(probe);
-  const ratio = probe.getBoundingClientRect().width / LETTER_COUNT / 1000;
+  const ratios = [...WORD].map((letter) => {
+    probe.textContent = letter;
+    return probe.getBoundingClientRect().width / 1000;
+  });
   probe.remove();
-  return Number.isFinite(ratio) && ratio > 0 ? ratio : null;
+  return ratios.every((ratio) => Number.isFinite(ratio) && ratio > 0) ? ratios : null;
 }
 // Keep the intro demonstrative without leaving the hero in an apparently empty
 // state for several seconds on a fresh load.
@@ -116,8 +117,8 @@ function shuffle(order: number[]) {
 function geometry(size: SceneSize) {
   const font = clamp(Math.floor(size.width / 8.2), 54, 132);
   const gap = 0;
-  const advance = (monoAdvanceRatio ?? FALLBACK_MONO_ADVANCE_RATIO) * font;
-  const widths = Array.from({ length: LETTER_COUNT }, () => advance);
+  const ratios = wordGlyphRatios ?? Array.from({ length: LETTER_COUNT }, () => FALLBACK_WORD_GLYPH_RATIO);
+  const widths = ratios.map((ratio) => ratio * font);
   const total = widths.reduce((sum, w) => sum + w, 0) + (LETTER_COUNT - 1) * gap;
 
   return {
@@ -134,8 +135,8 @@ function rowPoses(size: SceneSize, order: number[]) {
   const g = geometry(size);
   let x = g.startX;
 
-  // Advance by one measured monospaced slot per glyph, so every letter interval
-  // is identical and matches the brand wordmark rhythm.
+  // Advance by each glyph's measured width plus one shared gap, so the
+  // proportional landing font keeps a consistent visual rhythm.
   return order.map((key) => {
     const pose = { key, x, y: g.y, rotate: 0, visible: true };
     x += g.widths[key] + g.gap;
@@ -579,13 +580,13 @@ export function SortingMemoryHero() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [size.width, size.height]);
 
-  // Measure the real mono advance once the font is loaded, then bump the
-  // version so the gathered word re-lays out with equal brand-font spacing.
+  // Measure every glyph once the font is loaded, then bump the version so the
+  // gathered word re-lays out with consistent proportional-font spacing.
   useEffect(() => {
     const apply = () => {
-      const ratio = measureMonoAdvanceRatio();
-      if (ratio) {
-        monoAdvanceRatio = ratio;
+      const ratios = measureWordGlyphRatios();
+      if (ratios) {
+        wordGlyphRatios = ratios;
         setMetricsVersion((value) => value + 1);
       }
     };
@@ -730,7 +731,6 @@ export function SortingMemoryHero() {
         <div className="hero-cta">
           <a href="/register?intent=hero">
             {keepShortWords(copy.cta)}
-            <span aria-hidden="true">→</span>
           </a>
         </div>
       </div>

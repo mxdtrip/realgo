@@ -31,30 +31,36 @@ test.describe("landing conversion path", () => {
     await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(2);
   });
 
-  test("keeps CTA centers black and expands the rotating rim symmetrically", async ({ page }) => {
+  test("matches the registration button style and brightens on hover", async ({ page }) => {
     await page.goto("/");
     const cta = page.locator(".hero-cta a").first();
 
-    const readRim = () =>
+    const readStyle = () =>
       cta.evaluate((element) => {
         const style = getComputedStyle(element);
         return {
-          halfSpan: style.getPropertyValue("--landing-cta-rim-blue-half-span").trim(),
-          background: style.backgroundImage,
-          duration: style.animationDuration,
+          background: style.backgroundColor,
+          color: style.color,
+          family: style.fontFamily,
+          size: style.fontSize,
+          weight: style.fontWeight,
         };
       });
 
-    const initial = await readRim();
-    expect(initial.halfSpan).toBe("21deg");
-    expect(initial.background).toMatch(/^linear-gradient\(rgb\(5, 7, 12\)/);
+    const initial = await readStyle();
+    expect(initial).toMatchObject({
+      background: "rgb(47, 129, 247)",
+      color: "rgb(255, 255, 255)",
+      size: "14px",
+      weight: "600",
+    });
+    expect(initial.family).toContain("JetBrains Mono");
 
     await cta.hover();
-    await expect.poll(async () => (await readRim()).halfSpan).toBe("180deg");
-    expect((await readRim()).duration).toBe(initial.duration);
+    await expect.poll(async () => (await readStyle()).background).toBe("rgb(88, 166, 255)");
 
     await page.mouse.move(0, 0);
-    await expect.poll(async () => (await readRim()).halfSpan).toBe("21deg");
+    await expect.poll(async () => (await readStyle()).background).toBe("rgb(47, 129, 247)");
   });
 
   test("moves section 01 through the AI helper into the saved-task state", async ({ page }) => {
@@ -184,6 +190,34 @@ test.describe("landing roadmap interaction", () => {
     }));
 
     expect(firstPosition).not.toEqual(secondPosition);
+  });
+});
+
+test.describe("landing scroll-story stability", () => {
+  test("does not bounce section 01 after an inertial alternating wheel tail", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+
+    const section = page.locator("#memory");
+    const metrics = await section.evaluate((element) => ({
+      top: element.getBoundingClientRect().top + window.scrollY,
+    }));
+
+    await page.evaluate((top) => window.scrollTo(0, top - 160), metrics.top);
+    await page.waitForTimeout(80);
+    await page.mouse.wheel(0, 900);
+    await page.waitForTimeout(1600);
+
+    for (let index = 0; index < 18; index += 1) {
+      await page.mouse.wheel(0, index % 2 === 0 ? 40 : -40);
+      await page.waitForTimeout(85);
+    }
+
+    const settled = await section.evaluate((element) => element.style.getPropertyValue("--memory-journey-shift"));
+    await page.waitForTimeout(1800);
+    await expect
+      .poll(() => section.evaluate((element) => element.style.getPropertyValue("--memory-journey-shift")))
+      .toBe(settled);
   });
 });
 

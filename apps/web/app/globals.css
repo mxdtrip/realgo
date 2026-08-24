@@ -39,8 +39,9 @@
   --success-fg: #3fb950;
 
   /* fonts (variables injected by next/font in layout.tsx) */
-  --font-stack-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-stack-display: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  --font-stack-sans: var(--font-primary), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-stack-display: var(--font-primary), var(--font-display), var(--font-sans), system-ui, sans-serif;
+  --font-stack-italic: var(--font-italic), "Snell Roundhand", Georgia, "Times New Roman", serif;
   --font-stack-mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
   --maxw: 1180px;
@@ -623,7 +624,7 @@ h3 {
   line-height: 1.55;
   text-wrap: balance;
   text-shadow: 0 4px 26px rgba(1, 4, 9, 0.82);
-  background: linear-gradient(90deg, var(--accent-bright) 0%, var(--accent) 100%);
+  background: linear-gradient(90deg, #a9d0ff 0%, #70b2ff 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1015,7 +1016,7 @@ h3 {
 
 .auth-consent span {
   font-family: var(--font-stack-sans);
-  font-size: 12.5px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--text-dim);
 }
@@ -1216,7 +1217,7 @@ h3 {
 }
 
 .section-copy h2 {
-  font-family: var(--font-stack-mono);
+  font-family: var(--font-stack-display);
   font-size: clamp(26px, 3.4vw, 40px);
   line-height: 1.12;
   font-weight: 600;
@@ -1227,11 +1228,17 @@ h3 {
   hyphens: none;
 }
 
+/* Keep section 01's opening statement as a deliberate three-line lockup even
+   with the editorial display font's different glyph widths. */
+.memory-journey__copy--agent h2 {
+  max-width: 410px;
+}
+
 .section-copy h2,
 .roadmap-row strong,
 .review-flip__face h3,
 .faq-question span {
-  word-spacing: -0.33em;
+  word-spacing: normal;
 }
 
 .memory-journey__copy--rating h2 {
@@ -1243,12 +1250,25 @@ h3 {
 }
 
 .memory-journey__script-phrase {
-  font-family: "Snell Roundhand", "Bradley Hand", "Segoe Print", cursive;
+  font-family: var(--font-stack-italic);
   font-size: 1.2em;
   font-style: italic;
   font-weight: 700;
   letter-spacing: -0.025em;
   word-spacing: normal;
+}
+
+.memory-journey__copy--agent .memory-journey__script-phrase {
+  font-size: 1.44em;
+}
+
+.memory-journey__copy--rating .memory-journey__script-phrase {
+  font-size: 1.44em;
+}
+
+.memory-journey .memory-journey__script-phrase {
+  position: relative;
+  top: -5px;
 }
 
 .section-copy p {
@@ -1366,6 +1386,7 @@ h3 {
   --demo-gradient-shift-x: 0px;
   --demo-gradient-shift-y: 0px;
   --demo-gradient-angle: 128deg;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   position: relative;
   isolation: isolate;
   border: 1px solid transparent;
@@ -1920,7 +1941,7 @@ h3 {
 }
 
 .review-flip__face h3 {
-  font-family: var(--font-stack-mono);
+  font-family: var(--font-stack-display);
   font-size: 17px;
   line-height: 1.35;
   font-weight: 600;
@@ -1942,7 +1963,7 @@ h3 {
 
 .price-card strong {
   display: block;
-  font-family: var(--font-stack-mono);
+  font-family: var(--font-stack-display);
   font-size: 38px;
   font-weight: 600;
   letter-spacing: 0;
@@ -8518,7 +8539,7 @@ a.roadmap-step__practice-card:hover {
 
 .faq-question span {
   min-width: 0;
-  font-family: var(--font-stack-mono);
+  font-family: var(--font-stack-display);
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0;
@@ -12121,4 +12142,82 @@ a.roadmap-step__practice-card:hover {
   background: var(--accent-bright);
   color: #ffffff;
   box-shadow: none;
+}
+
+/* Pricing cards keep the original landing typography while the rest of the
+   page experiments with the editorial Cormorant family. */
+#pricing .price-card {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+#pricing .price-card > span,
+#pricing .price-card > strong,
+#pricing .price-card > .price-cta {
+  font-family: var(--font-stack-mono);
+}
+
+/* Keep every landing control bold while preserving the fixed header's
+   existing button weights. This final rule intentionally follows the more
+   specific component rules above. */
+button:not(.site-strip button),
+.hero-cta a,
+.landing-cta__button,
+.price-cta {
+  font-weight: 700;
+}
+
+button:not(.site-strip button) {
+  font-weight: 700 !important;
+}
+
+#pricing .price-card > .price-cta {
+  font-weight: 700;
+}
+
+/* All conversion CTAs share the header's registration treatment: solid accent
+   blue, white JetBrains Mono label and a slightly larger 14px/600 typography. Keep
+   each CTA's existing landing dimensions and reveal motion. */
+.hero-cta a,
+.landing-cta__button,
+.price-cta {
+  border: 0;
+  background: var(--accent);
+  color: #ffffff;
+  font-family: var(--font-stack-mono);
+  font-size: 14px;
+  font-weight: 600;
+  animation: none;
+  box-shadow: none;
+}
+
+.hero-cta a:hover,
+.landing-cta__button:hover,
+.price-cta:hover {
+  border: 0;
+  background: var(--accent-bright);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+#pricing .price-card > .price-cta {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.landing-cta__icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* CTA labels stand on their own without decorative arrow suffixes. */
+.hero-cta a span,
+.landing-cta__button span,
+.price-cta::after {
+  content: none;
+  display: none;
 }
