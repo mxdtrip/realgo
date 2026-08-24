@@ -65,6 +65,18 @@ function send(res, status, obj) {
 const ok = (res, data) => send(res, 200, { data });
 const fail = (res, status, code, message) => send(res, status, { error: { code, message } });
 
+function parseMultipartReport(raw, contentType) {
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/);
+  const boundary = boundaryMatch?.[1] ?? boundaryMatch?.[2];
+  if (!boundary) return {};
+  for (const part of raw.split(`--${boundary}`)) {
+    if (!part.includes('name="report"')) continue;
+    const [, payload = ""] = part.split("\r\n\r\n");
+    return JSON.parse(payload.replace(/\r\n--$/, "").trim());
+  }
+  return {};
+}
+
 // Small deterministic Realgo Taxonomy slice for the /patterns e2e specs.
 const stubStats = (over = {}) => ({
   problem_count: 0,
@@ -553,7 +565,12 @@ const server = createServer((req, res) => {
   req.on("end", () => {
     let body = {};
     try {
-      body = raw ? JSON.parse(raw) : {};
+      const contentType = req.headers["content-type"] ?? "";
+      body = raw && contentType.includes("multipart/form-data")
+        ? parseMultipartReport(raw, contentType)
+        : raw
+          ? JSON.parse(raw)
+          : {};
     } catch {
       /* leave body empty */
     }
@@ -609,6 +626,9 @@ const server = createServer((req, res) => {
     if (req.method === "POST" && path === `${PREFIX}/me/problem-reports`) {
       const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
       if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
+      if ((req.headers["content-type"] ?? "").includes("multipart/form-data") && !raw.includes('name="attachment"; filename=')) {
+        return fail(res, 400, "validation_error", "stub: missing attachment");
+      }
       if (body.schemaVersion !== 2 || typeof body.description !== "string") {
         return fail(res, 400, "validation_error", "stub: invalid report");
       }

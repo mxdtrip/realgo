@@ -20,9 +20,10 @@ func (r *pgRepository) Create(ctx context.Context, userID int64, input CreateInp
 		UserID: userID, SchemaVersion: input.SchemaVersion, Description: input.Description,
 		Diagnostics: input.Diagnostics, Fingerprint: input.Fingerprint,
 		ReleaseVersion: optionalText(input.ReleaseVersion), CommitSha: optionalText(input.CommitSHA),
-		SourceRequestID: input.SourceRequestID, Screenshot: input.Screenshot,
-		ScreenshotMime:  optionalText(input.ScreenshotMIME),
-		ScreenshotWidth: optionalInt4(input.ScreenshotWidth), ScreenshotHeight: optionalInt4(input.ScreenshotHeight),
+		SourceRequestID: input.SourceRequestID, Attachment: input.Attachment,
+		AttachmentMime:     optionalText(input.AttachmentMIME),
+		AttachmentFilename: optionalText(input.AttachmentName),
+		AttachmentSize:     optionalInt4(input.AttachmentSize),
 	})
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("reports: create: %w", err)

@@ -74,6 +74,8 @@ services:
   # caddy on :8081 (PUBLIC_PORT follows API_PORT, overridden below).
   ready:
     depends_on: !override
+      startup-clock:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
       api:

@@ -19,7 +19,7 @@ func DecodeStrict(w http.ResponseWriter, r *http.Request, dst any, code string) 
 }
 
 // DecodeStrictLimit is DecodeStrict with an endpoint-specific body limit.
-// Large-but-bounded payloads (for example an explicitly attached screenshot)
+// Large-but-bounded payloads (for example a compact diagnostic report)
 // can opt in without relaxing the default for every JSON endpoint.
 func DecodeStrictLimit(w http.ResponseWriter, r *http.Request, dst any, code string, maxBodyBytes int64) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)

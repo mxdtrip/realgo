@@ -12,7 +12,7 @@ import (
 
 const retentionCleanupInterval = 24 * time.Hour
 
-// RunRetentionCleanup removes screenshot bytes after 30 days and complete
+// RunRetentionCleanup removes attachment bytes after 30 days and complete
 // reports after 90 days. It runs immediately at startup, then daily, and exits
 // with the application context. Failures are logged and retried next cycle;
 // they must not make the API unavailable.
@@ -22,9 +22,9 @@ func RunRetentionCleanup(ctx context.Context, pool *pgxpool.Pool, logger *slog.L
 	}
 	queries := db.New(pool)
 	cleanup := func() {
-		screenshots, err := queries.ClearExpiredProblemReportScreenshots(ctx)
+		attachments, err := queries.ClearExpiredProblemReportAttachments(ctx)
 		if err != nil {
-			logger.Error("problem report screenshot cleanup failed", slog.Any("err", err))
+			logger.Error("problem report attachment cleanup failed", slog.Any("err", err))
 			return
 		}
 		reports, err := queries.DeleteExpiredProblemReports(ctx)
@@ -32,9 +32,9 @@ func RunRetentionCleanup(ctx context.Context, pool *pgxpool.Pool, logger *slog.L
 			logger.Error("problem report cleanup failed", slog.Any("err", err))
 			return
 		}
-		if screenshots > 0 || reports > 0 {
+		if attachments > 0 || reports > 0 {
 			logger.Info("problem report retention cleanup completed",
-				slog.Int64("screenshots_cleared", screenshots),
+				slog.Int64("attachments_cleared", attachments),
 				slog.Int64("reports_deleted", reports),
 			)
 		}
