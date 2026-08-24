@@ -34,6 +34,21 @@ jobs:
           # (see docker-compose.staging.yml), so nothing would consume it.
         run: |
           docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo pull --ignore-buildable || true
+
+          # A previous staging deploy could have applied a one-shot migration
+          # and then exited before its rollback metadata was present. Repair
+          # only that dirty marker; never force a clean database (especially a
+          # fresh one) because that would skip schema creation.
+          migration_state="$(docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo run --rm --no-deps migrate version 2>&1 || true)"
+          if printf '%s\n' "$migration_state" | grep -q 'Dirty database version'; then
+            dirty_version="$(printf '%s\n' "$migration_state" | sed -nE 's/.*Dirty database version ([0-9]+).*/\1/p' | head -n 1)"
+            if [ -n "$dirty_version" ] && [ "$dirty_version" -gt 0 ]; then
+              force_version=$((dirty_version - 1))
+              echo "Repairing dirty staging migration marker: $dirty_version -> $force_version"
+              docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo run --rm --no-deps migrate force "$force_version"
+            fi
+          fi
+
           docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo up -d --build --remove-orphans
 
           # Caddy parses its Caddyfile ONCE, at process start. The file is a

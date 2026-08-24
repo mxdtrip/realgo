@@ -1,0 +1,3 @@
+-- The deduplication is a one-way data repair. There is intentionally no
+-- reverse operation: restoring duplicate admin rows would make the menu
+-- ambiguous and is not safe for a deployed database.
