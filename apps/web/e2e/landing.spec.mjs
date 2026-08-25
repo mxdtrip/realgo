@@ -50,6 +50,7 @@ test.describe("landing conversion path", () => {
           borderColor: style.borderColor,
           borderStyle: style.borderStyle,
           borderWidth: style.borderWidth,
+          radius: style.borderRadius,
           color: style.color,
           family: style.fontFamily,
           size: style.fontSize,
@@ -62,6 +63,7 @@ test.describe("landing conversion path", () => {
       backgroundImage: expect.stringContaining("linear-gradient"),
       borderStyle: "none",
       borderWidth: "0px",
+      radius: "8px",
       color: "rgb(255, 255, 255)",
       size: "14px",
       weight: "600",
@@ -77,6 +79,7 @@ test.describe("landing conversion path", () => {
     const signup = page.getByRole("button", { name: "Регистрация" });
     if (await signup.count()) {
       await expect(signup).toHaveCSS("background-image", /linear-gradient/);
+      await expect(signup).toHaveCSS("border-radius", "8px");
     }
   });
 
