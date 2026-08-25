@@ -59,26 +59,22 @@ function easeOutQuint(value: number) {
 }
 
 /**
- * One continuous three-column scene:
+ * Two-stage scroll scene:
  *
- *   AI copy | extension window | saved-problem copy
+ *   copy stack | static extension window
  *
- * Scrolling moves the entire track by exactly one column. Because every item
- * belongs to the same transformed grid, the outgoing copy, window and incoming
- * copy can never drift apart or move at different speeds.
+ * The extension window keeps its right-hand position. Scroll gestures only swap
+ * the left text layers in place while the popup content performs its internal
+ * mode transition.
  */
 export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
   const sectionRef = useRef<HTMLElement | null>(null);
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-  const trackRef = useRef<HTMLDivElement | null>(null);
   const [demoMode, setDemoMode] = useState<DemoMode>("agent");
   const modeRef = useRef<DemoMode>("agent");
 
   useEffect(() => {
     const root = sectionRef.current;
-    const viewport = viewportRef.current;
-    const track = trackRef.current;
-    if (!root || !viewport || !track) return;
+    if (!root) return;
 
     const desktop = window.matchMedia("(min-width: 921px)");
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -119,13 +115,14 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
         1,
       );
       sceneProgress = progress;
-      const gap = Number.parseFloat(window.getComputedStyle(track).columnGap) || 0;
-      const columnWidth = (track.clientWidth - gap) / 2;
-      const shift = progress * (columnWidth + gap);
+      const copyProgress = easeInOutCubic(progress);
       const agentExit = easeInQuint(clamp(modeProgress / 0.68, 0, 1));
       const ratingEnter = easeOutQuint(clamp((modeProgress - 0.32) / 0.68, 0, 1));
 
-      root.style.setProperty("--memory-journey-shift", `${-shift}px`);
+      root.style.setProperty("--memory-agent-copy-opacity", `${1 - copyProgress}`);
+      root.style.setProperty("--memory-rating-copy-opacity", `${copyProgress}`);
+      root.style.setProperty("--memory-agent-copy-blur", `${copyProgress * 7}px`);
+      root.style.setProperty("--memory-rating-copy-blur", `${(1 - copyProgress) * 7}px`);
       root.style.setProperty("--memory-agent-header-y", `${-62 * agentExit}px`);
       root.style.setProperty("--memory-agent-task-x", `${-430 * agentExit}px`);
       root.style.setProperty("--memory-agent-messages-x", `${430 * agentExit}px`);
@@ -502,22 +499,32 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
           {keepShortWords(section.kicker)}
         </div>
 
-        <div className="memory-journey__viewport" ref={viewportRef}>
-          <div className="memory-journey__track" ref={trackRef}>
-            <div className="section-copy memory-journey__copy memory-journey__copy--agent">
-              <h2>{keepShortWords(section.agentTitle)}</h2>
-              <p>{keepShortWords(section.agentDescription)}</p>
-              <LandingCTA label={section.agentCta} intent="memory-agent" />
+        <div className="memory-journey__viewport">
+          <div className="memory-journey__track">
+            <div className="memory-journey__copy-stack">
+              <div
+                aria-hidden={demoMode !== "agent"}
+                className="section-copy memory-journey__copy memory-journey__copy--agent"
+                data-active={demoMode === "agent"}
+              >
+                <h2>{keepShortWords(section.agentTitle)}</h2>
+                <p>{keepShortWords(section.agentDescription)}</p>
+                <LandingCTA label={section.agentCta} intent="memory-agent" />
+              </div>
+
+              <div
+                aria-hidden={demoMode !== "rating"}
+                className="section-copy memory-journey__copy memory-journey__copy--rating"
+                data-active={demoMode === "rating"}
+              >
+                <h2>{keepShortWords(section.title)}</h2>
+                <p>{keepShortWords(section.description)}</p>
+                <LandingCTA label={section.cta} intent="memory" />
+              </div>
             </div>
 
             <div className="memory-ext-demo memory-journey__demo">
               <MemoryExtensionDemo activeMode={demoMode} />
-            </div>
-
-            <div className="section-copy memory-journey__copy memory-journey__copy--rating">
-              <h2>{keepShortWords(section.title)}</h2>
-              <p>{keepShortWords(section.description)}</p>
-              <LandingCTA label={section.cta} intent="memory" />
             </div>
           </div>
         </div>

@@ -37,7 +37,7 @@ test.describe("landing conversion path", () => {
     await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(2);
   });
 
-  test("matches the registration button style and brightens on hover", async ({ page }) => {
+  test("matches the landing CTA treatment and brightens on hover", async ({ page }) => {
     await page.goto("/");
     const cta = page.locator(".hero-cta a").first();
 
@@ -46,6 +46,7 @@ test.describe("landing conversion path", () => {
         const style = getComputedStyle(element);
         return {
           background: style.backgroundColor,
+          borderColor: style.borderColor,
           color: style.color,
           family: style.fontFamily,
           size: style.fontSize,
@@ -55,7 +56,8 @@ test.describe("landing conversion path", () => {
 
     const initial = await readStyle();
     expect(initial).toMatchObject({
-      background: "rgb(47, 129, 247)",
+      background: "rgb(2, 5, 10)",
+      borderColor: "rgba(88, 166, 255, 0.72)",
       color: "rgb(255, 255, 255)",
       size: "14px",
       weight: "600",
@@ -63,13 +65,13 @@ test.describe("landing conversion path", () => {
     expect(initial.family).toContain("JetBrains Mono");
 
     await cta.hover();
-    await expect.poll(async () => (await readStyle()).background).toBe("rgb(88, 166, 255)");
+    await expect.poll(async () => (await readStyle()).background).toBe("rgb(5, 7, 12)");
 
     await page.mouse.move(0, 0);
-    await expect.poll(async () => (await readStyle()).background).toBe("rgb(47, 129, 247)");
+    await expect.poll(async () => (await readStyle()).background).toBe("rgb(2, 5, 10)");
   });
 
-  test("moves section 01 through the AI helper into the saved-task state", async ({ page }) => {
+  test("keeps section 01 popup static while switching copy into the saved-task state", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
 
@@ -100,9 +102,11 @@ test.describe("landing conversion path", () => {
     await page.waitForTimeout(60);
     await page.mouse.wheel(0, 900);
     await page.waitForTimeout(60);
-    expect(await section.evaluate((element) => element.style.getPropertyValue("--memory-journey-shift"))).toBe(
-      "0px",
-    );
+    expect(
+      Number.parseFloat(
+        await section.evaluate((element) => element.style.getPropertyValue("--memory-rating-copy-opacity") || "0"),
+      ),
+    ).toBe(0);
 
     // A distinct second gesture may begin before anchor one finishes. It must
     // be queued and launch the scene as soon as the anchor settles, without a
@@ -112,11 +116,11 @@ test.describe("landing conversion path", () => {
     await expect
       .poll(() =>
         section.evaluate((element) =>
-          Math.abs(Number.parseFloat(element.style.getPropertyValue("--memory-journey-shift"))),
+          Number.parseFloat(element.style.getPropertyValue("--memory-rating-copy-opacity") || "0"),
         ),
       )
-      .toBeGreaterThan(1);
-    await page.waitForTimeout(1450);
+      .toBeGreaterThan(0.05);
+    await page.waitForTimeout(1000);
 
     await expect(
       page.getByRole("heading", {
@@ -130,7 +134,7 @@ test.describe("landing conversion path", () => {
     );
 
     const finalPopupBox = await popup.boundingBox();
-    expect(finalPopupBox?.x).toBeLessThan(initialPopupBox?.x ?? 0);
+    expect(Math.abs((finalPopupBox?.x ?? 0) - (initialPopupBox?.x ?? 0))).toBeLessThan(1);
     expect(finalPopupBox?.width).toBe(400);
     expect(finalPopupBox?.height).toBe(372);
     await expect(page.locator(".memory-demo-layer--agent")).toHaveCSS("opacity", "1");
@@ -219,10 +223,12 @@ test.describe("landing scroll-story stability", () => {
       await page.waitForTimeout(85);
     }
 
-    const settled = await section.evaluate((element) => element.style.getPropertyValue("--memory-journey-shift"));
+    const settled = await section.evaluate((element) =>
+      element.style.getPropertyValue("--memory-rating-copy-opacity"),
+    );
     await page.waitForTimeout(1800);
     await expect
-      .poll(() => section.evaluate((element) => element.style.getPropertyValue("--memory-journey-shift")))
+      .poll(() => section.evaluate((element) => element.style.getPropertyValue("--memory-rating-copy-opacity")))
       .toBe(settled);
   });
 });

@@ -1116,16 +1116,15 @@ h3 {
   order: 2;
 }
 
-/* Section 01 is a scroll-driven three-column story. At the start the viewport
-   contains AI copy + the extension; at the end it contains that same extension
-   + the original save/rating copy. One transformed track keeps all three
-   elements moving at exactly the same speed. */
+/* Section 01 is a scroll-driven two-stage story. The extension window stays
+   fixed on the right; the left copy layers swap in place while the popup
+   content keeps its internal animation. */
 .memory-journey {
-  --memory-journey-gap: clamp(36px, 6vw, 84px);
-  --memory-mask-gutter: max(24px, calc(var(--memory-journey-gap) - 8px));
-  --memory-track-width: calc(100% - var(--memory-mask-gutter) * 2);
-  --memory-edge-width: var(--memory-mask-gutter);
-  --memory-journey-shift: 0px;
+  --memory-journey-gap: clamp(48px, 7vw, 104px);
+  --memory-agent-copy-opacity: 1;
+  --memory-rating-copy-opacity: 0;
+  --memory-agent-copy-blur: 0px;
+  --memory-rating-copy-blur: 7px;
   --memory-agent-header-y: 0px;
   --memory-agent-task-x: 0px;
   --memory-agent-messages-x: 0px;
@@ -1148,62 +1147,51 @@ h3 {
 
 .memory-journey__viewport {
   position: relative;
-  width: calc(100% + var(--memory-mask-gutter) * 2);
-  margin-left: calc(var(--memory-mask-gutter) * -1);
-  overflow: clip;
+  width: 100%;
+  margin-left: 0;
+  overflow: visible;
 }
 
 .memory-journey__viewport::before,
 .memory-journey__viewport::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  z-index: 5;
-  width: var(--memory-edge-width);
-  opacity: 1;
-  pointer-events: none;
-}
-
-.memory-journey__viewport::before {
-  left: 0;
-  background: linear-gradient(
-    90deg,
-    var(--bg) 0%,
-    var(--bg) 24%,
-    rgba(13, 17, 23, 0.94) 38%,
-    rgba(13, 17, 23, 0.68) 58%,
-    rgba(13, 17, 23, 0.34) 76%,
-    rgba(13, 17, 23, 0) 100%
-  );
-}
-
-.memory-journey__viewport::after {
-  right: 0;
-  background: linear-gradient(
-    270deg,
-    var(--bg) 0%,
-    var(--bg) 24%,
-    rgba(13, 17, 23, 0.94) 38%,
-    rgba(13, 17, 23, 0.68) 58%,
-    rgba(13, 17, 23, 0.34) 76%,
-    rgba(13, 17, 23, 0) 100%
-  );
+  display: none;
 }
 
 .memory-journey__track {
-  width: var(--memory-track-width);
-  margin-inline: auto;
+  width: 100%;
   display: grid;
-  grid-template-columns: repeat(3, calc((100% - var(--memory-journey-gap)) / 2));
+  grid-template-columns: minmax(0, 0.9fr) minmax(400px, 1fr);
   column-gap: var(--memory-journey-gap);
   align-items: center;
-  transform: translate3d(var(--memory-journey-shift), 0, 0);
-  will-change: transform;
+}
+
+.memory-journey__copy-stack {
+  min-width: 0;
+  min-height: clamp(360px, 42vw, 440px);
+  display: grid;
+  align-items: center;
 }
 
 .memory-journey__copy {
+  grid-area: 1 / 1;
   min-width: 0;
+  max-width: 520px;
+  pointer-events: none;
+  will-change: opacity, filter;
+}
+
+.memory-journey__copy[data-active="true"] {
+  pointer-events: auto;
+}
+
+.memory-journey__copy--agent {
+  opacity: var(--memory-agent-copy-opacity);
+  filter: blur(var(--memory-agent-copy-blur));
+}
+
+.memory-journey__copy--rating {
+  opacity: var(--memory-rating-copy-opacity);
+  filter: blur(var(--memory-rating-copy-blur));
 }
 
 .memory-journey__demo {
@@ -1237,10 +1225,6 @@ h3 {
 
 .memory-journey__copy--rating h2 {
   white-space: pre;
-}
-
-.memory-journey__copy--rating {
-  transform: translateX(-40px);
 }
 
 .section-copy p {
@@ -1530,16 +1514,26 @@ h3 {
     margin-inline: 0;
     grid-template-columns: minmax(0, 1fr);
     row-gap: clamp(42px, 8vw, 68px);
-    transform: none;
+  }
+
+  .memory-journey__copy-stack {
+    min-height: 0;
+    display: grid;
+    gap: clamp(42px, 8vw, 68px);
+  }
+
+  .memory-journey__copy,
+  .memory-journey__copy--agent,
+  .memory-journey__copy--rating {
+    grid-area: auto;
+    opacity: 1;
+    filter: none;
+    pointer-events: auto;
     will-change: auto;
   }
 
   .memory-journey__copy--rating h2 {
     white-space: pre-line;
-  }
-
-  .memory-journey__copy--rating {
-    transform: none;
   }
 }
 
@@ -12204,28 +12198,47 @@ button:not(.site-strip button) {
 .hero-cta a,
 .landing-cta__button,
 .price-cta {
-  border: 0;
-  background: var(--accent);
+  border: 1px solid rgba(88, 166, 255, 0.72);
+  background: #02050a;
   color: #ffffff;
   font-family: var(--font-stack-mono);
   font-size: 14px;
   font-weight: 600;
   animation: none;
-  box-shadow: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 16px 38px -26px rgba(47, 129, 247, 0.62);
 }
 
 .hero-cta a:hover,
 .landing-cta__button:hover,
 .price-cta:hover {
-  border: 0;
-  background: var(--accent-bright);
+  border-color: rgba(140, 189, 255, 0.92);
+  background: #05070c;
   color: #ffffff;
-  box-shadow: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 20px 46px -24px rgba(88, 166, 255, 0.64);
 }
 
 #pricing .price-card > .price-cta {
+  border: 1px solid rgba(88, 166, 255, 0.72);
+  background: #02050a;
   font-size: 14px;
   font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 16px 38px -26px rgba(47, 129, 247, 0.62);
+}
+
+#pricing .price-card:hover > .price-cta,
+#pricing .price-card:focus-within > .price-cta {
+  border-color: rgba(140, 189, 255, 0.92);
+  background: #05070c;
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 20px 46px -24px rgba(88, 166, 255, 0.64);
 }
 
 .landing-cta__icon {
