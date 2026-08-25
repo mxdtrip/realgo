@@ -26,22 +26,6 @@ type ScenePhase =
   | "stage-2-ready"
   | "transition-backward";
 
-function renderScriptPhrase(value: string, phrase: string) {
-  const phraseStart = value.indexOf(phrase);
-  if (phraseStart < 0) return keepShortWords(value);
-
-  const before = value.slice(0, phraseStart);
-  const after = value.slice(phraseStart + phrase.length);
-
-  return (
-    <>
-      {keepShortWords(before)}
-      <span className="memory-journey__script-phrase">{keepShortWords(phrase)}</span>
-      {keepShortWords(after)}
-    </>
-  );
-}
-
 const SCENE_TRANSITION_MS = 1350;
 const WINDOW_MODE_TRANSITION_MS = 1050;
 const ANCHOR_EASING = 0.1;
@@ -521,7 +505,7 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
         <div className="memory-journey__viewport" ref={viewportRef}>
           <div className="memory-journey__track" ref={trackRef}>
             <div className="section-copy memory-journey__copy memory-journey__copy--agent">
-              <h2>{renderScriptPhrase(section.agentTitle, "ReAlgo подскажет")}</h2>
+              <h2>{keepShortWords(section.agentTitle)}</h2>
               <p>{keepShortWords(section.agentDescription)}</p>
               <LandingCTA label={section.agentCta} intent="memory-agent" />
             </div>
@@ -531,7 +515,7 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
             </div>
 
             <div className="section-copy memory-journey__copy memory-journey__copy--rating">
-              <h2>{renderScriptPhrase(section.title, "ReAlgo сохраняет то,")}</h2>
+              <h2>{keepShortWords(section.title)}</h2>
               <p>{keepShortWords(section.description)}</p>
               <LandingCTA label={section.cta} intent="memory" />
             </div>

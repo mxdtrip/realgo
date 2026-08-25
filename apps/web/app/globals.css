@@ -1243,28 +1243,6 @@ h3 {
   transform: translateX(-40px);
 }
 
-.memory-journey__script-phrase {
-  font-family: var(--font-stack-italic);
-  font-size: 1.2em;
-  font-style: italic;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  word-spacing: normal;
-}
-
-.memory-journey__copy--agent .memory-journey__script-phrase {
-  font-size: 1.44em;
-}
-
-.memory-journey__copy--rating .memory-journey__script-phrase {
-  font-size: 1.44em;
-}
-
-.memory-journey .memory-journey__script-phrase {
-  position: relative;
-  top: -5px;
-}
-
 .section-copy p {
   margin: 20px 0 0;
   color: var(--text-dim);
