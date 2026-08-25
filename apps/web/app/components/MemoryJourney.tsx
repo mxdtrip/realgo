@@ -58,6 +58,10 @@ function easeOutQuint(value: number) {
   return 1 - (1 - value) ** 5;
 }
 
+function easeResponsiveStart(value: number) {
+  return 1 - (1 - value) ** 3;
+}
+
 /**
  * Two-stage scroll scene:
  *
@@ -123,6 +127,10 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
       root.style.setProperty("--memory-rating-copy-opacity", `${copyProgress}`);
       root.style.setProperty("--memory-agent-copy-blur", `${copyProgress * 7}px`);
       root.style.setProperty("--memory-rating-copy-blur", `${(1 - copyProgress) * 7}px`);
+      root.style.setProperty("--memory-agent-heading-y", `${-42 * copyProgress}px`);
+      root.style.setProperty("--memory-agent-content-y", `${34 * copyProgress}px`);
+      root.style.setProperty("--memory-rating-heading-y", `${-42 * (1 - copyProgress)}px`);
+      root.style.setProperty("--memory-rating-content-y", `${34 * (1 - copyProgress)}px`);
       root.style.setProperty("--memory-agent-header-y", `${-62 * agentExit}px`);
       root.style.setProperty("--memory-agent-task-x", `${-430 * agentExit}px`);
       root.style.setProperty("--memory-agent-messages-x", `${430 * agentExit}px`);
@@ -233,9 +241,9 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
       const tick = (now: number) => {
         if (destroyed) return;
         const elapsed = clamp((now - startedAt) / SCENE_TRANSITION_MS, 0, 1);
-        const eased = easeInOutCubic(elapsed);
+        const eased = easeResponsiveStart(elapsed);
         const progress = fromProgress + (toProgress - fromProgress) * eased;
-        const timelineProgress = targetStage === 1 ? 1 - elapsed : elapsed;
+        const timelineProgress = targetStage === 1 ? 1 - eased : eased;
         const scrollTarget = top + (end - top) * progress;
 
         applyScene(progress, timelineProgress);

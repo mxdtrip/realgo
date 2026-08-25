@@ -1125,6 +1125,10 @@ h3 {
   --memory-rating-copy-opacity: 0;
   --memory-agent-copy-blur: 0px;
   --memory-rating-copy-blur: 7px;
+  --memory-agent-heading-y: 0px;
+  --memory-agent-content-y: 0px;
+  --memory-rating-heading-y: -42px;
+  --memory-rating-content-y: 34px;
   --memory-agent-header-y: 0px;
   --memory-agent-task-x: 0px;
   --memory-agent-messages-x: 0px;
@@ -1192,6 +1196,30 @@ h3 {
 .memory-journey__copy--rating {
   opacity: var(--memory-rating-copy-opacity);
   filter: blur(var(--memory-rating-copy-blur));
+}
+
+.memory-journey__copy h2,
+.memory-journey__copy p,
+.memory-journey__copy .landing-cta {
+  will-change: transform;
+}
+
+.memory-journey__copy--agent h2 {
+  transform: translate3d(0, var(--memory-agent-heading-y), 0);
+}
+
+.memory-journey__copy--agent p,
+.memory-journey__copy--agent .landing-cta {
+  transform: translate3d(0, var(--memory-agent-content-y), 0);
+}
+
+.memory-journey__copy--rating h2 {
+  transform: translate3d(0, var(--memory-rating-heading-y), 0);
+}
+
+.memory-journey__copy--rating p,
+.memory-journey__copy--rating .landing-cta {
+  transform: translate3d(0, var(--memory-rating-content-y), 0);
 }
 
 .memory-journey__demo {
@@ -1529,6 +1557,13 @@ h3 {
     opacity: 1;
     filter: none;
     pointer-events: auto;
+    will-change: auto;
+  }
+
+  .memory-journey__copy h2,
+  .memory-journey__copy p,
+  .memory-journey__copy .landing-cta {
+    transform: none;
     will-change: auto;
   }
 
@@ -12192,14 +12227,13 @@ button:not(.site-strip button) {
   font-weight: 700;
 }
 
-/* All conversion CTAs share the header's registration treatment: solid accent
-   blue, white JetBrains Mono label and a slightly larger 14px/600 typography. Keep
-   each CTA's existing landing dimensions and reveal motion. */
+/* Conversion CTAs keep the landing geometry with a page-background-derived fill
+   that is 20% lighter than --bg (#0d1117 -> #3d4145). */
 .hero-cta a,
 .landing-cta__button,
 .price-cta {
-  border: 1px solid rgba(88, 166, 255, 0.72);
-  background: var(--bg);
+  border: 0;
+  background: #3d4145;
   color: #ffffff;
   font-family: var(--font-stack-mono);
   font-size: 14px;
@@ -12213,8 +12247,8 @@ button:not(.site-strip button) {
 .hero-cta a:hover,
 .landing-cta__button:hover,
 .price-cta:hover {
-  border-color: rgba(140, 189, 255, 0.92);
-  background: var(--bg);
+  border: 0;
+  background: #3d4145;
   color: #ffffff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
@@ -12222,8 +12256,8 @@ button:not(.site-strip button) {
 }
 
 #pricing .price-card > .price-cta {
-  border: 1px solid rgba(88, 166, 255, 0.72);
-  background: var(--bg);
+  border: 0;
+  background: #3d4145;
   font-size: 14px;
   font-weight: 600;
   box-shadow:
@@ -12233,8 +12267,8 @@ button:not(.site-strip button) {
 
 #pricing .price-card:hover > .price-cta,
 #pricing .price-card:focus-within > .price-cta {
-  border-color: rgba(140, 189, 255, 0.92);
-  background: var(--bg);
+  border: 0;
+  background: #3d4145;
   color: #ffffff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
@@ -12260,7 +12294,8 @@ button:not(.site-strip button) {
 }
 
 #faq .landing-cta__button {
-  border: 1px solid rgba(88, 166, 255, 0.72);
+  border: 0;
+  border-radius: 14px;
   background:
     linear-gradient(135deg, #02050a 0%, #07111f 42%, #1457b8 72%, #58a6ff 100%);
   box-shadow:
@@ -12270,7 +12305,7 @@ button:not(.site-strip button) {
 
 #faq .landing-cta__button:hover,
 #faq .landing-cta__button:focus-visible {
-  border-color: rgba(140, 189, 255, 0.92);
+  border: 0;
   background:
     linear-gradient(135deg, #05070c 0%, #0a1830 38%, #236fe0 72%, #79bbff 100%);
   box-shadow:

@@ -47,6 +47,8 @@ test.describe("landing conversion path", () => {
         return {
           background: style.backgroundColor,
           borderColor: style.borderColor,
+          borderStyle: style.borderStyle,
+          borderWidth: style.borderWidth,
           color: style.color,
           family: style.fontFamily,
           size: style.fontSize,
@@ -56,8 +58,9 @@ test.describe("landing conversion path", () => {
 
     const initial = await readStyle();
     expect(initial).toMatchObject({
-      background: "rgb(13, 17, 23)",
-      borderColor: "rgba(88, 166, 255, 0.72)",
+      background: "rgb(61, 65, 69)",
+      borderStyle: "none",
+      borderWidth: "0px",
       color: "rgb(255, 255, 255)",
       size: "14px",
       weight: "600",
@@ -65,10 +68,10 @@ test.describe("landing conversion path", () => {
     expect(initial.family).toContain("JetBrains Mono");
 
     await cta.hover();
-    await expect.poll(async () => (await readStyle()).background).toBe("rgb(13, 17, 23)");
+    await expect.poll(async () => (await readStyle()).background).toBe("rgb(61, 65, 69)");
 
     await page.mouse.move(0, 0);
-    await expect.poll(async () => (await readStyle()).background).toBe("rgb(13, 17, 23)");
+    await expect.poll(async () => (await readStyle()).background).toBe("rgb(61, 65, 69)");
   });
 
   test("keeps section 01 popup static while switching copy into the saved-task state", async ({ page }) => {
@@ -216,7 +219,7 @@ test.describe("landing scroll-story stability", () => {
     await page.evaluate((top) => window.scrollTo(0, top - 160), metrics.top);
     await page.waitForTimeout(80);
     await page.mouse.wheel(0, 900);
-    await page.waitForTimeout(1600);
+    await page.waitForTimeout(2200);
 
     for (let index = 0; index < 18; index += 1) {
       await page.mouse.wheel(0, index % 2 === 0 ? 40 : -40);
@@ -281,6 +284,9 @@ test.describe("landing FAQ", () => {
     const openCount = await page.locator(".faq-item.is-open").count();
     expect(openCount).toBe(0);
     await expect(page.locator("#faq-button-0")).toHaveAttribute("aria-expanded", "false");
+
+    const faqRadius = await page.locator(".faq-item").first().evaluate((element) => getComputedStyle(element).borderRadius);
+    await expect(page.locator("#faq .landing-cta__button")).toHaveCSS("border-radius", faqRadius);
   });
 
   test("clicking a question expands it", async ({ page }) => {
