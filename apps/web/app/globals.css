@@ -3,6 +3,38 @@
    ============================================================ */
 
 @font-face {
+  font-family: "Winston";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://fonts.cdnfonts.com/s/87564/WinstonRegular.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Winston";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("https://fonts.cdnfonts.com/s/87564/WinstonMedium.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Winston";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("https://fonts.cdnfonts.com/s/87564/WinstonSemiBold.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Winston";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("https://fonts.cdnfonts.com/s/87564/WinstonExtraBold.woff") format("woff");
+}
+
+@font-face {
   font-family: "Snell Roundhand";
   src: url("/fonts/SnellRoundhand-Bold.otf") format("opentype");
   font-style: normal;
@@ -39,10 +71,10 @@
   --success-fg: #3fb950;
 
   /* fonts (variables injected by next/font in layout.tsx) */
-  --font-stack-sans: var(--font-primary), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-stack-display: var(--font-primary), var(--font-display), var(--font-sans), system-ui, sans-serif;
-  --font-stack-italic: var(--font-italic), "Snell Roundhand", Georgia, "Times New Roman", serif;
-  --font-stack-mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-stack-sans: "Winston", Arial, sans-serif;
+  --font-stack-display: "Winston", Arial, sans-serif;
+  --font-stack-italic: "Winston", Arial, sans-serif;
+  --font-stack-mono: "Winston", Arial, sans-serif;
 
   --maxw: 1180px;
   --pad: clamp(20px, 5vw, 64px);
@@ -12399,13 +12431,11 @@ button:not(.site-strip button) {
 .site-auth > a.site-auth__cta {
   border: 0;
   border-radius: 8px;
-  background: linear-gradient(110deg, #4a86eb 0%, #315dcc 58%, #2949b7 100%);
+  background: linear-gradient(90deg, rgba(47, 129, 247, 0.9) 0%, rgba(33, 82, 205, 0.9) 100%);
   color: #ffffff;
   font-family: var(--font-stack-sans);
   font-weight: 600;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 14px 30px -18px rgba(47, 129, 247, 0.72);
+  box-shadow: none;
 }
 
 .site-auth > button:first-child,
@@ -12415,13 +12445,11 @@ button:not(.site-strip button) {
 .site-auth .site-auth__dashboard {
   border: 0;
   border-radius: 8px;
-  background: linear-gradient(110deg, #4a86eb 0%, #315dcc 58%, #2949b7 100%);
+  background: linear-gradient(90deg, rgba(47, 129, 247, 0.9) 0%, rgba(33, 82, 205, 0.9) 100%);
   color: #ffffff;
   font-family: var(--font-stack-sans);
   font-weight: 600;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 14px 30px -18px rgba(47, 129, 247, 0.72);
+  box-shadow: none;
 }
 
 .hero-cta a:hover,
@@ -12434,11 +12462,9 @@ button:not(.site-strip button) {
 #faq .landing-cta__button:hover,
 #faq .landing-cta__button:focus-visible {
   border: 0;
-  background: linear-gradient(110deg, #5b93f0 0%, #3b6cda 58%, #3154c4 100%);
+  background: linear-gradient(90deg, rgba(47, 129, 247, 0.9) 0%, rgba(33, 82, 205, 0.9) 100%);
   color: #ffffff;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    0 18px 38px -18px rgba(47, 129, 247, 0.86);
+  box-shadow: none;
 }
 
 .site-auth > button:first-child:hover,
@@ -12447,8 +12473,9 @@ button:not(.site-strip button) {
 .site-auth > a.site-auth__cta:last-child:hover,
 .site-auth .site-auth__dashboard:hover {
   border: 0;
-  background: linear-gradient(110deg, #5b93f0 0%, #3b6cda 58%, #3154c4 100%);
+  background: linear-gradient(90deg, rgba(47, 129, 247, 0.9) 0%, rgba(33, 82, 205, 0.9) 100%);
   color: #ffffff;
+  box-shadow: none;
 }
 
 /* Keep the FAQ CTA aligned with the FAQ cards' existing 14px geometry. */
@@ -12470,6 +12497,12 @@ button:not(.site-strip button) {
 .site-auth > a.site-auth__cta:first-child:hover {
   background: rgba(255, 255, 255, 0.09);
   color: var(--text);
+}
+
+/* Winston is the single typeface for this landing surface. */
+body,
+body * {
+  font-family: "Winston", Arial, sans-serif !important;
 }
 
 @media (min-width: 1600px) {

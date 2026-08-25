@@ -51,6 +51,7 @@ test.describe("landing conversion path", () => {
           borderStyle: style.borderStyle,
           borderWidth: style.borderWidth,
           radius: style.borderRadius,
+          shadow: style.boxShadow,
           color: style.color,
           family: style.fontFamily,
           size: style.fontSize,
@@ -64,11 +65,12 @@ test.describe("landing conversion path", () => {
       borderStyle: "none",
       borderWidth: "0px",
       radius: "8px",
+      shadow: "none",
       color: "rgb(255, 255, 255)",
       size: "14px",
       weight: "600",
     });
-    expect(initial.family).toContain("Inter");
+    expect(initial.family).toContain("Winston");
 
     await cta.hover();
     await expect.poll(async () => (await readStyle()).backgroundImage).toContain("linear-gradient");
