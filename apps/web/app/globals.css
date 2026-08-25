@@ -1932,7 +1932,7 @@ h3 {
 }
 
 .review-flip__face::before {
-  inset: -42%;
+  inset: 0;
   z-index: -1;
   background: conic-gradient(
     from 205deg at 50% 50%,
@@ -1942,7 +1942,7 @@ h3 {
     rgba(47, 129, 247, 0) 360deg
   );
   filter: blur(26px);
-  transform: translate3d(0, 14%, 0) scale(0.82);
+  transform: translate3d(0, 10%, 0) scale(1.05);
 }
 
 .review-flip__face::after {
@@ -12456,6 +12456,20 @@ button:not(.site-strip button) {
 #faq .landing-cta__button:hover,
 #faq .landing-cta__button:focus-visible {
   border-radius: 14px;
+}
+
+/* Login remains the quiet secondary header action; registration keeps the
+   primary blue treatment above. */
+.site-auth > button:first-child,
+.site-auth > a.site-auth__cta:first-child {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-dim);
+}
+
+.site-auth > button:first-child:hover,
+.site-auth > a.site-auth__cta:first-child:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
 }
 
 @media (min-width: 1600px) {

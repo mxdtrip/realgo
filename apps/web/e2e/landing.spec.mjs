@@ -81,6 +81,11 @@ test.describe("landing conversion path", () => {
       await expect(signup).toHaveCSS("background-image", /linear-gradient/);
       await expect(signup).toHaveCSS("border-radius", "8px");
     }
+
+    const login = page.getByRole("button", { name: "Войти" });
+    if (await login.count()) {
+      await expect(login).toHaveCSS("background-color", "rgba(255, 255, 255, 0.05)");
+    }
   });
 
   test("keeps section 01 popup static while switching copy into the saved-task state", async ({ page }) => {
