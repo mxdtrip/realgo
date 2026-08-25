@@ -170,7 +170,7 @@ function MemoryAgentDemo({ active }: { active: boolean }) {
   const [loading, setLoading] = useState(false);
   const [patternUsed, setPatternUsed] = useState(false);
   const timerRef = useRef<number | null>(null);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     return () => {
@@ -179,7 +179,8 @@ function MemoryAgentDemo({ active }: { active: boolean }) {
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "nearest" });
+    const messagesElement = messagesRef.current;
+    if (messagesElement) messagesElement.scrollTop = messagesElement.scrollHeight;
   }, [messages, loading]);
 
   function askHint() {
@@ -263,7 +264,12 @@ function MemoryAgentDemo({ active }: { active: boolean }) {
           </div>
         </div>
 
-        <div className="realgo-agent-messages" role="log" aria-live="polite">
+        <div
+          className="realgo-agent-messages"
+          ref={messagesRef}
+          role="log"
+          aria-live="polite"
+        >
           {messages.length === 0 && !loading ? (
             <article className="realgo-agent-msg realgo-agent-msg--assistant">
               <span className="realgo-agent-msg__role">agent</span>
@@ -293,7 +299,6 @@ function MemoryAgentDemo({ active }: { active: boolean }) {
               думаю над следующей наводкой…
             </div>
           ) : null}
-          <div ref={bottomRef} />
         </div>
 
         <div className="realgo-agent-actions-wrap">

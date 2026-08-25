@@ -8,6 +8,12 @@ test.describe("landing conversion path", () => {
     await expect(page.locator(".word-letter")).toHaveCount(6);
   });
 
+  test("keeps the hero at the top while the extension demo hydrates", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForTimeout(1_500);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  });
+
   test("states the product offer and repeats contextual registration CTAs", async ({ page }) => {
     await page.goto("/");
 
