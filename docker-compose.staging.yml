@@ -14,19 +14,20 @@
 #   - frpc registers its own tunnel proxy (remotePort 8081) and does NOT
 #     carry the homeserver-ssh proxy — prod's frpc already holds :2222.
 #   - fixture jobs stay parked behind an explicit profile; the deploy workflow
-#     runs only the guarded demo-user seed after the application is healthy.
+#     runs only the canonical roadmap/cards and guarded demo-user seeds.
 
 name: realgo-staging
 
 services:
   # Staging's content comes from a restored prod DB snapshot, not from the
   # seed fixtures — so every seed job is parked behind an explicit profile.
-  # The deployment invokes only seed-users as a guarded one-shot: that script
-  # updates rows marked is_demo and refuses to touch a real row using a
-  # reserved demo address. All content seeds remain disabled so restored
-  # production data is never rewritten. Nothing outside this group depends on
-  # them (api/web/caddy only need postgres/redis/migrate), so parking them
-  # changes no other wiring.
+  # The deployment invokes seed-roadmap and seed-cards as source-scoped upserts,
+  # followed by seed-users as a guarded one-shot. The user seed updates rows
+  # marked is_demo and refuses to touch a real row using a reserved demo
+  # address. The larger content seeds remain disabled so restored production
+  # data is never rewritten. Nothing outside this group depends on them
+  # (api/web/caddy only need postgres/redis/migrate), so parking them changes no
+  # other wiring.
   #
   # `migrate` deliberately stays ON: the snapshot carries the schema plus its
   # schema_migrations table, so migrate is a no-op when staging is level with
@@ -69,8 +70,9 @@ services:
   # `docker compose ps presentation`.
 
   # Seed jobs are parked behind the explicit `seeds` profile above. The deploy
-  # workflow runs seed-users separately with --no-deps, so none of them belong
-  # to the long-running stack. depends_on entries merge rather than replace,
+  # workflow runs three narrow seeds separately with --no-deps, so none of them
+  # belong to the long-running stack. depends_on entries merge rather than
+  # replace,
   # which would leave the readiness banner waiting forever on services compose
   # never starts — so the list is restated here with only what staging runs.
   # The banner's own HTTP probes are unaffected: they go through this stack's

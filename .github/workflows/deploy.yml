@@ -52,11 +52,16 @@ jobs:
 
           docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo up -d --build --remove-orphans
 
-          # The staging database is restored from a production snapshot, whose
-          # real rows must never be reset by fixture jobs. Seed only the three
-          # reserved is_demo identities. seed_users.py is transactional,
+          # The staging database may be restored from a deliberately sparse
+          # production snapshot. Ensure the canonical demo problems/cards exist
+          # before creating users; both content seeds upsert their own source
+          # rows and do not reset real users. seed_users.py is transactional,
           # idempotent and refuses to overwrite a non-demo row that happens to
-          # use one of the reserved addresses.
+          # use one of the three reserved addresses.
+          docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile seeds \
+            run --rm --no-deps seed-roadmap
+          docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile seeds \
+            run --rm --no-deps seed-cards
           docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile seeds \
             run --rm --no-deps seed-users
 
