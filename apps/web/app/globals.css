@@ -12505,6 +12505,14 @@ body * {
   font-family: "Winston", Arial, sans-serif !important;
 }
 
+/* The hero's interactive word and source editor keep their original
+   JetBrains Mono treatment for the code-oriented visual language. */
+.word-letter,
+.code-editor,
+.code-editor * {
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace !important;
+}
+
 @media (min-width: 1600px) {
   .hero-cta a,
   .landing-cta__button,

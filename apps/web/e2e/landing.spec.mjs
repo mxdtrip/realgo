@@ -6,6 +6,8 @@ test.describe("landing conversion path", () => {
   test("renders the interactive word on the first client frame", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator(".word-letter")).toHaveCount(6);
+    await expect(page.locator(".word-letter").first()).toHaveCSS("font-family", /JetBrains Mono/);
+    await expect(page.locator(".code-sheet")).toHaveCSS("font-family", /JetBrains Mono/);
   });
 
   test("keeps the hero at the top while the extension demo hydrates", async ({ page }) => {
