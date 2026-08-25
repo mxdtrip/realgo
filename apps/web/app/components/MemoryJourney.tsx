@@ -44,12 +44,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function easeInOutCubic(value: number) {
-  return value < 0.5
-    ? 4 * value * value * value
-    : 1 - Math.pow(-2 * value + 2, 3) / 2;
-}
-
 function easeInQuint(value: number) {
   return value ** 5;
 }
@@ -67,9 +61,9 @@ function easeResponsiveStart(value: number) {
  *
  *   copy stack | static extension window
  *
- * The extension window keeps its right-hand position. Scroll gestures only swap
- * the left text layers in place while the popup content performs its internal
- * mode transition.
+ * The extension window keeps its right-hand position. Scroll gestures move one
+ * vertical copy ribbon on the left while the popup content performs its
+ * internal mode transition.
  */
 export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -119,18 +113,14 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
         1,
       );
       sceneProgress = progress;
-      const copyProgress = easeInOutCubic(progress);
       const agentExit = easeInQuint(clamp(modeProgress / 0.68, 0, 1));
       const ratingEnter = easeOutQuint(clamp((modeProgress - 0.32) / 0.68, 0, 1));
 
-      root.style.setProperty("--memory-agent-copy-opacity", `${1 - copyProgress}`);
-      root.style.setProperty("--memory-rating-copy-opacity", `${copyProgress}`);
-      root.style.setProperty("--memory-agent-copy-blur", `${copyProgress * 7}px`);
-      root.style.setProperty("--memory-rating-copy-blur", `${(1 - copyProgress) * 7}px`);
-      root.style.setProperty("--memory-agent-heading-y", `${-42 * copyProgress}px`);
-      root.style.setProperty("--memory-agent-content-y", `${34 * copyProgress}px`);
-      root.style.setProperty("--memory-rating-heading-y", `${-42 * (1 - copyProgress)}px`);
-      root.style.setProperty("--memory-rating-content-y", `${34 * (1 - copyProgress)}px`);
+      // The copy is one vertical ribbon: the first state leaves through the
+      // top while the second state enters from below. Keep this tied directly
+      // to the scene's scroll progress so the extension window and the copy
+      // arrive at their final positions together.
+      root.style.setProperty("--memory-copy-ribbon-progress", `${progress}`);
       root.style.setProperty("--memory-agent-header-y", `${-62 * agentExit}px`);
       root.style.setProperty("--memory-agent-task-x", `${-430 * agentExit}px`);
       root.style.setProperty("--memory-agent-messages-x", `${430 * agentExit}px`);
@@ -510,24 +500,26 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
         <div className="memory-journey__viewport">
           <div className="memory-journey__track">
             <div className="memory-journey__copy-stack">
-              <div
-                aria-hidden={demoMode !== "agent"}
-                className="section-copy memory-journey__copy memory-journey__copy--agent"
-                data-active={demoMode === "agent"}
-              >
-                <h2>{keepShortWords(section.agentTitle)}</h2>
-                <p>{keepShortWords(section.agentDescription)}</p>
-                <LandingCTA label={section.agentCta} intent="memory-agent" />
-              </div>
+              <div className="memory-journey__copy-ribbon">
+                <div
+                  aria-hidden={demoMode !== "agent"}
+                  className="section-copy memory-journey__copy memory-journey__copy--agent"
+                  data-active={demoMode === "agent"}
+                >
+                  <h2>{keepShortWords(section.agentTitle)}</h2>
+                  <p>{keepShortWords(section.agentDescription)}</p>
+                  <LandingCTA label={section.agentCta} intent="memory-agent" />
+                </div>
 
-              <div
-                aria-hidden={demoMode !== "rating"}
-                className="section-copy memory-journey__copy memory-journey__copy--rating"
-                data-active={demoMode === "rating"}
-              >
-                <h2>{keepShortWords(section.title)}</h2>
-                <p>{keepShortWords(section.description)}</p>
-                <LandingCTA label={section.cta} intent="memory" />
+                <div
+                  aria-hidden={demoMode !== "rating"}
+                  className="section-copy memory-journey__copy memory-journey__copy--rating"
+                  data-active={demoMode === "rating"}
+                >
+                  <h2>{keepShortWords(section.title)}</h2>
+                  <p>{keepShortWords(section.description)}</p>
+                  <LandingCTA label={section.cta} intent="memory" />
+                </div>
               </div>
             </div>
 

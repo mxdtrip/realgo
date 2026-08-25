@@ -1149,18 +1149,11 @@ h3 {
 }
 
 /* Section 01 is a scroll-driven two-stage story. The extension window stays
-   fixed on the right; the left copy layers swap in place while the popup
-   content keeps its internal animation. */
+   fixed on the right; the left copy ribbon moves through one clipped viewport
+   while the popup content keeps its internal animation. */
 .memory-journey {
   --memory-journey-gap: clamp(48px, 7vw, 104px);
-  --memory-agent-copy-opacity: 1;
-  --memory-rating-copy-opacity: 0;
-  --memory-agent-copy-blur: 0px;
-  --memory-rating-copy-blur: 7px;
-  --memory-agent-heading-y: 0px;
-  --memory-agent-content-y: 0px;
-  --memory-rating-heading-y: -42px;
-  --memory-rating-content-y: 34px;
+  --memory-copy-ribbon-progress: 0;
   --memory-agent-header-y: 0px;
   --memory-agent-task-x: 0px;
   --memory-agent-messages-x: 0px;
@@ -1203,55 +1196,31 @@ h3 {
 
 .memory-journey__copy-stack {
   min-width: 0;
-  min-height: clamp(360px, 42vw, 440px);
+  height: clamp(360px, 42vw, 440px);
+  overflow: hidden;
+}
+
+.memory-journey__copy-ribbon {
   display: grid;
-  align-items: center;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  height: 200%;
+  transform: translate3d(0, calc(var(--memory-copy-ribbon-progress) * -50%), 0);
+  will-change: transform;
 }
 
 .memory-journey__copy {
-  grid-area: 1 / 1;
   min-width: 0;
   max-width: 520px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   pointer-events: none;
-  will-change: opacity, filter;
+  will-change: transform;
 }
 
 .memory-journey__copy[data-active="true"] {
   pointer-events: auto;
-}
-
-.memory-journey__copy--agent {
-  opacity: var(--memory-agent-copy-opacity);
-  filter: blur(var(--memory-agent-copy-blur));
-}
-
-.memory-journey__copy--rating {
-  opacity: var(--memory-rating-copy-opacity);
-  filter: blur(var(--memory-rating-copy-blur));
-}
-
-.memory-journey__copy h2,
-.memory-journey__copy p,
-.memory-journey__copy .landing-cta {
-  will-change: transform;
-}
-
-.memory-journey__copy--agent h2 {
-  transform: translate3d(0, var(--memory-agent-heading-y), 0);
-}
-
-.memory-journey__copy--agent p,
-.memory-journey__copy--agent .landing-cta {
-  transform: translate3d(0, var(--memory-agent-content-y), 0);
-}
-
-.memory-journey__copy--rating h2 {
-  transform: translate3d(0, var(--memory-rating-heading-y), 0);
-}
-
-.memory-journey__copy--rating p,
-.memory-journey__copy--rating .landing-cta {
-  transform: translate3d(0, var(--memory-rating-content-y), 0);
 }
 
 .memory-journey__demo {
@@ -1578,14 +1547,23 @@ h3 {
 
   .memory-journey__copy-stack {
     min-height: 0;
+    height: auto;
+    overflow: visible;
     display: grid;
     gap: clamp(42px, 8vw, 68px);
+  }
+
+  .memory-journey__copy-ribbon {
+    height: auto;
+    display: grid;
+    gap: clamp(42px, 8vw, 68px);
+    transform: none;
+    will-change: auto;
   }
 
   .memory-journey__copy,
   .memory-journey__copy--agent,
   .memory-journey__copy--rating {
-    grid-area: auto;
     opacity: 1;
     filter: none;
     pointer-events: auto;

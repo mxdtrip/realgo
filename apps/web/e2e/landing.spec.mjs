@@ -125,7 +125,7 @@ test.describe("landing conversion path", () => {
     await page.waitForTimeout(60);
     expect(
       Number.parseFloat(
-        await section.evaluate((element) => element.style.getPropertyValue("--memory-rating-copy-opacity") || "0"),
+        await section.evaluate((element) => element.style.getPropertyValue("--memory-copy-ribbon-progress") || "0"),
       ),
     ).toBe(0);
 
@@ -137,7 +137,7 @@ test.describe("landing conversion path", () => {
     await expect
       .poll(() =>
         section.evaluate((element) =>
-          Number.parseFloat(element.style.getPropertyValue("--memory-rating-copy-opacity") || "0"),
+          Number.parseFloat(element.style.getPropertyValue("--memory-copy-ribbon-progress") || "0"),
         ),
       )
       .toBeGreaterThan(0.05);
@@ -245,11 +245,11 @@ test.describe("landing scroll-story stability", () => {
     }
 
     const settled = await section.evaluate((element) =>
-      element.style.getPropertyValue("--memory-rating-copy-opacity"),
+      element.style.getPropertyValue("--memory-copy-ribbon-progress"),
     );
     await page.waitForTimeout(1800);
     await expect
-      .poll(() => section.evaluate((element) => element.style.getPropertyValue("--memory-rating-copy-opacity")))
+      .poll(() => section.evaluate((element) => element.style.getPropertyValue("--memory-copy-ribbon-progress")))
       .toBe(settled);
   });
 });
