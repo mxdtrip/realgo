@@ -12255,10 +12255,12 @@ button:not(.site-strip button) {
     0 20px 46px -24px rgba(88, 166, 255, 0.64);
 }
 
+.site-auth > button:last-child,
 .site-auth > a.site-auth__cta:last-child {
   background: #373b3e;
 }
 
+.site-auth > button:last-child:hover,
 .site-auth > a.site-auth__cta:last-child:hover {
   background: #373b3e;
 }

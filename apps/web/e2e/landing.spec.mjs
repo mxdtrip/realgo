@@ -73,7 +73,7 @@ test.describe("landing conversion path", () => {
     await page.mouse.move(0, 0);
     await expect.poll(async () => (await readStyle()).background).toBe("rgb(55, 59, 62)");
 
-    const signup = page.locator('.site-auth__cta[href="/register"]');
+    const signup = page.getByRole("button", { name: "Регистрация" });
     if (await signup.count()) {
       await expect(signup).toHaveCSS("background-color", "rgb(55, 59, 62)");
     }
