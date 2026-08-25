@@ -1904,15 +1904,80 @@ h3 {
   border-radius: 14px;
   padding: 26px;
   background: var(--panel);
+  isolation: isolate;
+  box-shadow:
+    0 3px 6px rgba(1, 4, 9, 0.18),
+    0 8px 15px rgba(1, 4, 9, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   transition:
     background 0.28s ease,
+    box-shadow 0.28s ease,
     visibility 0s linear 0.34s;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
 
+/* Card hover treatment adapted from the referenced CodePen: a soft conic
+   shine and a faint technical grid appear under the existing card content. */
+.review-flip__face::before,
+.review-flip__face::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+
+.review-flip__face::before {
+  inset: -42%;
+  z-index: -1;
+  background: conic-gradient(
+    from 205deg at 50% 50%,
+    rgba(47, 129, 247, 0) 0deg,
+    rgba(88, 166, 255, 0.9) 28deg,
+    rgba(88, 166, 255, 0.16) 300deg,
+    rgba(47, 129, 247, 0) 360deg
+  );
+  filter: blur(26px);
+  transform: translate3d(0, 14%, 0) scale(0.82);
+}
+
+.review-flip__face::after {
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(rgba(88, 166, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(88, 166, 255, 0.12) 1px, transparent 1px);
+  background-size: 27.5% 32.5%;
+  mask-image: radial-gradient(circle at 60% 5%, #000 0%, #000 16%, transparent 64%);
+  -webkit-mask-image: radial-gradient(circle at 60% 5%, #000 0%, #000 16%, transparent 64%);
+  transform: scale(0.94);
+}
+
+.review-flip__face > * {
+  position: relative;
+  z-index: 1;
+}
+
 .review-flip__card:hover .review-flip__face {
   background: var(--panel-strong);
+  box-shadow:
+    0 5px 10px rgba(1, 4, 9, 0.2),
+    0 15px 25px rgba(1, 4, 9, 0.34),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.review-flip__card:hover .review-flip__face::before {
+  opacity: 0.58;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.review-flip__card:hover .review-flip__face::after {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .review-flip__face[aria-hidden="true"] {
@@ -12321,4 +12386,74 @@ button:not(.site-strip button) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
     0 22px 52px -22px rgba(88, 166, 255, 0.74);
+}
+
+/* Unified primary action treatment: blue diagonal gradient, pill corners and
+   the same sans-serif label as the reference button. */
+.hero-cta a,
+.landing-cta__button,
+.price-cta,
+#pricing .price-card > .price-cta,
+#faq .landing-cta__button,
+.site-auth > button,
+.site-auth > a.site-auth__cta {
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(110deg, #4a86eb 0%, #315dcc 58%, #2949b7 100%);
+  color: #ffffff;
+  font-family: var(--font-stack-sans);
+  font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 14px 30px -18px rgba(47, 129, 247, 0.72);
+}
+
+.site-auth > button:first-child,
+.site-auth > button:last-child,
+.site-auth > a.site-auth__cta:first-child,
+.site-auth > a.site-auth__cta:last-child,
+.site-auth .site-auth__dashboard {
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(110deg, #4a86eb 0%, #315dcc 58%, #2949b7 100%);
+  color: #ffffff;
+  font-family: var(--font-stack-sans);
+  font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 14px 30px -18px rgba(47, 129, 247, 0.72);
+}
+
+.hero-cta a:hover,
+.landing-cta__button:hover,
+.price-cta:hover,
+.site-auth > button:hover,
+.site-auth > a.site-auth__cta:hover,
+#pricing .price-card:hover > .price-cta,
+#pricing .price-card:focus-within > .price-cta,
+#faq .landing-cta__button:hover,
+#faq .landing-cta__button:focus-visible {
+  border: 0;
+  background: linear-gradient(110deg, #5b93f0 0%, #3b6cda 58%, #3154c4 100%);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 18px 38px -18px rgba(47, 129, 247, 0.86);
+}
+
+.site-auth > button:first-child:hover,
+.site-auth > button:last-child:hover,
+.site-auth > a.site-auth__cta:first-child:hover,
+.site-auth > a.site-auth__cta:last-child:hover,
+.site-auth .site-auth__dashboard:hover {
+  border: 0;
+  background: linear-gradient(110deg, #5b93f0 0%, #3b6cda 58%, #3154c4 100%);
+  color: #ffffff;
+}
+
+/* Keep the FAQ CTA aligned with the FAQ cards' existing 14px geometry. */
+#faq .landing-cta__button,
+#faq .landing-cta__button:hover,
+#faq .landing-cta__button:focus-visible {
+  border-radius: 14px;
 }

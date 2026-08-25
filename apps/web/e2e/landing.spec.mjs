@@ -46,6 +46,7 @@ test.describe("landing conversion path", () => {
         const style = getComputedStyle(element);
         return {
           background: style.backgroundColor,
+          backgroundImage: style.backgroundImage,
           borderColor: style.borderColor,
           borderStyle: style.borderStyle,
           borderWidth: style.borderWidth,
@@ -58,24 +59,24 @@ test.describe("landing conversion path", () => {
 
     const initial = await readStyle();
     expect(initial).toMatchObject({
-      background: "rgb(55, 59, 62)",
+      backgroundImage: expect.stringContaining("linear-gradient"),
       borderStyle: "none",
       borderWidth: "0px",
       color: "rgb(255, 255, 255)",
       size: "14px",
       weight: "600",
     });
-    expect(initial.family).toContain("JetBrains Mono");
+    expect(initial.family).toContain("Inter");
 
     await cta.hover();
-    await expect.poll(async () => (await readStyle()).background).toBe("rgb(55, 59, 62)");
+    await expect.poll(async () => (await readStyle()).backgroundImage).toContain("linear-gradient");
 
     await page.mouse.move(0, 0);
-    await expect.poll(async () => (await readStyle()).background).toBe("rgb(55, 59, 62)");
+    await expect.poll(async () => (await readStyle()).backgroundImage).toContain("linear-gradient");
 
     const signup = page.getByRole("button", { name: "Регистрация" });
     if (await signup.count()) {
-      await expect(signup).toHaveCSS("background-color", "rgb(55, 59, 62)");
+      await expect(signup).toHaveCSS("background-image", /linear-gradient/);
     }
   });
 
