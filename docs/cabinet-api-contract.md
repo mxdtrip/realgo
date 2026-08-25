@@ -425,6 +425,11 @@ scheduler**, поэтому одна и та же конфигурация па�
 глобальных параметров FSRS (`request_retention`, `maximum_interval`,
 `enable_fuzz`, `enable_short_term`).
 
+`reviewedAt` нормализуется сервером: метка в будущем (свыше 60 с допуска
+на clock skew) приводится к серверному `now`; метка раньше `last_review_at`
+— к `last_review_at` (повтор считается с elapsed=0, запрос не отклоняется).
+Прошлые метки легитимны — оффлайн-очередь расширения.
+
 Параметры FSRS конфигурируются на стороне backend (секция `fsrs` в
 `config.yaml`, env `FSRS_*`; дефолты совпадают с `go-fsrs.DefaultParam`).
 Per-user оптимизация весов FSRS в текущей реализации отсутствует.

@@ -3,5 +3,16 @@
 .env.*
 config.yaml
 bin/
+queries/
+scripts/
+seeds/
+internal/integration/
+internal/testutil/
+**/*_test.go
+acceptance_test.go
+README.md
+Taskfile.yml
+Makefile
+sqlc.yaml
 *.test
 *.out

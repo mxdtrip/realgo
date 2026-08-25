@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,6 +43,35 @@ func TestHandlerCreatesReportWithRequestID(t *testing.T) {
 	require.Equal(t, http.StatusCreated, w.Code)
 	require.Equal(t, "request-report", repo.input.SourceRequestID)
 	require.Contains(t, w.Body.String(), `"reportId":"12b3b7f9-7b92-4ea6-b745-7ae9c0199a92"`)
+}
+
+func TestHandlerCreatesMultipartReportWithAttachment(t *testing.T) {
+	repo := &fakeRepository{}
+	h := NewHandler(repo)
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	reportPart, err := writer.CreateFormField("report")
+	require.NoError(t, err)
+	require.NoError(t, json.NewEncoder(reportPart).Encode(validRequest()))
+	filePart, err := writer.CreateFormFile("attachment", "console.log")
+	require.NoError(t, err)
+	_, err = filePart.Write([]byte("loading never finished"))
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/problem-reports", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	ctx := auth.ContextWithUserID(req.Context(), 42)
+	ctx = context.WithValue(ctx, middleware.RequestIDKey, "request-report")
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	h.Create(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code)
+	require.Equal(t, []byte("loading never finished"), repo.input.Attachment)
+	require.Equal(t, "console.log", repo.input.AttachmentName)
+	require.Equal(t, "text/plain", repo.input.AttachmentMIME)
 }
 
 func TestHandlerRejectsUnknownFields(t *testing.T) {

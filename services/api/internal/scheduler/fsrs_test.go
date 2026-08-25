@@ -205,3 +205,56 @@ func TestNewFromConfig_DefaultsMatchOldConstructor(t *testing.T) {
 		}
 	}
 }
+
+// TestNextWithStateClampsReviewedAt — инвариант на уровне адаптера:
+// NextWithState нормализует клиентскую метку через clampReviewTime, поэтому
+// все пути планирования, идущие через scheduler, наследуют clamp без
+// собственных проверок. Будущая метка эквивалентна now, метка раньше
+// LastReview — LastReview (elapsed=0).
+func TestNextWithStateClampsReviewedAt(t *testing.T) {
+	s := scheduler.NewFSRSAdapter()
+
+	t.Run("метка в будущем эквивалентна now", func(t *testing.T) {
+		state := scheduler.SchedulerState{}
+		now := time.Now().UTC()
+		future, err := s.NextWithState(state, scheduler.RatingNormal, now.Add(time.Hour*24))
+		if err != nil {
+			t.Fatalf("NextWithState: unexpected error: %v", err)
+		}
+		honest, err := s.NextWithState(state, scheduler.RatingNormal, now)
+		if err != nil {
+			t.Fatalf("NextWithState: unexpected error: %v", err)
+		}
+		if diff := future.NextReviewAt.Sub(honest.NextReviewAt); diff > 2*time.Second || diff < -2*time.Second {
+			t.Errorf("метка в будущем должна клампиться к now: rate(now+24h) дал NextReviewAt=%v, rate(now) дал %v, расхождение %v",
+				future.NextReviewAt, honest.NextReviewAt, diff)
+		}
+	})
+
+	t.Run("метка раньше LastReview эквивалентна LastReview", func(t *testing.T) {
+		now := time.Now().UTC()
+		last := now.Add(-time.Hour)
+		state := scheduler.SchedulerState{
+			Stability:     5.0,
+			Difficulty:    5.5,
+			ScheduledDays: 3,
+			Reps:          2,
+			Lapses:        0,
+			State:         2, // Review
+			LastReview:    last,
+			Due:           now.Add(-24 * time.Hour),
+		}
+		past, err := s.NextWithState(state, scheduler.RatingNormal, last.Add(-24*time.Hour))
+		if err != nil {
+			t.Fatalf("NextWithState: unexpected error: %v", err)
+		}
+		atLast, err := s.NextWithState(state, scheduler.RatingNormal, last)
+		if err != nil {
+			t.Fatalf("NextWithState: unexpected error: %v", err)
+		}
+		if diff := past.NextReviewAt.Sub(atLast.NextReviewAt); diff > 2*time.Second || diff < -2*time.Second {
+			t.Errorf("метка раньше LastReview должна клампиться к LastReview (elapsed=0): rate(last-24h) дал NextReviewAt=%v, rate(last) дал %v, расхождение %v",
+				past.NextReviewAt, atLast.NextReviewAt, diff)
+		}
+	})
+}

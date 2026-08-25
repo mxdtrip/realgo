@@ -12,7 +12,14 @@
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 	}
-	reverse_proxy frps:8080
+	@admin path /admin /admin/*
+	handle @admin {
+		respond 404
+	}
+
+	handle {
+		reverse_proxy frps:8080
+	}
 }
 
 # Staging edge: same VPS/frps, routes to the isolated realgo-staging stack on
@@ -28,7 +35,14 @@ staging.realgo.dev {
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 	}
-	reverse_proxy frps:8081
+	@admin path /admin /admin/*
+	handle @admin {
+		respond 404
+	}
+
+	handle {
+		reverse_proxy frps:8081
+	}
 }
 
 # Test alias for the isolated staging stack. Keep it out of search indexes so

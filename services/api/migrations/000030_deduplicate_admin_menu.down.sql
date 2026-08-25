@@ -1,3 +1,6 @@
--- The deduplication is a one-way data repair. There is intentionally no
--- reverse operation: restoring duplicate admin rows would make the menu
--- ambiguous and is not safe for a deployed database.
+BEGIN;
+
+DROP INDEX IF EXISTS goadmin_role_menu_role_id_menu_id_unique;
+DROP INDEX IF EXISTS goadmin_menu_uuid_unique;
+
+COMMIT;

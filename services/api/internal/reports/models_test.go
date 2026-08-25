@@ -2,12 +2,10 @@ package reports
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"image"
 	"image/color"
 	"image/jpeg"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -28,13 +26,13 @@ func validRequest() Request {
 	}
 }
 
-func TestNormalizeBuildsServerFingerprintAndDropsScreenshotDataFromDiagnostics(t *testing.T) {
+func TestNormalizeBuildsServerFingerprintAndDropsAttachmentDataFromDiagnostics(t *testing.T) {
 	req := validRequest()
-	input, err := Normalize(req, "request-report")
+	input, err := Normalize(req, "request-report", nil)
 	require.NoError(t, err)
 	require.Len(t, input.Fingerprint, 64)
 	require.Equal(t, "request-report", input.SourceRequestID)
-	require.NotContains(t, string(input.Diagnostics), "data:image")
+	require.Nil(t, input.Attachment)
 	require.NotContains(t, string(input.Diagnostics), req.Description)
 }
 
@@ -45,28 +43,56 @@ func TestFingerprintGroupsLineNumberChanges(t *testing.T) {
 	require.Equal(t, Fingerprint(a), Fingerprint(b))
 }
 
-func TestNormalizeRejectsOversizedAndMismatchedScreenshot(t *testing.T) {
+func TestNormalizeRejectsUnsupportedAttachment(t *testing.T) {
 	req := validRequest()
-	req.Screenshot = &Screenshot{DataURL: "data:image/png;base64," + strings.Repeat("YQ==", 2), Width: 100, Height: 100}
-	_, err := Normalize(req, "request-report")
+	_, err := Normalize(req, "request-report", &AttachmentUpload{
+		Filename:    "archive.zip",
+		ContentType: "application/zip",
+		Data:        []byte("PK\x03\x04"),
+	})
 	require.ErrorIs(t, err, ErrValidation)
 }
 
-func TestNormalizeAcceptsMatchingJPEGAndStoresBinarySeparately(t *testing.T) {
+func TestNormalizeRejectsOversizedPhotoAttachment(t *testing.T) {
+	req := validRequest()
+	_, err := Normalize(req, "request-report", &AttachmentUpload{
+		Filename:    "photo.jpg",
+		ContentType: "image/jpeg",
+		Data:        bytes.Repeat([]byte{0xff}, MaxPhotoAttachmentBytes+1),
+	})
+	require.ErrorIs(t, err, ErrValidation)
+}
+
+func TestNormalizeAcceptsJPEGAttachmentAndStoresBinarySeparately(t *testing.T) {
 	var encoded bytes.Buffer
 	pixel := image.NewRGBA(image.Rect(0, 0, 1, 1))
 	pixel.Set(0, 0, color.RGBA{R: 20, G: 30, B: 40, A: 255})
 	require.NoError(t, jpeg.Encode(&encoded, pixel, nil))
 	req := validRequest()
-	req.Screenshot = &Screenshot{
-		DataURL: "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(encoded.Bytes()),
-		Width:   1, Height: 1,
-	}
-	input, err := Normalize(req, "request-report")
+	input, err := Normalize(req, "request-report", &AttachmentUpload{
+		Filename:    "failure.jpg",
+		ContentType: "image/jpeg",
+		Data:        encoded.Bytes(),
+	})
 	require.NoError(t, err)
-	require.Equal(t, encoded.Bytes(), input.Screenshot)
-	require.Equal(t, "image/jpeg", input.ScreenshotMIME)
+	require.Equal(t, encoded.Bytes(), input.Attachment)
+	require.Equal(t, "image/jpeg", input.AttachmentMIME)
+	require.Equal(t, "failure.jpg", input.AttachmentName)
+	require.Equal(t, int32(encoded.Len()), input.AttachmentSize)
 	require.NotContains(t, string(input.Diagnostics), "base64")
+}
+
+func TestNormalizeAcceptsTextAttachment(t *testing.T) {
+	req := validRequest()
+	input, err := Normalize(req, "request-report", &AttachmentUpload{
+		Filename:    "console.log",
+		ContentType: "text/plain",
+		Data:        []byte("loading never finished"),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "text/plain", input.AttachmentMIME)
+	require.Equal(t, "console.log", input.AttachmentName)
+	require.Equal(t, int32(22), input.AttachmentSize)
 }
 
 func TestNormalizeRejectsTooManyBreadcrumbs(t *testing.T) {
@@ -74,6 +100,6 @@ func TestNormalizeRejectsTooManyBreadcrumbs(t *testing.T) {
 	for len(req.Breadcrumbs) <= MaxBreadcrumbs {
 		req.Breadcrumbs = append(req.Breadcrumbs, Breadcrumb{Time: "00:00:00", Type: "click", Target: "button"})
 	}
-	_, err := Normalize(req, "request-report")
+	_, err := Normalize(req, "request-report", nil)
 	require.ErrorIs(t, err, ErrValidation)
 }

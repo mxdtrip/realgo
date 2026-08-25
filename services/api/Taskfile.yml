@@ -2,10 +2,11 @@ version: "3"
 
 vars:
   GO: '{{.GO | default "go"}}'
-  COMPOSE: '{{.COMPOSE | default "docker compose -f ../../docker-compose.yml"}}'
+  COMPOSE: '{{.COMPOSE | default "docker compose --env-file ../../.env -f ../../docker-compose.yml"}}'
+  STAGING_COMPOSE: '{{.STAGING_COMPOSE | default "docker compose --env-file ../../.env -f ../../docker-compose.yml -f ../../docker-compose.staging.yml"}}'
   # Server stack = base + prod overlay (vpngw, api netns, prod Caddyfile) +
   # the prod-demo profile for frpc. See docker-compose.prod.yml.
-  PROD_COMPOSE: '{{.PROD_COMPOSE | default "docker compose -f ../../docker-compose.yml -f ../../docker-compose.prod.yml --profile prod-demo"}}'
+  PROD_COMPOSE: '{{.PROD_COMPOSE | default "docker compose --env-file ../../.env -f ../../docker-compose.yml -f ../../docker-compose.prod.yml --profile prod-demo"}}'
 
 tasks:
   default:
@@ -65,6 +66,22 @@ tasks:
     desc: Build and start only API, Postgres, Redis, migrations, and Caddy
     cmds:
       - "{{.COMPOSE}} up -d --build postgres redis migrate api caddy"
+
+  staging-up:
+    desc: Build and start the local staging stack
+    cmds:
+      - "{{.STAGING_COMPOSE}} up -d --build"
+
+  staging-seed:
+    desc: Load fixture content and reset demo users in local staging
+    cmds:
+      - "{{.STAGING_COMPOSE}} --profile seeds up -d seed-cards seed-pattern-cards seed-atlas seed-subpattern-cards seed-users"
+      - "{{.STAGING_COMPOSE}} --profile seeds wait seed-cards seed-pattern-cards seed-atlas seed-subpattern-cards seed-users"
+
+  staging-down:
+    desc: Stop the local staging stack
+    cmds:
+      - "{{.STAGING_COMPOSE}} down"
 
   prod-demo-up:
     desc: Build and start the stack with the VPS reverse tunnel

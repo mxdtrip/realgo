@@ -1,17 +1,13 @@
 package reports
 
 import (
-	"bytes"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"image"
-	_ "image/jpeg"
-	_ "image/png"
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -19,19 +15,44 @@ import (
 )
 
 const (
-	SchemaVersion       = 2
-	MaxRequestBodyBytes = 2 << 20
-	MaxScreenshotBytes  = 800 << 10
-	MaxBreadcrumbs      = 10
-	MaxErrors           = 3
+	SchemaVersion             = 2
+	MaxRequestBodyBytes       = 2 << 20
+	MaxPhotoAttachmentBytes   = 5 << 20
+	MaxTextAttachmentBytes    = 5 << 20
+	MaxVideoAttachmentBytes   = 15 << 20
+	MaxMultipartBodyBytes     = MaxVideoAttachmentBytes + MaxRequestBodyBytes + (512 << 10)
+	MaxAttachmentFilenameRune = 255
+	MaxBreadcrumbs            = 10
+	MaxErrors                 = 3
 )
 
 var (
-	ErrValidation    = errors.New("invalid problem report")
-	stackPosition    = regexp.MustCompile(`:\d+:\d+\)?$`)
-	allowedMIMETypes = map[string]bool{
+	ErrValidation  = errors.New("invalid problem report")
+	stackPosition  = regexp.MustCompile(`:\d+:\d+\)?$`)
+	imageMIMETypes = map[string]bool{
+		"image/gif":  true,
+		"image/heic": true,
+		"image/heif": true,
 		"image/jpeg": true,
 		"image/png":  true,
+		"image/webp": true,
+	}
+	textMIMETypes = map[string]bool{
+		"application/json":          true,
+		"application/xml":           true,
+		"text/csv":                  true,
+		"text/markdown":             true,
+		"text/plain":                true,
+		"text/tab-separated-values": true,
+	}
+	videoMIMETypes = map[string]bool{
+		"video/mp4":        true,
+		"video/mpeg":       true,
+		"video/quicktime":  true,
+		"video/webm":       true,
+		"video/x-m4v":      true,
+		"video/x-matroska": true,
+		"video/x-msvideo":  true,
 	}
 )
 
@@ -46,7 +67,6 @@ type Request struct {
 	Breadcrumbs   []Breadcrumb  `json:"breadcrumbs"`
 	Errors        []ClientError `json:"errors"`
 	Release       Release       `json:"release"`
-	Screenshot    *Screenshot   `json:"screenshot,omitempty"`
 }
 
 type Page struct {
@@ -105,12 +125,6 @@ type Release struct {
 	Commit  string `json:"commit"`
 }
 
-type Screenshot struct {
-	DataURL string `json:"dataUrl"`
-	Width   int    `json:"width"`
-	Height  int    `json:"height"`
-}
-
 type Diagnostics struct {
 	ReportedAt  string        `json:"reportedAt"`
 	Page        Page          `json:"page"`
@@ -123,17 +137,23 @@ type Diagnostics struct {
 }
 
 type CreateInput struct {
-	SchemaVersion    int16
-	Description      string
-	Diagnostics      []byte
-	Fingerprint      string
-	ReleaseVersion   string
-	CommitSHA        string
-	SourceRequestID  string
-	Screenshot       []byte
-	ScreenshotMIME   string
-	ScreenshotWidth  int32
-	ScreenshotHeight int32
+	SchemaVersion   int16
+	Description     string
+	Diagnostics     []byte
+	Fingerprint     string
+	ReleaseVersion  string
+	CommitSHA       string
+	SourceRequestID string
+	Attachment      []byte
+	AttachmentMIME  string
+	AttachmentName  string
+	AttachmentSize  int32
+}
+
+type AttachmentUpload struct {
+	Filename    string
+	ContentType string
+	Data        []byte
 }
 
 type Result struct {
@@ -142,7 +162,7 @@ type Result struct {
 	ReceivedAt  string `json:"receivedAt"`
 }
 
-func Normalize(req Request, sourceRequestID string) (CreateInput, error) {
+func Normalize(req Request, sourceRequestID string, attachment *AttachmentUpload) (CreateInput, error) {
 	req.Description = strings.TrimSpace(req.Description)
 	req.Page.Route = strings.TrimSpace(req.Page.Route)
 	req.Browser.Name = strings.TrimSpace(req.Browser.Name)
@@ -214,7 +234,7 @@ func Normalize(req Request, sourceRequestID string) (CreateInput, error) {
 		}
 	}
 
-	screenshot, mime, width, height, err := decodeScreenshot(req.Screenshot)
+	attachmentData, attachmentMIME, attachmentName, attachmentSize, err := normalizeAttachment(attachment)
 	if err != nil {
 		return CreateInput{}, err
 	}
@@ -231,8 +251,8 @@ func Normalize(req Request, sourceRequestID string) (CreateInput, error) {
 		SchemaVersion: int16(req.SchemaVersion), Description: req.Description,
 		Diagnostics: diagnostics, Fingerprint: Fingerprint(req),
 		ReleaseVersion: req.Release.Version, CommitSHA: req.Release.Commit,
-		SourceRequestID: sourceRequestID, Screenshot: screenshot, ScreenshotMIME: mime,
-		ScreenshotWidth: width, ScreenshotHeight: height,
+		SourceRequestID: sourceRequestID, Attachment: attachmentData, AttachmentMIME: attachmentMIME,
+		AttachmentName: attachmentName, AttachmentSize: attachmentSize,
 	}, nil
 }
 
@@ -256,33 +276,115 @@ func Fingerprint(req Request) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func decodeScreenshot(value *Screenshot) ([]byte, string, int32, int32, error) {
+func normalizeAttachment(value *AttachmentUpload) ([]byte, string, string, int32, error) {
 	if value == nil {
-		return nil, "", 0, 0, nil
+		return nil, "", "", 0, nil
 	}
-	if value.Width <= 0 || value.Height <= 0 || value.Width > 4096 || value.Height > 4096 {
-		return nil, "", 0, 0, invalid("screenshot dimensions are invalid")
+	if len(value.Data) == 0 {
+		return nil, "", "", 0, invalid("attachment is empty")
 	}
-	header, encoded, ok := strings.Cut(value.DataURL, ",")
-	if !ok || !strings.HasPrefix(header, "data:") || !strings.HasSuffix(header, ";base64") {
-		return nil, "", 0, 0, invalid("screenshot must be a base64 data URL")
+	if len(value.Data) > MaxVideoAttachmentBytes {
+		return nil, "", "", 0, invalid("attachment is too large")
 	}
-	mime := strings.TrimSuffix(strings.TrimPrefix(header, "data:"), ";base64")
-	if !allowedMIMETypes[mime] {
-		return nil, "", 0, 0, invalid("screenshot type is not supported")
+
+	name := cleanAttachmentFilename(value.Filename)
+	mime := attachmentMIME(value.ContentType, value.Data, name)
+	if mime == "" {
+		return nil, "", "", 0, invalid("attachment type is not supported")
 	}
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil || len(decoded) == 0 || len(decoded) > MaxScreenshotBytes {
-		return nil, "", 0, 0, invalid("screenshot is invalid or too large")
+
+	switch {
+	case imageMIMETypes[mime]:
+		if len(value.Data) > MaxPhotoAttachmentBytes {
+			return nil, "", "", 0, invalid("photo attachment must be 5 MB or less")
+		}
+	case textMIMETypes[mime] || strings.HasPrefix(mime, "text/"):
+		if len(value.Data) > MaxTextAttachmentBytes {
+			return nil, "", "", 0, invalid("text attachment must be 5 MB or less")
+		}
+		if !utf8.Valid(value.Data) || strings.ContainsRune(string(value.Data), '\x00') {
+			return nil, "", "", 0, invalid("text attachment must be valid UTF-8")
+		}
+	case videoMIMETypes[mime]:
+		if len(value.Data) > MaxVideoAttachmentBytes {
+			return nil, "", "", 0, invalid("video attachment must be 15 MB or less")
+		}
+	default:
+		return nil, "", "", 0, invalid("attachment type is not supported")
 	}
-	if detected := http.DetectContentType(decoded); detected != mime {
-		return nil, "", 0, 0, invalid("screenshot content does not match its type")
+
+	return value.Data, mime, name, int32(len(value.Data)), nil
+}
+
+func attachmentMIME(contentType string, data []byte, filename string) string {
+	declared := baseMIME(contentType)
+	detected := baseMIME(http.DetectContentType(data))
+	ext := strings.ToLower(filepath.Ext(filename))
+
+	if imageMIMETypes[detected] {
+		return detected
 	}
-	config, format, err := image.DecodeConfig(bytes.NewReader(decoded))
-	if err != nil || "image/"+format != mime || config.Width != value.Width || config.Height != value.Height {
-		return nil, "", 0, 0, invalid("screenshot dimensions do not match its content")
+	if imageMIMETypes[declared] && imageExtensionMatches(ext, declared) {
+		return declared
 	}
-	return decoded, mime, int32(value.Width), int32(value.Height), nil
+	if textMIMETypes[declared] || strings.HasPrefix(declared, "text/") {
+		return declared
+	}
+	if textMIMETypes[detected] || strings.HasPrefix(detected, "text/") {
+		return detected
+	}
+	if videoMIMETypes[detected] {
+		return detected
+	}
+	if videoMIMETypes[declared] && videoExtensionMatches(ext) {
+		return declared
+	}
+	return ""
+}
+
+func baseMIME(value string) string {
+	base, _, _ := strings.Cut(strings.ToLower(strings.TrimSpace(value)), ";")
+	return strings.TrimSpace(base)
+}
+
+func cleanAttachmentFilename(value string) string {
+	name := filepath.Base(strings.ReplaceAll(strings.TrimSpace(value), "\\", "/"))
+	if name == "." || name == "/" || name == "" {
+		return "attachment"
+	}
+	if utf8.RuneCountInString(name) <= MaxAttachmentFilenameRune {
+		return name
+	}
+	runes := []rune(name)
+	return string(runes[:MaxAttachmentFilenameRune])
+}
+
+func imageExtensionMatches(ext string, mime string) bool {
+	switch mime {
+	case "image/jpeg":
+		return ext == ".jpg" || ext == ".jpeg"
+	case "image/png":
+		return ext == ".png"
+	case "image/gif":
+		return ext == ".gif"
+	case "image/webp":
+		return ext == ".webp"
+	case "image/heic":
+		return ext == ".heic"
+	case "image/heif":
+		return ext == ".heif"
+	default:
+		return false
+	}
+}
+
+func videoExtensionMatches(ext string) bool {
+	switch ext {
+	case ".avi", ".m4v", ".mkv", ".mov", ".mp4", ".mpeg", ".mpg", ".webm":
+		return true
+	default:
+		return false
+	}
 }
 
 func validateClient(field string, client Client, requireEngine bool) error {

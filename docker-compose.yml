@@ -13,6 +13,13 @@
 name: freeburger
 
 services:
+  startup-clock:
+    image: busybox:1.37
+    command: sh -c "date +%s > /ready-state/started-at"
+    volumes:
+      - ready-state:/ready-state
+    restart: "no"
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -72,21 +79,30 @@ services:
       - "up"
     restart: "no"
 
+  seed-image:
+    image: freeburger-seeds:local
+    build:
+      context: ./services/api/seeds
+    command: python -c "import bcrypt, psycopg, yaml"
+    restart: "no"
+
   seed-roadmap:
-    image: python:3.12-slim
+    image: freeburger-seeds:local
     depends_on:
       migrate:
         condition: service_completed_successfully
+      seed-image:
+        condition: service_completed_successfully
     working_dir: /seeds
     volumes:
       - ./services/api/seeds:/seeds:ro
     environment:
       DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-freeburger}?sslmode=disable
-    command: sh -c "pip install --no-cache-dir -r requirements.txt && python seed_roadmap.py neetcode_150.yaml"
+    command: python seed_roadmap.py neetcode_150.yaml
     restart: "no"
 
   seed-cards:
-    image: python:3.12-slim
+    image: freeburger-seeds:local
     depends_on:
       seed-roadmap:
         condition: service_completed_successfully
@@ -95,11 +111,11 @@ services:
       - ./services/api/seeds:/seeds:ro
     environment:
       DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-freeburger}?sslmode=disable
-    command: sh -c "pip install --no-cache-dir -r requirements.txt && python seed_cards.py realgo_demo_cards.yaml"
+    command: python seed_cards.py realgo_demo_cards.yaml
     restart: "no"
 
   seed-pattern-content:
-    image: python:3.12-slim
+    image: freeburger-seeds:local
     depends_on:
       seed-roadmap:
         condition: service_completed_successfully
@@ -108,11 +124,11 @@ services:
       - ./services/api/seeds:/seeds:ro
     environment:
       DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-freeburger}?sslmode=disable
-    command: sh -c "pip install --no-cache-dir -r requirements.txt && python seed_pattern_content.py pattern_content.yaml"
+    command: python seed_pattern_content.py pattern_content.yaml
     restart: "no"
 
   seed-pattern-cards:
-    image: python:3.12-slim
+    image: freeburger-seeds:local
     depends_on:
       seed-pattern-content:
         condition: service_completed_successfully
@@ -121,7 +137,7 @@ services:
       - ./services/api/seeds:/seeds:ro
     environment:
       DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-freeburger}?sslmode=disable
-    command: sh -c "pip install --no-cache-dir -r requirements.txt && python seed_cards.py pattern_cards.yaml"
+    command: python seed_cards.py pattern_cards.yaml
     restart: "no"
 
   # Pattern Atlas content: learning materials + problem<->subpattern links.
@@ -131,7 +147,7 @@ services:
   # community dataset (source_type=dataset) and overrides demo rows on
   # collisions.
   seed-atlas:
-    image: python:3.12-slim
+    image: freeburger-seeds:local
     depends_on:
       seed-roadmap:
         condition: service_completed_successfully
@@ -140,27 +156,29 @@ services:
       - ./services/api/seeds:/seeds:ro
     environment:
       DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-freeburger}?sslmode=disable
-    command: sh -c "pip install --no-cache-dir -r requirements.txt && python seed_atlas.py atlas_content.yaml atlas_problem_links.yaml atlas_demo_companies.yaml && python seed_atlas_corpus.py atlas_corpus_problems.yaml && python seed_atlas_corpus.py atlas_gap_ledger_problems.yaml && python seed_company_problems.py atlas_company_problems.csv.gz && python seed_hackerrank_corpus.py atlas_hackerrank_problems.yaml && python seed_gfg_corpus.py atlas_gfg_problems.yaml && python seed_codeforces_corpus.py atlas_codeforces_problems.yaml && python seed_gfg_company_problems.py atlas_gfg_company_problems.csv.gz"
+    command: sh -c "python seed_atlas.py atlas_content.yaml atlas_problem_links.yaml atlas_demo_companies.yaml && python seed_atlas_corpus.py atlas_corpus_problems.yaml && python seed_atlas_corpus.py atlas_gap_ledger_problems.yaml && python seed_company_problems.py atlas_company_problems.csv.gz && python seed_hackerrank_corpus.py atlas_hackerrank_problems.yaml && python seed_gfg_corpus.py atlas_gfg_problems.yaml && python seed_codeforces_corpus.py atlas_codeforces_problems.yaml && python seed_gfg_company_problems.py atlas_gfg_company_problems.csv.gz"
     restart: "no"
 
   # 333 practice cards (3 per v2 subpattern: recognition/mechanics/edge
   # case), targeting patterns.code for kind='subpattern' rows the migrations
   # already create — only needs migrate, not seed-atlas/seed-roadmap.
   seed-subpattern-cards:
-    image: python:3.12-slim
+    image: freeburger-seeds:local
     depends_on:
       migrate:
+        condition: service_completed_successfully
+      seed-image:
         condition: service_completed_successfully
     working_dir: /seeds
     volumes:
       - ./services/api/seeds:/seeds:ro
     environment:
       DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-freeburger}?sslmode=disable
-    command: sh -c "pip install --no-cache-dir -r requirements.txt && python seed_cards.py realgo_subpattern_cards.yaml --roadmap ''"
+    command: python seed_cards.py realgo_subpattern_cards.yaml --roadmap ''
     restart: "no"
 
   seed-users:
-    image: python:3.12-slim
+    image: freeburger-seeds:local
     depends_on:
       seed-roadmap:
         condition: service_completed_successfully
@@ -170,7 +188,7 @@ services:
     environment:
       DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-freeburger}?sslmode=disable
       SEED_USERS_PASSWORD: ${SEED_USERS_PASSWORD:-}
-    command: sh -c "pip install --no-cache-dir -r requirements.txt && python seed_users.py"
+    command: python seed_users.py
     restart: "no"
 
   # Production build of the realgo Next.js landing + cabinet. Served internally
@@ -253,9 +271,9 @@ services:
   # exec'd, and Next needs several more seconds after that before it serves a
   # page — a banner fired on start would lie. So this waits for the actual
   # public surface, through caddy, exactly as a browser would reach it: the
-  # api's own /healthz and /readyz, the landing page, and the deck. That also
-  # makes the banner a real smoke test of the whole routing chain, not just an
-  # announcement.
+  # api's own /healthz and /readyz, the admin login route, the landing page, and
+  # the deck. That also makes the banner a real smoke test of the whole routing
+  # chain, not just an announcement.
   #
   # It is the last thing in the dependency graph by construction — migrations
   # and every seed job must have exited 0 before it is even started — so its
@@ -271,6 +289,8 @@ services:
     image: curlimages/curl:8.11.0
     restart: "no"
     depends_on:
+      startup-clock:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
       seed-roadmap:
@@ -302,13 +322,20 @@ services:
       # port above (staging overrides it to 8081).
       PUBLIC_PORT: ${API_PORT:-8080}
       READY_TIMEOUT: ${READY_TIMEOUT:-180}
+    volumes:
+      - ready-state:/ready-state:ro
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         set -eu
         base="http://caddy:80"
-        started="$$(date +%s)"
-        deadline=$$(( started + READY_TIMEOUT ))
+        now="$$(date +%s)"
+        started="$$now"
+        if [ -r /ready-state/started-at ]; then
+          started="$$(cat /ready-state/started-at)"
+        fi
+        probe_started="$$now"
+        deadline=$$(( probe_started + READY_TIMEOUT ))
 
         # curl -f fails only on HTTP >= 400, so a 3xx would pass silently —
         # hence -L where the check must land on real content. Deliberately
@@ -331,11 +358,13 @@ services:
 
         wait_for "api /healthz"   "$$base/healthz"
         wait_for "api /readyz"    "$$base/readyz"
+        wait_for "admin panel"    "$$base/admin" -L
         wait_for "web"            "$$base/"
         wait_for "presentation"   "$$base/presentation/" -L
 
         elapsed=$$(( $$(date +%s) - started ))
         url_web="http://localhost:$${PUBLIC_PORT}/"
+        url_admin="http://localhost:$${PUBLIC_PORT}/admin"
         url_deck="http://localhost:$${PUBLIC_PORT}/presentation/"
 
         # The blank lines are as important as the box: `docker compose logs`
@@ -349,10 +378,12 @@ services:
         printf '╠══════════════════════════════════════════════════════════════╣\n'
         printf '║   миграции и seed-скрипты .................... выполнены     ║\n'
         printf '║   api /healthz /readyz ....................... отвечает      ║\n'
+        printf '║   админ-панель /admin ........................ отвечает      ║\n'
         printf '║   web (лендинг + кабинет) .................... отвечает      ║\n'
         printf '║   презентация /presentation/ ................. отвечает      ║\n'
         printf '╠══════════════════════════════════════════════════════════════╣\n'
         printf '║   %-58s ║\n' "$$url_web"
+        printf '║   %-58s ║\n' "$$url_admin"
         printf '║   %-58s ║\n' "$$url_deck"
         printf '╚══════════════════════════════════════════════════════════════╝\n'
         printf '   всё поднялось за %ss\n' "$$elapsed"
@@ -404,6 +435,8 @@ services:
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?AUTH_JWT_SECRET must be set}
       AUTH_ACCESS_TTL: ${AUTH_ACCESS_TTL:-15m}
       AUTH_REFRESH_TTL: ${AUTH_REFRESH_TTL:-720h}
+      GOADMIN_USERNAME: ${GOADMIN_USERNAME:-}
+      GOADMIN_PASSWORD: ${GOADMIN_PASSWORD:-}
       # Optional: without a key the api still boots, AI card generation is
       # just disabled. Prod gets it from the GEMINI_API_KEY GitHub secret.
       # Despite the name, this currently holds a Groq key — AI_BASE_URL/AI_MODEL
@@ -427,3 +460,4 @@ services:
 
 volumes:
   pgdata:
+  ready-state:

@@ -11,6 +11,11 @@
 		X-Frame-Options "DENY"
 	}
 
+	@admin path /admin /admin/*
+	handle @admin {
+		respond 404
+	}
+
 	@api path /api/* /healthz /readyz
 	@allowed_origin header_regexp Origin ^(https?://(localhost|127[.]0[.]0[.]1):(5173|3000)|{$REALGO_EXTENSION_ORIGIN:chrome-extension://kclglopmphebagjjimjhdpnmoddmbgea})$
 
@@ -44,5 +49,7 @@
 	}
 
 	# Everything that isn't /api/* or /presentation/* is the Next.js app.
-	reverse_proxy web:3000
+	handle {
+		reverse_proxy web:3000
+	}
 }

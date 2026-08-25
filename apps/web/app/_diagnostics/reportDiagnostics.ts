@@ -71,13 +71,6 @@ export type DiagnosticReport = {
   breadcrumbs: Breadcrumb[];
   errors: CapturedError[];
   release: { version: string; commit: string };
-  screenshot?: ReportScreenshot;
-};
-
-export type ReportScreenshot = {
-  dataUrl: string;
-  width: number;
-  height: number;
 };
 
 let nextBreadcrumbId = 1;
@@ -264,10 +257,7 @@ export function captureError(
   errors = [...errors, captured].slice(-MAX_ERRORS);
 }
 
-export function createDiagnosticReport(
-  description: string,
-  screenshot?: ReportScreenshot | null,
-): DiagnosticReport {
+export function createDiagnosticReport(description: string): DiagnosticReport {
   const { browser, os } = parseUserAgent(navigator.userAgent);
   const now = Date.now();
   const network = lastNetwork
@@ -305,6 +295,5 @@ export function createDiagnosticReport(
       version: process.env.NEXT_PUBLIC_APP_VERSION ?? "development",
       commit: process.env.NEXT_PUBLIC_COMMIT_SHA ?? "unknown",
     },
-    ...(screenshot ? { screenshot } : {}),
   };
 }

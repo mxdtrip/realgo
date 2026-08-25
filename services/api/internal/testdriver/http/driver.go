@@ -254,6 +254,20 @@ func (u *fsrsUser) LastRatedCardID(t *testing.T) int64 {
 	return u.lastCardID
 }
 
+// RateCardAt оценивает уже существующую карточку с явной меткой времени
+// reviewedAt и возвращает nextReviewAt, прочитанный из review_schedules.
+// Открывает сессию scope="all", чтобы карточка попала в выдачу независимо от
+// статуса due. Используется спекой FSRSReviewedAtClamped:
+// метки в будущем и раньше last_review_at должны клампиться сервером.
+func (u *fsrsUser) RateCardAt(t *testing.T, cardID int64, rating string, reviewedAt time.Time) time.Time {
+	t.Helper()
+	cu := u.driver.CardsUser(u.user)
+
+	session := cu.StartSession(t, "all")
+	info := cu.RateCardAt(t, session.SessionID, cardID, rating, reviewedAt)
+	return u.readCardNextReviewAt(t, cardID, info)
+}
+
 // readCardNextReviewAt reads next_review_at for a card schedule directly from
 // the DB. Test-only: there is no HTTP read path for next_review_at on cards.
 func (u *fsrsUser) readCardNextReviewAt(t *testing.T, cardID int64, info any) time.Time {
@@ -633,12 +647,25 @@ func (u *cardsUser) StartSession(t *testing.T, scope string) specifications.Sess
 	return info
 }
 
+// RateCard оценивает карточку с текущим временем клиента.
+// Делегат RateCardAt с reviewedAt = time.Now().UTC().
 func (u *cardsUser) RateCard(t *testing.T, sessionID string, cardID int64, rating string) specifications.RateInfo {
+	t.Helper()
+
+	return u.RateCardAt(t, sessionID, cardID, rating, time.Now().UTC())
+}
+
+// RateCardAt оценивает карточку с явной клиентской меткой времени reviewedAt
+// (POST /me/cards/{cardID}/rate). Возвращает RateInfo из ответа сервера или
+// падает. Используется спекой reviewed_at_clamped для проверки, что сервер
+// клампит метку (будущее → now, прошлое до last_review_at → last_review_at),
+// а не принимает её как есть.
+func (u *cardsUser) RateCardAt(t *testing.T, sessionID string, cardID int64, rating string, reviewedAt time.Time) specifications.RateInfo {
 	t.Helper()
 	body := map[string]string{
 		"sessionId":  sessionID,
 		"rating":     rating,
-		"reviewedAt": time.Now().UTC().Format(time.RFC3339),
+		"reviewedAt": reviewedAt.UTC().Format(time.RFC3339),
 	}
 	path := fmt.Sprintf("/api/v1/me/cards/%d/rate", cardID)
 	resp := u.driver.do(t, http.MethodPost, path, body, u.token())

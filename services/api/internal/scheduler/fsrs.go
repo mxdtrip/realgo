@@ -48,6 +48,9 @@ func (a *FSRSAdapter) Next(rating Rating, now time.Time) (Decision, error) {
 // NextWithState computes a decision for a card with prior FSRS history.
 // An empty state is treated as a new card.
 func (a *FSRSAdapter) NextWithState(state SchedulerState, rating Rating, now time.Time) (Decision, error) {
+	// now здесь — клиентская метка reviewedAt; нормализуем её относительно
+	// реального времени сервера. Дальше по коду now — уже clamped-метка.
+	now = clampReviewTime(now, state.LastReview, time.Now())
 	fsrsRating, err := toFSRSRating(rating)
 	if err != nil {
 		return Decision{}, err
@@ -118,3 +121,26 @@ func cardToDecision(card fsrs.Card, rating Rating, now time.Time) Decision {
 
 // Ensure FSRSAdapter satisfies Scheduler.
 var _ Scheduler = (*FSRSAdapter)(nil)
+
+// reviewedAtSkew — ε-допуск на расхождение часов клиента и сервера:
+// метка, «опережающая» now меньше чем на эту величину, не считается будущим.
+const reviewedAtSkew = time.Minute
+
+// clampReviewTime нормализует клиентскую метку времени в одном месте,
+// чтобы правило наследовали все пути планирования, идущие через scheduler.
+// Метка в будущем (свыше reviewedAtSkew на clock skew) клампится к now —
+// защита от завышенного elapsedDays и раздутых интервалов. Метка раньше
+// lastReview клампится к lastReview: оффлайн-очередь extension с честным
+// occurredAt в прошлом легитимна, но elapsed не может быть отрицательным —
+// это «немедленный повтор», а не отказ и не откат LastReviewAt назад.
+// Валидная прошлая метка возвращается без изменений. При отсутствии истории
+// (lastReview zero) нижняя граница не применяется.
+func clampReviewTime(reviewedAt, lastReview, now time.Time) time.Time {
+	if reviewedAt.After(now.Add(reviewedAtSkew)) {
+		return now
+	}
+	if !lastReview.IsZero() && reviewedAt.Before(lastReview) {
+		return lastReview
+	}
+	return reviewedAt
+}

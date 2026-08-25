@@ -133,6 +133,11 @@ const GLYPHS: Record<string, ReactElement> = {
       <path d="M19.2 6.8a7.6 7.6 0 0 1 0 10.4" />
     </>
   ),
+  attachment: (
+    <>
+      <path d="m20.5 11.2-8.4 8.4a5.2 5.2 0 0 1-7.4-7.4l8.8-8.8a3.5 3.5 0 0 1 5 5l-8.8 8.8a1.8 1.8 0 0 1-2.5-2.5l8.1-8.1" />
+    </>
+  ),
 };
 
 export function CabinetIcon({

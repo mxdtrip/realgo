@@ -26,6 +26,9 @@ reverse tunnel через `deploy/vps`.
   Caddy зависит от него через `depends_on` без условия по health — сервис
   всегда поднимается вместе со стеком, но сломанный дек роняет только
   `/presentation/` в 502, а не весь реверс-прокси.
+- Публичный VPS edge отвечает `404` на `/admin` и `/admin/*`. GoAdmin остаётся
+  доступным только из внутреннего home stack; для работы с ним используйте SSH
+  port-forward до home/appbox host.
 
 ## Локальный dev запуск
 
@@ -167,6 +170,30 @@ cd deploy/vps && docker compose logs -f caddy frps
 Проверить по порядку: DNS `REALGO_SITE_ADDRESS` указывает на VPS, `FRP_TOKEN`
 совпадает на обеих сторонах, `FRP_VPS_HOST` доступен с home stack, `frpc`
 зарегистрировал proxy `realgo-web`, `api` проходит `/readyz` локально.
+
+## Admin access
+
+GoAdmin не публикуется в интернет. Публичные проверки должны возвращать `404`:
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' https://realgo.dev/admin
+curl -sS -o /dev/null -w '%{http_code}\n' https://staging.realgo.dev/admin
+```
+
+Для доступа откройте SSH tunnel до host, где запущен home stack:
+
+```sh
+ssh -N -L 18080:127.0.0.1:8080 <user>@<home-or-appbox-host>
+```
+
+После этого админка доступна локально:
+
+```text
+http://localhost:18080/admin
+```
+
+Для входа задайте `GOADMIN_USERNAME` и `GOADMIN_PASSWORD` в `.env` home stack.
+Пароль должен быть случайным и не короче 12 байт; не храните его в Git.
 
 ## Smoke после деплоя
 
