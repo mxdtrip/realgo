@@ -12227,13 +12227,13 @@ button:not(.site-strip button) {
   font-weight: 700;
 }
 
-/* Conversion CTAs keep the landing geometry with a page-background-derived fill
-   that is 20% lighter than --bg (#0d1117 -> #3d4145). */
+/* Conversion CTAs keep the landing geometry with a muted fill derived from the
+   page background (#0d1117 -> #373b3e). */
 .hero-cta a,
 .landing-cta__button,
 .price-cta {
   border: 0;
-  background: #3d4145;
+  background: #373b3e;
   color: #ffffff;
   font-family: var(--font-stack-mono);
   font-size: 14px;
@@ -12248,16 +12248,24 @@ button:not(.site-strip button) {
 .landing-cta__button:hover,
 .price-cta:hover {
   border: 0;
-  background: #3d4145;
+  background: #373b3e;
   color: #ffffff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     0 20px 46px -24px rgba(88, 166, 255, 0.64);
 }
 
+.site-auth > a.site-auth__cta:last-child {
+  background: #373b3e;
+}
+
+.site-auth > a.site-auth__cta:last-child:hover {
+  background: #373b3e;
+}
+
 #pricing .price-card > .price-cta {
   border: 0;
-  background: #3d4145;
+  background: #373b3e;
   font-size: 14px;
   font-weight: 600;
   box-shadow:
@@ -12268,7 +12276,7 @@ button:not(.site-strip button) {
 #pricing .price-card:hover > .price-cta,
 #pricing .price-card:focus-within > .price-cta {
   border: 0;
-  background: #3d4145;
+  background: #373b3e;
   color: #ffffff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),

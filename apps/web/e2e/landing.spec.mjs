@@ -58,7 +58,7 @@ test.describe("landing conversion path", () => {
 
     const initial = await readStyle();
     expect(initial).toMatchObject({
-      background: "rgb(61, 65, 69)",
+      background: "rgb(55, 59, 62)",
       borderStyle: "none",
       borderWidth: "0px",
       color: "rgb(255, 255, 255)",
@@ -68,10 +68,15 @@ test.describe("landing conversion path", () => {
     expect(initial.family).toContain("JetBrains Mono");
 
     await cta.hover();
-    await expect.poll(async () => (await readStyle()).background).toBe("rgb(61, 65, 69)");
+    await expect.poll(async () => (await readStyle()).background).toBe("rgb(55, 59, 62)");
 
     await page.mouse.move(0, 0);
-    await expect.poll(async () => (await readStyle()).background).toBe("rgb(61, 65, 69)");
+    await expect.poll(async () => (await readStyle()).background).toBe("rgb(55, 59, 62)");
+
+    const signup = page.locator('.site-auth__cta[href="/register"]');
+    if (await signup.count()) {
+      await expect(signup).toHaveCSS("background-color", "rgb(55, 59, 62)");
+    }
   });
 
   test("keeps section 01 popup static while switching copy into the saved-task state", async ({ page }) => {
