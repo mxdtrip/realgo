@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"mime"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
@@ -111,7 +112,12 @@ func decodeCreateRequest(w http.ResponseWriter, r *http.Request) (Request, *Atta
 		response.Fail(w, http.StatusBadRequest, "VALIDATION_ERROR", "could not read attachment")
 		return Request{}, nil, false
 	}
-	defer file.Close()
+	defer func(file multipart.File) {
+		err := file.Close()
+		if err != nil {
+
+		}
+	}(file)
 
 	data, err := io.ReadAll(io.LimitReader(file, MaxVideoAttachmentBytes+1))
 	if err != nil {
