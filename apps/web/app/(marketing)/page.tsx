@@ -8,7 +8,6 @@ import { MemoryJourney } from "../components/MemoryJourney";
 import { RoadmapDemo } from "../components/RoadmapDemo";
 import { ScrollReveal } from "../components/ScrollReveal";
 import { ScrollVideoBackground } from "../components/ScrollVideoBackground";
-import { SmoothWheelScroll } from "../components/SmoothWheelScroll";
 import { SiteFooter } from "../components/SiteFooter";
 import { SortingMemoryHero } from "../components/SortingMemoryHero";
 import { LandingFAQ } from "./LandingFAQ";
@@ -83,7 +82,6 @@ export default function Home() {
       />
       <ScrollVideoBackground />
       <ScrollReveal />
-      <SmoothWheelScroll />
       <SortingMemoryHero />
 
       <aside className="landing-proof" aria-label="ReAlgo в цифрах">

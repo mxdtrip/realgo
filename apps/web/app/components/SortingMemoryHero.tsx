@@ -151,10 +151,12 @@ const CHAOS_JITTER = 50;
 
 function chaosPoses(size: SceneSize, order: number[]) {
   const g = geometry(size);
+  const isPhone = size.width <= 640;
   const centerX = size.width / 2;
   const centerY = size.height * stageCenter(size);
-  const radiusX = size.width * 0.42;
-  const radiusY = size.height * 0.32;
+  const radiusX = size.width * (isPhone ? 0.3 : 0.42);
+  const radiusY = size.height * (isPhone ? 0.22 : 0.32);
+  const edgeInset = isPhone ? 40 : 12;
 
   return order.map((key, index) => {
     const angle = Math.random() * Math.PI * 2;
@@ -168,8 +170,8 @@ function chaosPoses(size: SceneSize, order: number[]) {
 
     return {
       key,
-      x: clamp(px - width / 2, 12, size.width - width - 12),
-      y: clamp(py - g.font * 0.54, 8, size.height - g.font * 1.08 - 8),
+      x: clamp(px - width / 2, edgeInset, size.width - width - edgeInset),
+      y: clamp(py - g.font * 0.54, edgeInset, size.height - g.font * 1.08 - edgeInset),
       rotate: -16 + Math.random() * 32 + index * 0.2,
       visible: true,
     };
@@ -323,6 +325,7 @@ export function SortingMemoryHero() {
   const [scattered, setScattered] = useState(true);
   // Bumped once the real font metrics are measured, to re-lay-out the word.
   const [metricsVersion, setMetricsVersion] = useState(0);
+  const [sceneReady, setSceneReady] = useState(false);
   // Letters are only placed once we know the real scene size, so on first load
   // they appear already scattered at the edges instead of flying out from the
   // default-size centre on screen.
@@ -556,6 +559,7 @@ export function SortingMemoryHero() {
       prefersReducedMotionRef.current ? rowPoses(size, next) : chaosPoses(size, next),
     );
     setScattered(!prefersReducedMotionRef.current);
+    setSceneReady(true);
   }, [measured, isSorting, order, size]);
 
   useEffect(() => {
@@ -639,7 +643,12 @@ export function SortingMemoryHero() {
   }, [measured]);
 
   return (
-    <main className="minimal-scene" ref={sceneRef} onClick={handleSceneClick}>
+    <main
+      className="minimal-scene"
+      data-scene-ready={sceneReady ? "true" : "false"}
+      ref={sceneRef}
+      onClick={handleSceneClick}
+    >
       <header className="site-strip">
         <a className="site-brand" href="/" aria-label={copy.homeAria}>
           {dictionary.common.brand}

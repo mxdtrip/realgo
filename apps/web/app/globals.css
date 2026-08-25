@@ -53,18 +53,12 @@
 }
 
 html {
-  scroll-behavior: smooth;
   scroll-padding-top: 90px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   /* iOS inflates text when the device rotates to landscape unless pinned. */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-}
-
-/* The landing page uses a small JS easing layer for desktop wheel input. */
-html.smooth-wheel-scroll {
-  scroll-behavior: auto;
 }
 
 /* In an installed PWA the rubber-band overscroll (and Android pull-to-refresh)
@@ -7203,6 +7197,21 @@ a.roadmap-step__practice-card:hover {
   .site-strip {
     gap: 12px;
     padding-left: 14px;
+  }
+
+  .word-stage {
+    clip-path: inset(0 34px);
+    transform: translateY(-78px) scale(0.78);
+    transform-origin: center 46%;
+  }
+
+  .scroll-card-flow-bg canvas {
+    transform: translateY(-54px) scale(0.86);
+    transform-origin: center 35%;
+  }
+
+  .minimal-scene[data-scene-ready="false"] .word-stage {
+    opacity: 0;
   }
 
   /* Мини-чип и его попап переехали в блок 1240px выше и продолжают
