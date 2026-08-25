@@ -56,7 +56,7 @@ test.describe("landing conversion path", () => {
 
     const initial = await readStyle();
     expect(initial).toMatchObject({
-      background: "rgb(2, 5, 10)",
+      background: "rgb(13, 17, 23)",
       borderColor: "rgba(88, 166, 255, 0.72)",
       color: "rgb(255, 255, 255)",
       size: "14px",
@@ -65,10 +65,10 @@ test.describe("landing conversion path", () => {
     expect(initial.family).toContain("JetBrains Mono");
 
     await cta.hover();
-    await expect.poll(async () => (await readStyle()).background).toBe("rgb(5, 7, 12)");
+    await expect.poll(async () => (await readStyle()).background).toBe("rgb(13, 17, 23)");
 
     await page.mouse.move(0, 0);
-    await expect.poll(async () => (await readStyle()).background).toBe("rgb(2, 5, 10)");
+    await expect.poll(async () => (await readStyle()).background).toBe("rgb(13, 17, 23)");
   });
 
   test("keeps section 01 popup static while switching copy into the saved-task state", async ({ page }) => {
@@ -120,7 +120,7 @@ test.describe("landing conversion path", () => {
         ),
       )
       .toBeGreaterThan(0.05);
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1900);
 
     await expect(
       page.getByRole("heading", {

@@ -12199,7 +12199,7 @@ button:not(.site-strip button) {
 .landing-cta__button,
 .price-cta {
   border: 1px solid rgba(88, 166, 255, 0.72);
-  background: #02050a;
+  background: var(--bg);
   color: #ffffff;
   font-family: var(--font-stack-mono);
   font-size: 14px;
@@ -12214,7 +12214,7 @@ button:not(.site-strip button) {
 .landing-cta__button:hover,
 .price-cta:hover {
   border-color: rgba(140, 189, 255, 0.92);
-  background: #05070c;
+  background: var(--bg);
   color: #ffffff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
@@ -12223,7 +12223,7 @@ button:not(.site-strip button) {
 
 #pricing .price-card > .price-cta {
   border: 1px solid rgba(88, 166, 255, 0.72);
-  background: #02050a;
+  background: var(--bg);
   font-size: 14px;
   font-weight: 600;
   box-shadow:
@@ -12234,7 +12234,7 @@ button:not(.site-strip button) {
 #pricing .price-card:hover > .price-cta,
 #pricing .price-card:focus-within > .price-cta {
   border-color: rgba(140, 189, 255, 0.92);
-  background: #05070c;
+  background: var(--bg);
   color: #ffffff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
