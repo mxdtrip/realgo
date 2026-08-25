@@ -1814,6 +1814,16 @@ h3 {
   position: relative;
   height: 210px;
   perspective: 1400px;
+  transition:
+    filter 0.22s ease,
+    transform 0.22s cubic-bezier(0.2, 0.72, 0.22, 1);
+  will-change: transform;
+}
+
+.review-card:hover .review-flip,
+.review-card:focus-within .review-flip {
+  filter: drop-shadow(0 22px 34px rgba(1, 4, 9, 0.34));
+  transform: translateY(-8px);
 }
 
 .review-flip__card {
@@ -12234,4 +12244,23 @@ button:not(.site-strip button) {
 .price-cta::after {
   content: none;
   display: none;
+}
+
+#faq .landing-cta__button {
+  border: 1px solid rgba(88, 166, 255, 0.72);
+  background:
+    linear-gradient(135deg, #02050a 0%, #07111f 42%, #1457b8 72%, #58a6ff 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 18px 42px -24px rgba(47, 129, 247, 0.84);
+}
+
+#faq .landing-cta__button:hover,
+#faq .landing-cta__button:focus-visible {
+  border-color: rgba(140, 189, 255, 0.92);
+  background:
+    linear-gradient(135deg, #05070c 0%, #0a1830 38%, #236fe0 72%, #79bbff 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 22px 52px -22px rgba(88, 166, 255, 0.74);
 }

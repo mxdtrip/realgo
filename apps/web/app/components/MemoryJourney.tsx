@@ -26,8 +26,8 @@ type ScenePhase =
   | "stage-2-ready"
   | "transition-backward";
 
-const SCENE_TRANSITION_MS = 1350;
-const WINDOW_MODE_TRANSITION_MS = 1050;
+const SCENE_TRANSITION_MS = 820;
+const WINDOW_MODE_TRANSITION_MS = 620;
 const ANCHOR_EASING = 0.1;
 const ANCHOR_STOP_THRESHOLD = 0.45;
 const STORY_ENTRY_DISTANCE = 260;
