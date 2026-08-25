@@ -29,9 +29,10 @@ jobs:
           AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
           FRP_VPS_HOST: ${{ secrets.FRP_VPS_HOST }}
           FRP_TOKEN: ${{ secrets.FRP_TOKEN }}
-          # No SEED_USERS_PASSWORD here on purpose: staging runs on a restored
-          # prod snapshot and the seed jobs are parked behind an unused profile
-          # (see docker-compose.staging.yml), so nothing would consume it.
+          # Public staging demo credentials are documented in
+          # services/api/seeds/README.md. They are deliberately not shared with
+          # production and are re-applied below after every staging deploy.
+          SEED_USERS_PASSWORD: Password123!
         run: |
           docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo pull --ignore-buildable || true
 
@@ -50,6 +51,14 @@ jobs:
           fi
 
           docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo up -d --build --remove-orphans
+
+          # The staging database is restored from a production snapshot, whose
+          # real rows must never be reset by fixture jobs. Seed only the three
+          # reserved is_demo identities. seed_users.py is transactional,
+          # idempotent and refuses to overwrite a non-demo row that happens to
+          # use one of the reserved addresses.
+          docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile seeds \
+            run --rm --no-deps seed-users
 
           # Caddy parses its Caddyfile ONCE, at process start. The file is a
           # read-only bind mount, so editing it changes nothing for a container
@@ -87,6 +96,21 @@ jobs:
           # /healthz must reach the api container.
           curl -fsS -o /dev/null -w "web: %{http_code}\n" http://127.0.0.1:8081/
           curl -fsS -o /dev/null -w "api: %{http_code}\n" http://127.0.0.1:8081/healthz
+
+          # Demo login is part of the public staging contract. Keep tokens out
+          # of CI logs: only the HTTP status is printed and asserted.
+          check_demo_login() {
+            email="$1"
+            code="$(curl -sS --connect-timeout 3 --max-time 10 -o /dev/null -w '%{http_code}' \
+              -H 'Content-Type: application/json' \
+              --data "{\"email\":\"$email\",\"password\":\"Password123!\"}" \
+              http://127.0.0.1:8081/api/v1/auth/login)"
+            echo "demo login ($email): $code"
+            [ "$code" = "200" ]
+          }
+          check_demo_login tester@example.test
+          check_demo_login pro@example.test
+          check_demo_login admin@example.test
           # The deck lives in its own nginx container behind the same caddy.
           # Probing the bare path and a nested asset catches the two ways the
           # /presentation prefix strip breaks without any container going

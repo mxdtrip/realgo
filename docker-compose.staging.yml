@@ -13,26 +13,27 @@
 #     generation is disabled here (GEMINI_API_KEY stays unset).
 #   - frpc registers its own tunnel proxy (remotePort 8081) and does NOT
 #     carry the homeserver-ssh proxy — prod's frpc already holds :2222.
-#   - seed jobs are parked behind a never-enabled profile (see below).
+#   - fixture jobs stay parked behind an explicit profile; the deploy workflow
+#     runs only the guarded demo-user seed after the application is healthy.
 
 name: realgo-staging
 
 services:
   # Staging's content comes from a restored prod DB snapshot, not from the
-  # seed fixtures — so every seed job is parked behind a profile the deploy
-  # workflow never enables. Without this they would re-run on EVERY deploy on
-  # top of real user rows; the seeds are meant to be idempotent since #215,
-  # but that is exactly the class of bug that once wiped user progress in
-  # prod, and there is no reason to re-take the risk on data we did not
-  # generate. Nothing outside this group depends on them (api/web/caddy only
-  # need postgres/redis/migrate), so parking them changes no other wiring.
+  # seed fixtures — so every seed job is parked behind an explicit profile.
+  # The deployment invokes only seed-users as a guarded one-shot: that script
+  # updates rows marked is_demo and refuses to touch a real row using a
+  # reserved demo address. All content seeds remain disabled so restored
+  # production data is never rewritten. Nothing outside this group depends on
+  # them (api/web/caddy only need postgres/redis/migrate), so parking them
+  # changes no other wiring.
   #
   # `migrate` deliberately stays ON: the snapshot carries the schema plus its
   # schema_migrations table, so migrate is a no-op when staging is level with
   # the dump, and correctly applies the delta when the fork adds migrations.
   #
-  # To load fixtures into staging on purpose (e.g. a from-scratch DB with no
-  # snapshot), add `--profile seeds` to the compose command.
+  # To load content fixtures into staging on purpose (e.g. a from-scratch DB
+  # with no snapshot), add `--profile seeds` to the compose command.
   seed-roadmap:
     profiles: ["seeds"]
   seed-cards:
@@ -67,8 +68,9 @@ services:
   # test.realgo.dev/presentation/) through this stack's own caddy — verify with
   # `docker compose ps presentation`.
 
-  # Every seed job is parked behind the unused `seeds` profile above, so none
-  # of them exist in this stack. depends_on entries merge rather than replace,
+  # Seed jobs are parked behind the explicit `seeds` profile above. The deploy
+  # workflow runs seed-users separately with --no-deps, so none of them belong
+  # to the long-running stack. depends_on entries merge rather than replace,
   # which would leave the readiness banner waiting forever on services compose
   # never starts — so the list is restated here with only what staging runs.
   # The banner's own HTTP probes are unaffected: they go through this stack's
