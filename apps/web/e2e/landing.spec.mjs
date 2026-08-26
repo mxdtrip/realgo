@@ -11,6 +11,8 @@ test.describe("landing conversion path", () => {
     await expect(page.locator(".site-strip .site-brand")).toHaveCSS("font-family", /JetBrains Mono/);
     await expect(page.locator(".site-footer")).toHaveCSS("font-family", /JetBrains Mono/);
     await expect(page.locator(".site-footer__brand p")).toHaveCSS("font-family", /JetBrains Mono/);
+    await expect(page.locator(".landing-proof strong")).toHaveText(["4", "111", "FSRS"]);
+    await expect(page.locator(".landing-proof strong").first()).toHaveCSS("font-family", /JetBrains Mono/);
   });
 
   test("keeps the hero at the top while the extension demo hydrates", async ({ page }) => {

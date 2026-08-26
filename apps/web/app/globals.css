@@ -12720,9 +12720,11 @@ body * {
   font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace !important;
 }
 
-/* Keep logo text and the footer in the same typeface as the interactive
-   hero letters. This sits after the global Winston override intentionally. */
+/* Keep logo text, proof values and the footer in the same typeface as the
+   interactive hero letters. This sits after the global Winston override
+   intentionally. */
 .site-brand,
+.landing-proof strong,
 .site-footer,
 .site-footer * {
   font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace !important;
