@@ -1,16 +1,38 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 
 import { CabinetIcon } from "./_icons";
 import { ApiError } from "../_api/types";
 import { submitProblemReport, type ProblemReportResult } from "../_api/reports";
-import { captureScreenshot, supportsScreenshotCapture } from "../_diagnostics/captureScreenshot";
-import {
-  createDiagnosticReport,
-  type DiagnosticReport,
-  type ReportScreenshot,
-} from "../_diagnostics/reportDiagnostics";
+import { createDiagnosticReport, type DiagnosticReport } from "../_diagnostics/reportDiagnostics";
+
+const PHOTO_OR_TEXT_MAX_BYTES = 5 * 1024 * 1024;
+const VIDEO_MAX_BYTES = 15 * 1024 * 1024;
+const ATTACHMENT_ACCEPT = [
+  "image/*",
+  "text/*",
+  "video/*",
+  ".csv",
+  ".heic",
+  ".heif",
+  ".json",
+  ".log",
+  ".md",
+  ".m4v",
+  ".mkv",
+  ".mov",
+  ".mp4",
+  ".mpeg",
+  ".mpg",
+  ".txt",
+  ".webm",
+  ".xml",
+].join(",");
+
+const PHOTO_EXTENSIONS = new Set([".gif", ".heic", ".heif", ".jpeg", ".jpg", ".png", ".webp"]);
+const TEXT_EXTENSIONS = new Set([".csv", ".json", ".log", ".md", ".txt", ".xml"]);
+const VIDEO_EXTENSIONS = new Set([".m4v", ".mkv", ".mov", ".mp4", ".mpeg", ".mpg", ".webm"]);
 
 export type ReportCopy = Readonly<{
   triggerAria: string;
@@ -26,12 +48,11 @@ export type ReportCopy = Readonly<{
   reportIdLabel: string;
   sendFailed: string;
   retry: string;
-  screenshotAdd: string;
-  screenshotCapturing: string;
-  screenshotRemove: string;
-  screenshotAlt: string;
-  screenshotHint: string;
-  screenshotFailed: string;
+  attachmentAdd: string;
+  attachmentRemove: string;
+  attachmentHint: string;
+  attachmentFailed: string;
+  attachmentSelected: string;
   copy: string;
   copied: string;
   copyFailed: string;
@@ -45,6 +66,43 @@ export function openReportProblemDialog() {
   window.dispatchEvent(new Event(REPORT_PROBLEM_EVENT));
 }
 
+function extensionOf(name: string): string {
+  const index = name.lastIndexOf(".");
+  return index >= 0 ? name.slice(index).toLowerCase() : "";
+}
+
+function attachmentLimit(file: File): number | null {
+  const type = file.type.toLowerCase();
+  const extension = extensionOf(file.name);
+  if (type.startsWith("video/") || VIDEO_EXTENSIONS.has(extension)) return VIDEO_MAX_BYTES;
+  if (type.startsWith("image/") || PHOTO_EXTENSIONS.has(extension)) return PHOTO_OR_TEXT_MAX_BYTES;
+  if (
+    type.startsWith("text/") ||
+    type === "application/json" ||
+    type === "application/xml" ||
+    TEXT_EXTENSIONS.has(extension)
+  ) {
+    return PHOTO_OR_TEXT_MAX_BYTES;
+  }
+  return null;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} Б`;
+  const units = ["КБ", "МБ"];
+  let value = bytes / 1024;
+  let unit = units[0];
+  if (value >= 1024) {
+    value /= 1024;
+    unit = units[1];
+  }
+  return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${unit}`;
+}
+
+function attachmentMeta(file: File, fallbackType: string): string {
+  return `${formatBytes(file.size)} · ${file.type || fallbackType}`;
+}
+
 export function ReportProblemLauncher({
   copy,
   showTrigger = true,
@@ -56,9 +114,10 @@ export function ReportProblemLauncher({
   const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
   const [result, setResult] = useState<ProblemReportResult | null>(null);
   const [lastReport, setLastReport] = useState<DiagnosticReport | null>(null);
-  const [screenshot, setScreenshot] = useState<ReportScreenshot | null>(null);
-  const [screenshotState, setScreenshotState] = useState<"idle" | "capturing" | "failed">("idle");
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentState, setAttachmentState] = useState<"idle" | "failed">("idle");
   const dialogRef = useRef<HTMLDivElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function onOpenEvent() {
@@ -86,10 +145,10 @@ export function ReportProblemLauncher({
   function close() {
     // Текст намеренно сохраняем при закрытии в фазе edit: случайный Escape
     // не должен стирать описание в процессе написания. После подтверждённой
-    // сервером отправки черновик и снимок уже отслужили.
+    // сервером отправки черновик и вложение уже отслужили.
     if (phase === "success") {
       setText("");
-      setScreenshot(null);
+      removeAttachment();
     }
     setOpen(false);
     setPhase("edit");
@@ -97,11 +156,11 @@ export function ReportProblemLauncher({
     setCopyState("idle");
     setResult(null);
     setLastReport(null);
-    setScreenshotState("idle");
+    setAttachmentState("idle");
   }
 
   function currentReport(): DiagnosticReport {
-    return createDiagnosticReport(text, screenshot);
+    return createDiagnosticReport(text);
   }
 
   async function send() {
@@ -110,7 +169,7 @@ export function ReportProblemLauncher({
     setLastReport(report);
     setSendState("sending");
     try {
-      const submitted = await submitProblemReport(report);
+      const submitted = await submitProblemReport(report, attachment);
       setResult(submitted);
       setPhase("success");
       setSendState("idle");
@@ -129,14 +188,28 @@ export function ReportProblemLauncher({
     }
   }
 
-  async function addScreenshot() {
-    setScreenshotState("capturing");
-    try {
-      setScreenshot(await captureScreenshot());
-      setScreenshotState("idle");
-    } catch {
-      setScreenshotState("failed");
+  function chooseAttachment() {
+    attachmentInputRef.current?.click();
+  }
+
+  function removeAttachment() {
+    setAttachment(null);
+    setAttachmentState("idle");
+    if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+  }
+
+  function onAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+    const limit = attachmentLimit(file);
+    if (limit === null || file.size > limit) {
+      setAttachment(null);
+      setAttachmentState("failed");
+      event.target.value = "";
+      return;
     }
+    setAttachment(file);
+    setAttachmentState("idle");
   }
 
   const copyLabel =
@@ -198,28 +271,39 @@ export function ReportProblemLauncher({
                   <span aria-hidden="true">✓</span>
                   {copy.privacyNote}
                 </p>
-                {screenshot ? (
-                  <div className="report-screenshot">
-                    <img src={screenshot.dataUrl} alt={copy.screenshotAlt} />
-                    <button type="button" onClick={() => setScreenshot(null)}>
-                      {copy.screenshotRemove}
+                <input
+                  ref={attachmentInputRef}
+                  className="report-attachment-input"
+                  type="file"
+                  accept={ATTACHMENT_ACCEPT}
+                  onChange={onAttachmentChange}
+                />
+                {attachment ? (
+                  <div className="report-attachment">
+                    <CabinetIcon name="attachment" width="17" height="17" />
+                    <span>
+                      <strong title={attachment.name}>{attachment.name}</strong>
+                      <small>{attachmentMeta(attachment, copy.attachmentSelected)}</small>
+                    </span>
+                    <button type="button" onClick={removeAttachment}>
+                      {copy.attachmentRemove}
                     </button>
                   </div>
-                ) : supportsScreenshotCapture() ? (
-                  <div className="report-screenshot-add">
+                ) : (
+                  <div className="report-attachment-add">
                     <button
                       className="shell-btn shell-btn--ghost"
                       type="button"
-                      disabled={screenshotState === "capturing"}
-                      onClick={addScreenshot}
+                      onClick={chooseAttachment}
                     >
-                      {screenshotState === "capturing" ? copy.screenshotCapturing : copy.screenshotAdd}
+                      <CabinetIcon name="attachment" width="15" height="15" />
+                      <span>{copy.attachmentAdd}</span>
                     </button>
-                    <small>{copy.screenshotHint}</small>
+                    <small>{copy.attachmentHint}</small>
                   </div>
-                ) : null}
-                {screenshotState === "failed" ? (
-                  <p className="report-error" role="alert">{copy.screenshotFailed}</p>
+                )}
+                {attachmentState === "failed" ? (
+                  <p className="report-error" role="alert">{copy.attachmentFailed}</p>
                 ) : null}
                 {sendState === "failed" ? (
                   <p className="report-error" role="alert">{copy.sendFailed}</p>

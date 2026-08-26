@@ -8528,30 +8528,70 @@ a.roadmap-step__practice-card:hover {
   font-weight: 700;
 }
 
-.is-report-capturing .shell-overlay {
-  visibility: hidden;
+.report-attachment-input {
+  display: none;
 }
 
-.report-screenshot {
-  position: relative;
+.report-attachment-add {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-top: 12px;
-  overflow: hidden;
+}
+
+.report-attachment-add .shell-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.report-attachment-add small {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-faint);
+}
+
+.report-attachment {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 11px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
 }
 
-.report-screenshot img {
-  display: block;
-  width: 100%;
-  max-height: 180px;
-  object-fit: contain;
+.report-attachment > svg {
+  color: var(--accent);
 }
 
-.report-screenshot button {
-  position: absolute;
-  top: 8px;
-  right: 8px;
+.report-attachment span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.report-attachment strong,
+.report-attachment small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-attachment strong {
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.report-attachment small {
+  color: var(--text-faint);
+  font: 11px var(--font-stack-mono);
+}
+
+.report-attachment button {
   border: 1px solid var(--border-strong);
   border-radius: 6px;
   padding: 5px 8px;
@@ -8559,19 +8599,6 @@ a.roadmap-step__practice-card:hover {
   color: var(--text);
   font: 11px var(--font-stack-mono);
   cursor: pointer;
-}
-
-.report-screenshot-add {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.report-screenshot-add small {
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text-faint);
 }
 
 .report-error {

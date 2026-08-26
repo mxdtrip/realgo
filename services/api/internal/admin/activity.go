@@ -132,20 +132,3 @@ func UserRoadmapPlanItems(ctx *context.Context) table.Table {
 	t.GetInfo().HideDetailButton()
 	return t
 }
-
-func ProblemReports(ctx *context.Context) table.Table {
-	return readOnlyTable(ctx, "problem_reports", "Problem reports", "Client diagnostics and bug reports", "id", db.UUID,
-		listField{"ID", "id", db.UUID, false, false},
-		listField{"User", "user_id", db.Bigint, true, false},
-		listField{"Description", "description", db.Text, true, false},
-		listField{"Diagnostics", "diagnostics", db.JSON, false, false},
-		listField{"Fingerprint", "fingerprint", db.Char, true, false},
-		listField{"Release", "release_version", db.Varchar, true, false},
-		listField{"Commit", "commit_sha", db.Varchar, true, false},
-		listField{"Screenshot MIME", "screenshot_mime", db.Varchar, true, false},
-		listField{"Screenshot width", "screenshot_width", db.Int, false, false},
-		listField{"Screenshot height", "screenshot_height", db.Int, false, false},
-		listField{"Created", "created_at", db.Timestamp, false, true},
-		listField{"Expires", "expires_at", db.Timestamp, false, true},
-	)
-}

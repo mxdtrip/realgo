@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # Production image for the realgo Next.js app (apps/web).
 #
 # Multi-stage build that emits Next's `standalone` output, so the final image
@@ -10,7 +12,8 @@
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # ---- builder: produce the standalone server bundle ----
 FROM node:22-bookworm-slim AS builder
@@ -29,6 +32,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # repository-root .dockerignore to HEAD/refs/packed-refs; none of it is copied
 # into an image layer. Explicit CI args still take precedence.
 RUN --mount=from=repository_metadata,target=/repository-metadata,ro \
+    --mount=type=cache,target=/app/.next/cache \
     set -eu; \
     commit="$NEXT_PUBLIC_COMMIT_SHA"; \
     if [ -z "$commit" ]; then \

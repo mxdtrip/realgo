@@ -146,6 +146,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("mount admin routes: %w", err)
 	}
 	eng.HTML(http.MethodGet, "/admin", adminui.Dashboard)
+	eng.Data(http.MethodGet, "/admin/api/problem_reports/:id/attachment", adminui.DownloadProblemReportAttachment(pg.Pool))
 	handler.Handle("/admin", adminRouter)
 	handler.Handle("/admin/", http.RedirectHandler("/admin", http.StatusPermanentRedirect))
 	handler.Handle("/admin/*", adminRouter)

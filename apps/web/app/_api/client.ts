@@ -28,7 +28,7 @@ const REFRESH_LEASE_RETRY_MS = 100;
 
 export type RequestOptions = {
   method?: string;
-  /** JSON-serialisable body; omit for GET. */
+  /** JSON-serialisable body or FormData; omit for GET. */
   body?: unknown;
   /** Attach the Bearer access token (default true). */
   auth?: boolean;
@@ -42,19 +42,25 @@ async function rawEnvelopeRequest<T, M = unknown>(
   token: string | null,
 ): Promise<ApiEnvelope<T, M>> {
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (options.body !== undefined) headers["Content-Type"] = "application/json";
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+  if (options.body !== undefined && !isFormData) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const method = options.method ?? (options.body !== undefined ? "POST" : "GET");
   const endpoint = `${API_PREFIX}${path}`;
   const networkBreadcrumbId = recordNetworkStart(method, endpoint);
+  const body: BodyInit | undefined = isFormData
+    ? (options.body as FormData)
+    : options.body !== undefined
+      ? JSON.stringify(options.body)
+      : undefined;
 
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${API_PREFIX}${path}`, {
       method,
       headers,
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body,
       signal: options.signal,
     });
   } catch {
