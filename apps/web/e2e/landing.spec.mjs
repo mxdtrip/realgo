@@ -274,6 +274,7 @@ test.describe("landing review cards", () => {
     await expect(face.locator(".review-flip__tiles")).toHaveCSS("opacity", "1");
     await expect(face.locator(".review-flip__line").first()).toHaveCSS("opacity", "1");
     await expect(face.locator(".review-flip__tile").first()).toHaveCSS("animation-name", "review-flip-tile");
+    await expect(face.locator(".review-flip__tile").first()).toHaveCSS("background-color", "rgba(16, 185, 129, 0.12)");
   });
 });
 
@@ -330,6 +331,16 @@ test.describe("landing scroll-story stability", () => {
 test.describe("landing pricing interaction", () => {
   test("keeps plan identity fixed while revealing features and CTA on hover", async ({ page }) => {
     await page.goto("/");
+    const ctas = page.locator("#pricing .price-card > .price-cta");
+    await expect(ctas).toHaveCount(2);
+    const ctaSizes = await ctas.evaluateAll((elements) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { width: Math.round(rect.width), height: Math.round(rect.height) };
+      }),
+    );
+    expect(ctaSizes[0]).toEqual(ctaSizes[1]);
+
     const card = page.locator("#pricing .price-card").first();
 
     const readState = () =>
