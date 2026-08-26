@@ -644,7 +644,7 @@ h3 {
   color: transparent;
   font-family: var(--font-stack-display);
   font-size: clamp(20px, 1.6vw, 25px);
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0;
   line-height: 1.55;
   text-wrap: balance;

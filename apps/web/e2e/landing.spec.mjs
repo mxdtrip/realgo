@@ -28,6 +28,12 @@ test.describe("landing conversion path", () => {
         name: "Подготовка к алгоритмическим собеседованиям, которая помогает не забывать решения",
       }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: "Подготовка к алгоритмическим собеседованиям, которая помогает не забывать решения",
+      }),
+    ).toHaveCSS("font-weight", "400");
     await expect(page.getByRole("link", { name: /Начать подготовку сейчас/ }).first()).toHaveAttribute(
       "href",
       "/register?intent=hero",
