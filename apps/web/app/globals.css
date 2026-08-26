@@ -1153,6 +1153,7 @@ h3 {
    while the popup content keeps its internal animation. */
 .memory-journey {
   --memory-journey-gap: clamp(48px, 7vw, 104px);
+  --memory-copy-bleed: clamp(48px, 7vw, 96px);
   --memory-copy-ribbon-progress: 0;
   --memory-agent-header-y: 0px;
   --memory-agent-task-x: 0px;
@@ -1197,6 +1198,8 @@ h3 {
 .memory-journey__copy-stack {
   min-width: 0;
   height: clamp(360px, 42vw, 440px);
+  margin-right: calc(var(--memory-copy-bleed) * -1);
+  padding-right: var(--memory-copy-bleed);
   overflow: hidden;
 }
 
@@ -1548,6 +1551,8 @@ h3 {
   .memory-journey__copy-stack {
     min-height: 0;
     height: auto;
+    margin-right: 0;
+    padding-right: 0;
     overflow: visible;
     display: grid;
     gap: clamp(42px, 8vw, 68px);

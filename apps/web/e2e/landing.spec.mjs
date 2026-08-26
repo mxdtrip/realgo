@@ -117,37 +117,57 @@ test.describe("landing conversion path", () => {
     await page.getByRole("button", { name: "получить подсказку" }).click();
     await expect(page.getByText("Массив уже отсортирован.", { exact: false })).toBeVisible();
 
-    // The entering gesture snaps to anchor one. A fresh gesture starts the
-    // transition immediately; there is no timed hold at either anchor.
-    await page.evaluate((top) => window.scrollTo(0, top - 160), metrics.top);
-    await page.waitForTimeout(60);
-    await page.mouse.wheel(0, 900);
-    await page.waitForTimeout(60);
-    expect(
-      Number.parseFloat(
-        await section.evaluate((element) => element.style.getPropertyValue("--memory-copy-ribbon-progress") || "0"),
-      ),
-    ).toBe(0);
+    const sectionEnd = metrics.top + metrics.height - 900;
+    const scrollRange = sectionEnd - metrics.top;
 
-    // A distinct second gesture may begin before anchor one finishes. It must
-    // be queued and launch the scene as soon as the anchor settles, without a
-    // third gesture or an extra quiet pause.
-    await page.waitForTimeout(100);
-    await page.mouse.wheel(0, 40);
+    await page.evaluate(({ top, range }) => window.scrollTo(0, top + range * 0.25), {
+      top: metrics.top,
+      range: scrollRange,
+    });
     await expect
       .poll(() =>
         section.evaluate((element) =>
           Number.parseFloat(element.style.getPropertyValue("--memory-copy-ribbon-progress") || "0"),
         ),
       )
-      .toBeGreaterThan(0.05);
-    await page.waitForTimeout(1900);
+      .toBeGreaterThan(0.2);
+    const quarterProgress = await section.evaluate((element) =>
+      Number.parseFloat(element.style.getPropertyValue("--memory-copy-ribbon-progress") || "0"),
+    );
+    expect(quarterProgress).toBeLessThan(0.35);
+
+    await page.evaluate(({ top, range }) => window.scrollTo(0, top + range * 0.62), {
+      top: metrics.top,
+      range: scrollRange,
+    });
+    await expect
+      .poll(() =>
+        section.evaluate((element) =>
+          Number.parseFloat(element.style.getPropertyValue("--memory-copy-ribbon-progress") || "0"),
+        ),
+      )
+      .toBeGreaterThan(0.58);
+    const partialProgress = await section.evaluate((element) =>
+      Number.parseFloat(element.style.getPropertyValue("--memory-copy-ribbon-progress") || "0"),
+    );
+    expect(partialProgress).toBeLessThan(0.7);
+    await page.waitForTimeout(700);
+    expect(
+      await section.evaluate((element) =>
+        Number.parseFloat(element.style.getPropertyValue("--memory-copy-ribbon-progress") || "0"),
+      ),
+    ).toBeCloseTo(partialProgress, 2);
 
     await expect(
       page.getByRole("heading", {
         name: "Ты решил задачу. ReAlgo сохраняет то, к чему нужно вернуться.",
       }),
     ).toBeVisible();
+    const ratingTitleBox = await page.locator(".memory-journey__copy--rating h2").boundingBox();
+    const copyStackBox = await page.locator(".memory-journey__copy-stack").boundingBox();
+    expect((ratingTitleBox?.x ?? 0) + (ratingTitleBox?.width ?? 0)).toBeLessThanOrEqual(
+      (copyStackBox?.x ?? 0) + (copyStackBox?.width ?? 0) + 1,
+    );
     await expect(page.getByText("Как далась задача?")).toBeVisible();
     await expect(page.getByRole("link", { name: /Сохранить первую задачу/ })).toHaveAttribute(
       "href",
@@ -163,8 +183,7 @@ test.describe("landing conversion path", () => {
     await expect(page.locator(".memory-demo-layer--agent")).toHaveCSS("z-index", "2");
     await expect(page.locator(".memory-demo-layer--rating")).toHaveCSS("z-index", "1");
 
-    await page.mouse.wheel(0, 40);
-    const sectionEnd = metrics.top + metrics.height - 900;
+    await page.evaluate((end) => window.scrollTo(0, end + 80), sectionEnd);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(sectionEnd);
   });
 });
@@ -225,32 +244,52 @@ test.describe("landing roadmap interaction", () => {
 });
 
 test.describe("landing scroll-story stability", () => {
-  test("does not bounce section 01 after an inertial alternating wheel tail", async ({ page }) => {
+  test("scrubs section 01 directly from scroll position without wheel capture", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
 
     const section = page.locator("#memory");
     const metrics = await section.evaluate((element) => ({
       top: element.getBoundingClientRect().top + window.scrollY,
+      height: element.offsetHeight,
     }));
+    const sectionEnd = metrics.top + metrics.height - 900;
+    const scrollRange = sectionEnd - metrics.top;
 
     await page.evaluate((top) => window.scrollTo(0, top - 160), metrics.top);
     await page.waitForTimeout(80);
     await page.mouse.wheel(0, 900);
-    await page.waitForTimeout(2200);
-
-    for (let index = 0; index < 18; index += 1) {
-      await page.mouse.wheel(0, index % 2 === 0 ? 40 : -40);
-      await page.waitForTimeout(85);
-    }
-
-    const settled = await section.evaluate((element) =>
-      element.style.getPropertyValue("--memory-copy-ribbon-progress"),
-    );
-    await page.waitForTimeout(1800);
+    await page.waitForTimeout(180);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(metrics.top);
     await expect
-      .poll(() => section.evaluate((element) => element.style.getPropertyValue("--memory-copy-ribbon-progress")))
-      .toBe(settled);
+      .poll(() =>
+        section.evaluate((element) =>
+          Number.parseFloat(element.style.getPropertyValue("--memory-copy-ribbon-progress") || "0"),
+        ),
+      )
+      .toBeGreaterThan(0);
+    const wheelProgress = await section.evaluate((element) =>
+      Number.parseFloat(element.style.getPropertyValue("--memory-copy-ribbon-progress") || "0"),
+    );
+    expect(wheelProgress).toBeLessThan(1);
+    await page.waitForTimeout(700);
+    expect(
+      await section.evaluate((element) =>
+        Number.parseFloat(element.style.getPropertyValue("--memory-copy-ribbon-progress") || "0"),
+      ),
+    ).toBeCloseTo(wheelProgress, 2);
+
+    await expect
+      .poll(async () => {
+        await page.evaluate(({ top, range }) => window.scrollTo(0, top + range * 0.5), {
+          top: metrics.top,
+          range: scrollRange,
+        });
+        return section.evaluate((element) =>
+          Number.parseFloat(element.style.getPropertyValue("--memory-copy-ribbon-progress") || "0"),
+        );
+      })
+      .toBeGreaterThan(0.45);
   });
 });
 
