@@ -12714,6 +12714,14 @@ body * {
   font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace !important;
 }
 
+/* Keep logo text and the footer in the same typeface as the interactive
+   hero letters. This sits after the global Winston override intentionally. */
+.site-brand,
+.site-footer,
+.site-footer * {
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace !important;
+}
+
 @media (min-width: 1600px) {
   .hero-cta a,
   .landing-cta__button,
