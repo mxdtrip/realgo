@@ -92,6 +92,17 @@ test.describe("landing conversion path", () => {
     }
   });
 
+  test("keeps landing frame dividers removed", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.locator(".site-strip")).toHaveCSS("border-bottom-width", "0px");
+    await expect(page.locator("#memory")).toHaveCSS("border-top-width", "0px");
+    await expect(page.locator("#roadmap")).toHaveCSS("border-top-width", "0px");
+    await expect(page.locator("#pricing")).toHaveCSS("border-top-width", "0px");
+    await expect(page.locator(".site-footer")).toHaveCSS("border-top-width", "0px");
+    await expect(page.locator(".site-footer__bar")).toHaveCSS("border-top-width", "0px");
+  });
+
   test("keeps section 01 popup static while switching copy into the saved-task state", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
