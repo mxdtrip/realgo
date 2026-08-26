@@ -1903,6 +1903,19 @@ h3 {
    которые сами себя клипают (bugzilla #1201471) — обе грани становятся
    видны в момент переворота. Та же причина, что и у .focus-card__face. */
 .review-flip__face {
+  --review-card-background-color: rgba(255, 255, 255, 0.015);
+  --review-card-border-color: rgba(255, 255, 255, 0.1);
+  --review-card-hover-border-color: rgba(255, 255, 255, 0.2);
+  --review-card-shine-opacity: 0.1;
+  --review-card-shine-gradient: conic-gradient(
+    from 205deg at 50% 50%,
+    rgba(16, 185, 129, 0) 0deg,
+    #10b981 25deg,
+    rgba(52, 211, 153, 0.18) 295deg,
+    rgba(16, 185, 129, 0) 360deg
+  );
+  --review-card-line-color: #2a2b2c;
+  --review-card-tile-color: rgba(16, 185, 129, 0.05);
   position: absolute;
   inset: 0;
   display: flex;
@@ -1912,81 +1925,294 @@ h3 {
   text-align: center;
   border-radius: 14px;
   padding: 26px;
-  background: var(--panel);
+  background: var(--bg);
   isolation: isolate;
   box-shadow:
-    0 3px 6px rgba(1, 4, 9, 0.18),
-    0 8px 15px rgba(1, 4, 9, 0.22),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    0 3px 6px rgba(0, 0, 0, 0.05),
+    0 8px 15px rgba(0, 0, 0, 0.1),
+    inset 0 0 0 1px var(--review-card-border-color);
   transition:
-    background 0.28s ease,
     box-shadow 0.28s ease,
     visibility 0s linear 0.34s;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
 
-/* Card hover treatment adapted from the referenced CodePen: a soft conic
-   shine and a faint technical grid appear under the existing card content. */
-.review-flip__face::before,
-.review-flip__face::after {
+.review-flip__face::before {
   content: "";
   position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--review-card-background-color);
   pointer-events: none;
+}
+
+.review-flip__shine {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
   border-radius: inherit;
   opacity: 0;
-  transition:
-    opacity 0.35s ease,
-    transform 0.35s ease;
+  pointer-events: none;
+  transition: opacity 0.5s;
 }
 
-.review-flip__face::before {
+.review-flip__shine::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 55%;
+  width: 150%;
+  padding-bottom: 150%;
+  border-radius: 50%;
+  filter: blur(35px);
+  opacity: var(--review-card-shine-opacity);
+  transform: translateX(-50%);
+  background-image: var(--review-card-shine-gradient);
+}
+
+.review-flip__background {
+  position: absolute;
   inset: 0;
-  z-index: -1;
-  background: conic-gradient(
-    from 205deg at 50% 50%,
-    rgba(47, 129, 247, 0) 0deg,
-    rgba(88, 166, 255, 0.9) 28deg,
-    rgba(88, 166, 255, 0.16) 300deg,
-    rgba(47, 129, 247, 0) 360deg
-  );
-  filter: blur(26px);
-  transform: translate3d(0, 10%, 0) scale(1.05);
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(circle at 60% 5%, black 0%, black 15%, transparent 60%);
+  mask-image: radial-gradient(circle at 60% 5%, black 0%, black 15%, transparent 60%);
 }
 
-.review-flip__face::after {
+.review-flip__tiles {
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.review-flip__tile {
+  position: absolute;
+  background: var(--review-card-tile-color);
+  animation-duration: 8s;
+  animation-iteration-count: infinite;
+  opacity: 0;
+}
+
+.review-flip__tile--1 {
+  top: 0;
+  left: 0;
+  width: 22.5%;
+  height: 10%;
+}
+
+.review-flip__tile--2 {
+  top: 0;
+  left: 22.5%;
+  width: 27.5%;
+  height: 10%;
+  animation-delay: -6s;
+}
+
+.review-flip__tile--3 {
+  top: 0;
+  left: 50%;
+  width: 27.5%;
+  height: 10%;
+  animation-delay: -4s;
+}
+
+.review-flip__tile--4 {
+  top: 0;
+  left: 77.5%;
+  width: 22.5%;
+  height: 10%;
+  animation-delay: -2s;
+}
+
+.review-flip__tile--5 {
+  top: 10%;
+  left: 0;
+  width: 22.5%;
+  height: 22.5%;
+  animation-delay: -4s;
+}
+
+.review-flip__tile--6 {
+  top: 10%;
+  left: 22.5%;
+  width: 27.5%;
+  height: 22.5%;
+  animation-delay: -2s;
+}
+
+.review-flip__tile--7 {
+  top: 10%;
+  left: 50%;
+  width: 27.5%;
+  height: 22.5%;
+}
+
+.review-flip__tile--8 {
+  top: 10%;
+  left: 77.5%;
+  width: 22.5%;
+  height: 22.5%;
+  animation-delay: -4s;
+}
+
+.review-flip__tile--9 {
+  top: 32.5%;
+  left: 50%;
+  width: 27.5%;
+  height: 22.5%;
+  animation-delay: -6s;
+}
+
+.review-flip__tile--10 {
+  top: 32.5%;
+  left: 77.5%;
+  width: 22.5%;
+  height: 22.5%;
+  animation-delay: -2s;
+}
+
+@keyframes review-flip-tile {
+  0%,
+  12.5%,
+  100% {
+    opacity: 1;
+  }
+
+  25%,
+  82.5% {
+    opacity: 0;
+  }
+}
+
+.review-flip__line {
+  position: absolute;
   inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(rgba(88, 166, 255, 0.12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(88, 166, 255, 0.12) 1px, transparent 1px);
-  background-size: 27.5% 32.5%;
-  mask-image: radial-gradient(circle at 60% 5%, #000 0%, #000 16%, transparent 64%);
-  -webkit-mask-image: radial-gradient(circle at 60% 5%, #000 0%, #000 16%, transparent 64%);
-  transform: scale(0.94);
+  opacity: 0;
+  transition: opacity 0.35s;
 }
 
-.review-flip__face > * {
+.review-flip__line::before,
+.review-flip__line::after {
+  content: "";
+  position: absolute;
+  background: var(--review-card-line-color);
+  transition: transform 0.35s;
+}
+
+.review-flip__line::before {
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+.review-flip__line::after {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: scaleY(0);
+  transform-origin: 50% 0;
+}
+
+.review-flip__line--1::before {
+  top: 10%;
+}
+
+.review-flip__line--1::after {
+  left: 22.5%;
+}
+
+.review-flip__line--1::before,
+.review-flip__line--1::after {
+  transition-delay: 0.3s;
+}
+
+.review-flip__line--2::before {
+  top: 32.5%;
+}
+
+.review-flip__line--2::after {
+  left: 50%;
+}
+
+.review-flip__line--2::before,
+.review-flip__line--2::after {
+  transition-delay: 0.15s;
+}
+
+.review-flip__line--3::before {
+  top: 55%;
+}
+
+.review-flip__line--3::after {
+  right: 22.5%;
+}
+
+.review-flip__face > :not(.review-flip__shine):not(.review-flip__background) {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .review-flip__card:hover .review-flip__face {
-  background: var(--panel-strong);
   box-shadow:
-    0 5px 10px rgba(1, 4, 9, 0.2),
-    0 15px 25px rgba(1, 4, 9, 0.34),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+    0 3px 6px rgba(0, 0, 0, 0.04),
+    0 15px 25px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px var(--review-card-hover-border-color);
 }
 
-.review-flip__card:hover .review-flip__face::before {
-  opacity: 0.58;
-  transform: translate3d(0, 0, 0) scale(1);
-}
-
-.review-flip__card:hover .review-flip__face::after {
+.review-flip__card:hover .review-flip__shine,
+.review-flip__card:focus-visible .review-flip__shine {
   opacity: 1;
+  transition-duration: 0.5s;
+  transition-delay: 0s;
+}
+
+.review-flip__card:hover .review-flip__tiles,
+.review-flip__card:focus-visible .review-flip__tiles {
+  opacity: 1;
+  transition-delay: 0.25s;
+}
+
+.review-flip__card:hover .review-flip__tile,
+.review-flip__card:focus-visible .review-flip__tile {
+  animation-name: review-flip-tile;
+}
+
+.review-flip__card:hover .review-flip__line,
+.review-flip__card:focus-visible .review-flip__line {
+  opacity: 1;
+  transition-duration: 0.15s;
+}
+
+.review-flip__card:hover .review-flip__line::before,
+.review-flip__card:hover .review-flip__line::after,
+.review-flip__card:focus-visible .review-flip__line::before,
+.review-flip__card:focus-visible .review-flip__line::after {
   transform: scale(1);
+}
+
+.review-flip__card:hover .review-flip__line--1::before,
+.review-flip__card:hover .review-flip__line--1::after,
+.review-flip__card:focus-visible .review-flip__line--1::before,
+.review-flip__card:focus-visible .review-flip__line--1::after {
+  transition-delay: 0s;
+}
+
+.review-flip__card:hover .review-flip__line--2::before,
+.review-flip__card:hover .review-flip__line--2::after,
+.review-flip__card:focus-visible .review-flip__line--2::before,
+.review-flip__card:focus-visible .review-flip__line--2::after {
+  transition-delay: 0.15s;
+}
+
+.review-flip__card:hover .review-flip__line--3::before,
+.review-flip__card:hover .review-flip__line--3::after,
+.review-flip__card:focus-visible .review-flip__line--3::before,
+.review-flip__card:focus-visible .review-flip__line--3::after {
+  transition-delay: 0.3s;
 }
 
 .review-flip__face[aria-hidden="true"] {
@@ -1996,12 +2222,12 @@ h3 {
 
 /* Контент проступает сквозь переворот вместо резкой смены видимости —
    тот же приём, что и .focus-card__face > *. */
-.review-flip__face > * {
+.review-flip__face > :not(.review-flip__shine):not(.review-flip__background) {
   opacity: 1;
   transition: opacity 0.3s ease 0.34s;
 }
 
-.review-flip__face[aria-hidden="true"] > * {
+.review-flip__face[aria-hidden="true"] > :not(.review-flip__shine):not(.review-flip__background) {
   opacity: 0;
   transition: opacity 0.22s ease;
 }

@@ -4,6 +4,24 @@ import { useState } from "react";
 
 import { keepShortWords } from "../_content/i18n";
 
+function CardHoverEffect() {
+  return (
+    <>
+      <span className="review-flip__shine" aria-hidden="true" />
+      <span className="review-flip__background" aria-hidden="true">
+        <span className="review-flip__tiles">
+          {Array.from({ length: 10 }, (_, index) => (
+            <span className={`review-flip__tile review-flip__tile--${index + 1}`} key={index} />
+          ))}
+        </span>
+        <span className="review-flip__line review-flip__line--1" />
+        <span className="review-flip__line review-flip__line--2" />
+        <span className="review-flip__line review-flip__line--3" />
+      </span>
+    </>
+  );
+}
+
 /**
  * Landing "reviews" section demo card — same 3D flip mechanic as the real
  * card-session player (.focus-card in globals.css: perspective + rotateY +
@@ -29,10 +47,12 @@ export function FlipReviewCard({
       >
         <span className="review-flip__inner">
           <span className="review-flip__face review-flip__face--front" aria-hidden={flipped}>
+            <CardHoverEffect />
             <span>{keepShortWords(type)}</span>
             <h3>{keepShortWords(front)}</h3>
           </span>
           <span className="review-flip__face review-flip__face--back" aria-hidden={!flipped}>
+            <CardHoverEffect />
             <span>{keepShortWords(type)}</span>
             <p>{keepShortWords(back)}</p>
           </span>

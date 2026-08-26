@@ -254,6 +254,26 @@ test.describe("landing roadmap interaction", () => {
   });
 });
 
+test.describe("landing review cards", () => {
+  test("uses the referenced tiled shine effect on hover", async ({ page }) => {
+    await page.goto("/");
+    const card = page.locator("#reviews .review-card").first();
+    const face = card.locator(".review-flip__face--front");
+
+    await expect(face.locator(".review-flip__shine")).toHaveCount(1);
+    await expect(face.locator(".review-flip__tile")).toHaveCount(10);
+    await expect(face.locator(".review-flip__line")).toHaveCount(3);
+    await expect(face.locator(".review-flip__shine")).toHaveCSS("opacity", "0");
+    await expect(face.locator(".review-flip__tiles")).toHaveCSS("opacity", "0");
+
+    await card.hover();
+    await expect(face.locator(".review-flip__shine")).toHaveCSS("opacity", "1");
+    await expect(face.locator(".review-flip__tiles")).toHaveCSS("opacity", "1");
+    await expect(face.locator(".review-flip__line").first()).toHaveCSS("opacity", "1");
+    await expect(face.locator(".review-flip__tile").first()).toHaveCSS("animation-name", "review-flip-tile");
+  });
+});
+
 test.describe("landing scroll-story stability", () => {
   test("scrubs section 01 directly from scroll position without wheel capture", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
