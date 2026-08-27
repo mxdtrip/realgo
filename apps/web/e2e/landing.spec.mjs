@@ -349,6 +349,10 @@ test.describe("landing pricing interaction", () => {
     await page.goto("/");
     const ctas = page.locator("#pricing .price-card > .price-cta");
     await expect(ctas).toHaveCount(2);
+    const pricingTitleEmphasis = page.locator("#pricing .section-copy h2 .landing-gradient-text");
+    await expect(pricingTitleEmphasis).toHaveText(["Free", "Pro"]);
+    await expect(pricingTitleEmphasis.first()).toHaveCSS("background-image", /linear-gradient/);
+    await expect(pricingTitleEmphasis.last()).toHaveCSS("background-image", /linear-gradient/);
     const planNames = page.locator("#pricing .price-card > .price-card__name");
     await expect(planNames).toHaveText(["Free", "Pro"]);
     await expect(planNames.first()).toHaveCSS("background-image", /linear-gradient/);

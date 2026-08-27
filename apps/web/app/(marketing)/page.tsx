@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { getDictionary, keepShortWords } from "../_content/i18n";
 import { FlipReviewCard } from "../components/FlipReviewCard";
@@ -13,6 +13,41 @@ import { SortingMemoryHero } from "../components/SortingMemoryHero";
 import { LandingFAQ } from "./LandingFAQ";
 
 const metadataCopy = getDictionary().common.metadata;
+
+function renderGradientPhrases(value: string, phrases: string[]): ReactNode {
+  const text = keepShortWords(value);
+  const ranges = phrases
+    .map((phrase) => {
+      const target = keepShortWords(phrase);
+      return { start: text.indexOf(target), target };
+    })
+    .filter((range) => range.start >= 0)
+    .sort((a, b) => a.start - b.start);
+
+  if (ranges.length === 0) {
+    return text;
+  }
+
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+
+  ranges.forEach(({ start, target }) => {
+    if (start < cursor) {
+      return;
+    }
+
+    nodes.push(text.slice(cursor, start));
+    nodes.push(
+      <span className="landing-gradient-text" key={`${target}-${start}`}>
+        {target}
+      </span>,
+    );
+    cursor = start + target.length;
+  });
+
+  nodes.push(text.slice(cursor));
+  return nodes;
+}
 
 export const metadata: Metadata = {
   title: {
@@ -171,7 +206,7 @@ export default function Home() {
         </div>
         <div className="section-grid">
           <div className="section-copy" data-reveal="left">
-            <h2>{keepShortWords(copy.sections.pricing.title)}</h2>
+            <h2>{renderGradientPhrases(copy.sections.pricing.title, ["Free", "Pro"])}</h2>
             <p>{keepShortWords(copy.sections.pricing.description)}</p>
           </div>
           <div className="pricing-grid">
