@@ -5,6 +5,7 @@ import (
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/db"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
 	adminTable "github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 	"github.com/GoAdminGroup/go-admin/template/types"
 	"github.com/lib/pq"
@@ -16,6 +17,35 @@ type listField struct {
 	typeName   db.DatabaseType
 	filterable bool
 	sortable   bool
+}
+
+type ilikeFilter struct {
+	label  string
+	table  string
+	column string
+}
+
+func (f ilikeFilter) parameter() string {
+	return f.table + "_" + f.column + "_search"
+}
+
+func addILikeFilters(info *types.InfoPanel, filters ...ilikeFilter) {
+	for _, filter := range filters {
+		filter := filter
+		info.AddFilter(filter.label, filter.parameter(), db.Text, func(params *parameter.Parameters) {
+			value := strings.TrimSpace(params.GetFieldValue(filter.parameter()))
+			if value == "" {
+				return
+			}
+
+			raw := pq.QuoteIdentifier(filter.table) + "." + pq.QuoteIdentifier(filter.column) + " ILIKE ?"
+			if info.WhereRaws.Raw != "" {
+				raw = "(" + info.WhereRaws.Raw + ") AND " + raw
+			}
+			args := append(append([]interface{}{}, info.WhereRaws.Args...), "%"+value+"%")
+			info.WhereRaw(raw, args...)
+		})
+	}
 }
 
 func readOnlyTable(ctx *context.Context, tableName, title, description, primaryKey string, primaryType db.DatabaseType, fields ...listField) adminTable.Table {
