@@ -31,7 +31,6 @@ func (f ilikeFilter) parameter() string {
 
 func addILikeFilters(info *types.InfoPanel, filters ...ilikeFilter) {
 	for _, filter := range filters {
-		filter := filter
 		info.AddFilter(filter.label, filter.parameter(), db.Text, func(params *parameter.Parameters) {
 			value := strings.TrimSpace(params.GetFieldValue(filter.parameter()))
 			if value == "" {
