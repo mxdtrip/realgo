@@ -17,9 +17,13 @@ func Platforms(ctx *context.Context) table.Table {
 	t := table.NewDefaultTable(ctx, table.DefaultConfigWithDriver(db.DriverPostgresql).SetPrimaryKey("id", db.Bigint))
 	info := t.GetInfo()
 	info.AddField("ID", "id", db.Bigint).FieldSortable()
-	info.AddField("Code", "code", db.Varchar).FieldFilterable()
-	info.AddField("Name", "name", db.Varchar).FieldFilterable()
+	info.AddField("Code", "code", db.Varchar)
+	info.AddField("Name", "name", db.Varchar)
 	info.AddField("Base URL", "base_url", db.Text)
+	addILikeFilters(info,
+		ilikeFilter{"Code", "platforms", "code"},
+		ilikeFilter{"Name", "platforms", "name"},
+	)
 	info.SetTable("platforms").SetTitle("Platforms").SetDescription("Problem platforms")
 
 	f := t.GetForm()
@@ -56,12 +60,17 @@ func Cards(ctx *context.Context) table.Table {
 	info.AddField("User", "user_id", db.Bigint).FieldFilterable()
 	info.AddField("Problem", "problem_id", db.Bigint).FieldFilterable()
 	info.AddField("Pattern", "pattern_id", db.Bigint).FieldFilterable()
-	info.AddField("Type", "type", db.Varchar).FieldFilterable()
-	info.AddField("Question", "question", db.Text).FieldFilterable()
+	info.AddField("Type", "type", db.Varchar)
+	info.AddField("Question", "question", db.Text)
 	info.AddField("Answer", "answer", db.Text)
 	info.AddField("AI", "created_by_ai", db.Boolean).FieldFilterable()
-	info.AddField("Source", "source", db.Text).FieldFilterable()
+	info.AddField("Source", "source", db.Text)
 	info.AddField("Created", "created_at", db.Timestamp).FieldSortable()
+	addILikeFilters(info,
+		ilikeFilter{"Type", "cards", "type"},
+		ilikeFilter{"Question", "cards", "question"},
+		ilikeFilter{"Source", "cards", "source"},
+	)
 	info.SetTable("cards").SetTitle("Cards").SetDescription("Spaced-repetition cards")
 
 	f := t.GetForm()

@@ -16,9 +16,13 @@ import (
 func TaxonomyVersions(ctx *context.Context) table.Table {
 	t := table.NewDefaultTable(ctx, table.DefaultConfigWithDriver(db.DriverPostgresql).SetPrimaryKey("code", db.Text))
 	info := t.GetInfo()
-	info.AddField("Code", "code", db.Text).FieldFilterable()
-	info.AddField("Title", "title", db.Text).FieldFilterable()
+	info.AddField("Code", "code", db.Text)
+	info.AddField("Title", "title", db.Text)
 	info.AddField("Created", "created_at", db.Timestamp).FieldSortable()
+	addILikeFilters(info,
+		ilikeFilter{"Code", "taxonomy_versions", "code"},
+		ilikeFilter{"Title", "taxonomy_versions", "title"},
+	)
 	info.SetTable("taxonomy_versions").SetTitle("Taxonomy versions").SetDescription("Pattern taxonomy releases")
 	f := t.GetForm()
 	f.AddField("Code", "code", db.Text, form.Text).FieldDisplayButCanNotEditWhenUpdate().FieldMust()
@@ -33,12 +37,18 @@ func Patterns(ctx *context.Context) table.Table {
 	t := table.NewDefaultTable(ctx, table.DefaultConfigWithDriver(db.DriverPostgresql).SetPrimaryKey("id", db.Bigint))
 	info := t.GetInfo()
 	info.AddField("ID", "id", db.Bigint).FieldSortable()
-	info.AddField("Code", "code", db.Varchar).FieldFilterable()
-	info.AddField("Name", "name", db.Varchar).FieldFilterable()
-	info.AddField("Kind", "kind", db.Varchar).FieldFilterable()
-	info.AddField("Taxonomy", "taxonomy_version", db.Text).FieldFilterable()
+	info.AddField("Code", "code", db.Varchar)
+	info.AddField("Name", "name", db.Varchar)
+	info.AddField("Kind", "kind", db.Varchar)
+	info.AddField("Taxonomy", "taxonomy_version", db.Text)
 	info.AddField("Position", "position", db.Int).FieldSortable()
 	info.AddField("Description", "description", db.Text)
+	addILikeFilters(info,
+		ilikeFilter{"Code", "patterns", "code"},
+		ilikeFilter{"Name", "patterns", "name"},
+		ilikeFilter{"Kind", "patterns", "kind"},
+		ilikeFilter{"Taxonomy", "patterns", "taxonomy_version"},
+	)
 	info.SetTable("patterns").SetTitle("Patterns").SetDescription("Pattern taxonomy nodes")
 	f := t.GetForm()
 	f.AddField("ID", "id", db.Bigint, form.Default).FieldDisplayButCanNotEditWhenUpdate().FieldDisableWhenCreate()
@@ -101,8 +111,12 @@ func Companies(ctx *context.Context) table.Table {
 	t := table.NewDefaultTable(ctx, table.DefaultConfigWithDriver(db.DriverPostgresql).SetPrimaryKey("id", db.Bigint))
 	info := t.GetInfo()
 	info.AddField("ID", "id", db.Bigint).FieldSortable()
-	info.AddField("Code", "code", db.Text).FieldFilterable()
-	info.AddField("Name", "name", db.Text).FieldFilterable()
+	info.AddField("Code", "code", db.Text)
+	info.AddField("Name", "name", db.Text)
+	addILikeFilters(info,
+		ilikeFilter{"Code", "companies", "code"},
+		ilikeFilter{"Name", "companies", "name"},
+	)
 	info.SetTable("companies").SetTitle("Companies").SetDescription("Company catalog")
 	f := t.GetForm()
 	f.AddField("ID", "id", db.Bigint, form.Default).FieldDisplayButCanNotEditWhenUpdate().FieldDisableWhenCreate()
@@ -148,8 +162,9 @@ func ProblemSubpatterns(ctx *context.Context) table.Table {
 	info.AddField("ID", "admin_id", db.Bigint).FieldSortable()
 	info.AddField("Problem", "problem_id", db.Bigint).FieldFilterable()
 	info.AddField("Subpattern", "subpattern_id", db.Bigint).FieldFilterable()
-	info.AddField("Tier", "tier", db.Varchar).FieldFilterable()
+	info.AddField("Tier", "tier", db.Varchar)
 	info.AddField("Position", "position", db.Int).FieldSortable()
+	addILikeFilters(info, ilikeFilter{"Tier", "problem_subpatterns", "tier"})
 	f := t.GetForm()
 	addAdminID(f)
 	f.AddField("Problem", "problem_id", db.Bigint, form.SelectSingle).FieldOptionsFromTable("problems", "title", "id").FieldMust()
@@ -168,10 +183,15 @@ func SubpatternCompanies(ctx *context.Context) table.Table {
 	info.AddField("ID", "admin_id", db.Bigint).FieldSortable()
 	info.AddField("Subpattern", "subpattern_id", db.Bigint).FieldFilterable()
 	info.AddField("Company", "company_id", db.Bigint).FieldFilterable()
-	info.AddField("Relevance", "relevance", db.Varchar).FieldFilterable()
-	info.AddField("Confidence", "confidence", db.Varchar).FieldFilterable()
+	info.AddField("Relevance", "relevance", db.Varchar)
+	info.AddField("Confidence", "confidence", db.Varchar)
 	info.AddField("Evidence", "evidence_count", db.Int).FieldSortable()
-	info.AddField("Source", "source_type", db.Varchar).FieldFilterable()
+	info.AddField("Source", "source_type", db.Varchar)
+	addILikeFilters(info,
+		ilikeFilter{"Relevance", "subpattern_companies", "relevance"},
+		ilikeFilter{"Confidence", "subpattern_companies", "confidence"},
+		ilikeFilter{"Source", "subpattern_companies", "source_type"},
+	)
 	f := t.GetForm()
 	addAdminID(f)
 	f.AddField("Subpattern", "subpattern_id", db.Bigint, form.SelectSingle).FieldOptionsFromTable("patterns", "name", "id", patternKind("subpattern")).FieldMust()
@@ -193,7 +213,8 @@ func CompanyProblems(ctx *context.Context) table.Table {
 	info.AddField("Problem", "problem_id", db.Bigint).FieldFilterable()
 	info.AddField("Evidence", "evidence_count", db.Int).FieldSortable()
 	info.AddField("Last seen", "last_seen_at", db.Date).FieldSortable()
-	info.AddField("Source", "source_type", db.Varchar).FieldFilterable()
+	info.AddField("Source", "source_type", db.Varchar)
+	addILikeFilters(info, ilikeFilter{"Source", "company_problems", "source_type"})
 	f := t.GetForm()
 	addAdminID(f)
 	f.AddField("Company", "company_id", db.Bigint, form.SelectSingle).FieldOptionsFromTable("companies", "name", "id").FieldMust()

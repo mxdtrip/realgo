@@ -56,15 +56,22 @@ func readOnlyTable(ctx *context.Context, tableName, title, description, primaryK
 		SetDeletable(false)
 	t := adminTable.NewDefaultTable(ctx, cfg)
 	info := t.GetInfo()
+	textFilters := make([]ilikeFilter, 0)
 	for _, field := range fields {
 		f := info.AddField(field.title, field.name, field.typeName)
 		if field.filterable {
-			f.FieldFilterable()
+			switch field.typeName {
+			case db.Text, db.Varchar, db.Char:
+				textFilters = append(textFilters, ilikeFilter{field.title, tableName, field.name})
+			default:
+				f.FieldFilterable()
+			}
 		}
 		if field.sortable {
 			f.FieldSortable()
 		}
 	}
+	addILikeFilters(info, textFilters...)
 	info.SetTable(tableName).
 		SetTitle(title).
 		SetDescription(description).

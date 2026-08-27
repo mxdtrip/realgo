@@ -33,3 +33,19 @@ func TestAddILikeFilters(t *testing.T) {
 		t.Fatalf("WhereRaw args = %#v, want %#v", info.WhereRaws.Args, wantArgs)
 	}
 }
+
+func TestReadOnlyTableUsesILikeForTextFilters(t *testing.T) {
+	info := readOnlyTable(nil, "events", "Events", "", "id", db.Bigint,
+		listField{"ID", "id", db.Bigint, true, false},
+		listField{"Title", "title", db.Text, true, false},
+	).GetInfo()
+
+	params := parameter.BaseParam().AddField("events_title_search", " Event ")
+	for _, update := range info.UpdateParametersFns {
+		update(&params)
+	}
+
+	if got, want := info.WhereRaws.Raw, `"events"."title" ILIKE ?`; got != want {
+		t.Fatalf("WhereRaw = %q, want %q", got, want)
+	}
+}
