@@ -68,6 +68,26 @@ func TestValidateCard(t *testing.T) {
 	}
 }
 
+func TestValidatePlatform(t *testing.T) {
+	valid := []formValues.Values{
+		{"code": {"leetcode"}, "name": {"LeetCode"}, "base_url": {"https://leetcode.com"}},
+		{"code": {"leetcode"}, "name": {"LeetCode"}, "base_url": {""}},
+	}
+	for _, values := range valid {
+		if err := validatePlatform(values); err != nil {
+			t.Errorf("valid platform %q: %v", values.Get("code"), err)
+		}
+	}
+
+	invalidURLs := []string{"leetcode.com", "/problems", "ftp://leetcode.com", "https://"}
+	for _, rawURL := range invalidURLs {
+		values := formValues.Values{"code": {"leetcode"}, "name": {"LeetCode"}, "base_url": {rawURL}}
+		if err := validatePlatform(values); err == nil {
+			t.Errorf("invalid base URL %q passed validation", rawURL)
+		}
+	}
+}
+
 func TestValidateQuizQuestion(t *testing.T) {
 	valid := formValues.Values{
 		"question": {"Q"}, "problem_id": {"1"},

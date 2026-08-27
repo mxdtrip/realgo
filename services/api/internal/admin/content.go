@@ -2,6 +2,7 @@ package admin
 
 import (
 	"errors"
+	"net/url"
 	"strings"
 
 	"github.com/GoAdminGroup/go-admin/context"
@@ -25,10 +26,27 @@ func Platforms(ctx *context.Context) table.Table {
 	f.AddField("ID", "id", db.Bigint, form.Default).FieldDisplayButCanNotEditWhenUpdate().FieldDisableWhenCreate()
 	f.AddField("Code", "code", db.Varchar, form.Text).FieldMust()
 	f.AddField("Name", "name", db.Varchar, form.Text).FieldMust()
-	f.AddField("Base URL", "base_url", db.Text, form.Text).FieldMust()
+	f.AddField("Base URL", "base_url", db.Text, form.Url)
 	f.SetTable("platforms").SetTitle("Platforms").SetDescription("Create and edit platforms").
-		SetPostValidator(required("code", "name", "base_url"))
+		SetPostValidator(validatePlatform)
 	return t
+}
+
+func validatePlatform(values formValues.Values) error {
+	if err := required("code", "name")(values); err != nil {
+		return err
+	}
+
+	rawURL := strings.TrimSpace(values.Get("base_url"))
+	if rawURL == "" {
+		return nil
+	}
+
+	parsed, err := url.ParseRequestURI(rawURL)
+	if err != nil || parsed.Hostname() == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return errors.New("base_url must be an absolute HTTP(S) URL")
+	}
+	return nil
 }
 
 func Cards(ctx *context.Context) table.Table {
