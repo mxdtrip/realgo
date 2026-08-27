@@ -64,6 +64,7 @@
   --accent-soft: rgba(56, 139, 253, 0.15);
   --accent-line: rgba(56, 139, 253, 0.4);
   --accent-glow: rgba(56, 139, 253, 0.45);
+  --landing-action-gradient: linear-gradient(90deg, rgba(47, 129, 247, 0.9) 0%, rgba(33, 82, 205, 0.9) 100%);
 
   /* primary action — GitHub green */
   --success: #238636;
@@ -1106,6 +1107,14 @@ h3 {
   color: var(--text-dim);
   font-size: 12.5px;
   line-height: 1.4;
+}
+
+.landing-gradient-text {
+  background: var(--landing-action-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 .section-kicker {
@@ -2388,6 +2397,14 @@ h3 {
 #pricing .price-card > span {
   margin-bottom: 12px;
   font-size: 10px;
+}
+
+#pricing .price-card > .price-card__name {
+  background: var(--landing-action-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 #pricing .price-card strong {
@@ -12632,7 +12649,7 @@ button:not(.site-strip button) {
 .site-auth > a.site-auth__cta {
   border: 0;
   border-radius: 8px;
-  background: linear-gradient(90deg, rgba(47, 129, 247, 0.9) 0%, rgba(33, 82, 205, 0.9) 100%);
+  background: var(--landing-action-gradient);
   color: #ffffff;
   font-family: var(--font-stack-sans);
   font-weight: 600;
@@ -12646,7 +12663,7 @@ button:not(.site-strip button) {
 .site-auth .site-auth__dashboard {
   border: 0;
   border-radius: 8px;
-  background: linear-gradient(90deg, rgba(47, 129, 247, 0.9) 0%, rgba(33, 82, 205, 0.9) 100%);
+  background: var(--landing-action-gradient);
   color: #ffffff;
   font-family: var(--font-stack-sans);
   font-weight: 600;
@@ -12663,7 +12680,7 @@ button:not(.site-strip button) {
 #faq .landing-cta__button:hover,
 #faq .landing-cta__button:focus-visible {
   border: 0;
-  background: linear-gradient(90deg, rgba(47, 129, 247, 0.9) 0%, rgba(33, 82, 205, 0.9) 100%);
+  background: var(--landing-action-gradient);
   color: #ffffff;
   box-shadow: none;
 }
@@ -12674,7 +12691,7 @@ button:not(.site-strip button) {
 .site-auth > a.site-auth__cta:last-child:hover,
 .site-auth .site-auth__dashboard:hover {
   border: 0;
-  background: linear-gradient(90deg, rgba(47, 129, 247, 0.9) 0%, rgba(33, 82, 205, 0.9) 100%);
+  background: var(--landing-action-gradient);
   color: #ffffff;
   box-shadow: none;
 }

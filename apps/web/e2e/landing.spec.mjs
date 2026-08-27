@@ -130,6 +130,10 @@ test.describe("landing conversion path", () => {
         name: "Застрял в задаче? ReAlgo подскажет следующий шаг.",
       }),
     ).toBeVisible();
+    await expect(page.locator("#memory .landing-gradient-text", { hasText: "ReAlgo подскажет" })).toHaveCSS(
+      "background-image",
+      /linear-gradient/,
+    );
 
     const popup = page.locator("#memory .realgo-popup");
     const initialPopupBox = await popup.boundingBox();
@@ -185,6 +189,10 @@ test.describe("landing conversion path", () => {
         name: "Ты решил задачу. ReAlgo сохраняет то, к чему нужно вернуться.",
       }),
     ).toBeVisible();
+    await expect(page.locator("#memory .landing-gradient-text", { hasText: "ReAlgo сохраняет то" })).toHaveCSS(
+      "background-image",
+      /linear-gradient/,
+    );
     const ratingTitleBox = await page.locator(".memory-journey__copy--rating h2").boundingBox();
     const copyStackBox = await page.locator(".memory-journey__copy-stack").boundingBox();
     expect((ratingTitleBox?.x ?? 0) + (ratingTitleBox?.width ?? 0)).toBeLessThanOrEqual(
@@ -341,6 +349,10 @@ test.describe("landing pricing interaction", () => {
     await page.goto("/");
     const ctas = page.locator("#pricing .price-card > .price-cta");
     await expect(ctas).toHaveCount(2);
+    const planNames = page.locator("#pricing .price-card > .price-card__name");
+    await expect(planNames).toHaveText(["Free", "Pro"]);
+    await expect(planNames.first()).toHaveCSS("background-image", /linear-gradient/);
+    await expect(planNames.last()).toHaveCSS("background-image", /linear-gradient/);
     const ctaSizes = await ctas.evaluateAll((elements) =>
       elements.map((element) => {
         const rect = element.getBoundingClientRect();

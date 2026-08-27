@@ -22,6 +22,24 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function renderGradientPhrase(value: string, phrase: string) {
+  const text = keepShortWords(value);
+  const target = keepShortWords(phrase);
+  const index = text.indexOf(target);
+
+  if (index === -1) {
+    return text;
+  }
+
+  return [
+    text.slice(0, index),
+    <span className="landing-gradient-text" key={target}>
+      {target}
+    </span>,
+    text.slice(index + target.length),
+  ];
+}
+
 /**
  * Scroll-scrubbed two-state scene:
  *
@@ -128,7 +146,7 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
                   className="section-copy memory-journey__copy memory-journey__copy--agent"
                   data-active={demoMode === "agent"}
                 >
-                  <h2>{keepShortWords(section.agentTitle)}</h2>
+                  <h2>{renderGradientPhrase(section.agentTitle, "ReAlgo подскажет")}</h2>
                   <p>{keepShortWords(section.agentDescription)}</p>
                   <LandingCTA label={section.agentCta} intent="memory-agent" />
                 </div>
@@ -138,7 +156,7 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
                   className="section-copy memory-journey__copy memory-journey__copy--rating"
                   data-active={demoMode === "rating"}
                 >
-                  <h2>{keepShortWords(section.title)}</h2>
+                  <h2>{renderGradientPhrase(section.title, "ReAlgo сохраняет то")}</h2>
                   <p>{keepShortWords(section.description)}</p>
                   <LandingCTA label={section.cta} intent="memory" />
                 </div>

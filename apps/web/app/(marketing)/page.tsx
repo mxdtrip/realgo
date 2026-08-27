@@ -182,7 +182,7 @@ export default function Home() {
                 data-reveal-delay={index * 110}
                 key={name}
               >
-                <span>{keepShortWords(name)}</span>
+                <span className="price-card__name">{keepShortWords(name)}</span>
                 <strong>
                   {keepShortWords(price)}
                   {/* Pro — разовая бессрочная лицензия. Без этой подписи цена
