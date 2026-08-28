@@ -61,8 +61,8 @@ test.describe("landing conversion path", () => {
     });
 
     expect(Math.abs(metrics.wordTop - metrics.codeTop - targetOffset)).toBeLessThanOrEqual(12);
-    expect(metrics.canvasY).toBeGreaterThanOrEqual(-230);
-    expect(metrics.canvasY).toBeLessThanOrEqual(-200);
+    expect(metrics.canvasY).toBeGreaterThanOrEqual(-210);
+    expect(metrics.canvasY).toBeLessThanOrEqual(-180);
   });
 
   test("states the product offer and repeats contextual registration CTAs", async ({ page }) => {

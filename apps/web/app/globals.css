@@ -134,7 +134,7 @@ body {
   height: 100%;
   /* Keep the card flow centred in the viewport at the top of the landing
      page. The previous -33px lift made the scene visibly sit too high. */
-  transform: translateY(-5px);
+  transform: translateY(15px);
   opacity: 0;
   transition: opacity 180ms ease-out;
 }
@@ -166,7 +166,7 @@ body {
   position: absolute;
   left: 10%;
   right: 10%;
-  top: calc(26% - 5px);
+  top: calc(26% + 15px);
   height: 38%;
   border-radius: 50%;
   transform: perspective(900px) rotateX(58deg) rotateZ(-8deg);
@@ -183,7 +183,7 @@ body {
 
 .scroll-card-flow-bg[data-state="loading"]::after,
 .scroll-card-flow-bg[data-state="fallback"]::after {
-  top: calc(31% - 5px);
+  top: calc(31% + 15px);
   transform: perspective(900px) rotateX(58deg) rotateZ(-8deg) scale(0.92);
   opacity: 0.2;
   filter: blur(8px);
@@ -191,19 +191,19 @@ body {
 
 @media (min-width: 921px) and (max-width: 1199px) {
   .scroll-card-flow-bg canvas {
-    transform: translateY(calc(-5px - clamp(176px, calc(40vh - 130px), 190px)));
+    transform: translateY(calc(15px - clamp(176px, calc(40vh - 130px), 190px)));
   }
 
   .scroll-card-flow-bg[data-state="loading"]::before,
   .scroll-card-flow-bg[data-state="loading"]::after,
   .scroll-card-flow-bg[data-state="fallback"]::before,
   .scroll-card-flow-bg[data-state="fallback"]::after {
-    top: calc(26% - 5px - clamp(176px, calc(40vh - 130px), 190px));
+    top: calc(26% + 15px - clamp(176px, calc(40vh - 130px), 190px));
   }
 
   .scroll-card-flow-bg[data-state="loading"]::after,
   .scroll-card-flow-bg[data-state="fallback"]::after {
-    top: calc(31% - 5px - clamp(176px, calc(40vh - 130px), 190px));
+    top: calc(31% + 15px - clamp(176px, calc(40vh - 130px), 190px));
   }
 }
 
@@ -7224,20 +7224,20 @@ a.roadmap-step__practice-card:hover {
   }
 
   .scroll-card-flow-bg canvas {
-    transform: translateY(calc(-5px - clamp(140px, calc(51vh - 250px), 210px)));
+    transform: translateY(calc(15px - clamp(140px, calc(51vh - 250px), 210px)));
   }
 
   .scroll-card-flow-bg[data-state="loading"]::before,
   .scroll-card-flow-bg[data-state="loading"]::after,
   .scroll-card-flow-bg[data-state="fallback"]::before,
   .scroll-card-flow-bg[data-state="fallback"]::after {
-    top: calc(26% - 5px - clamp(140px, calc(51vh - 250px), 210px));
+    top: calc(26% + 15px - clamp(140px, calc(51vh - 250px), 210px));
     height: 38%;
   }
 
   .scroll-card-flow-bg[data-state="loading"]::after,
   .scroll-card-flow-bg[data-state="fallback"]::after {
-    top: calc(31% - 5px - clamp(140px, calc(51vh - 250px), 210px));
+    top: calc(31% + 15px - clamp(140px, calc(51vh - 250px), 210px));
   }
 
   .hero-offer {
@@ -7323,20 +7323,20 @@ a.roadmap-step__practice-card:hover {
   }
 
   .scroll-card-flow-bg canvas {
-    transform: translateY(calc(-5px - clamp(50px, calc(10vw + 30vh - 381px), 140px)));
+    transform: translateY(calc(15px - clamp(50px, calc(10vw + 30vh - 381px), 140px)));
   }
 
   .scroll-card-flow-bg[data-state="loading"]::before,
   .scroll-card-flow-bg[data-state="loading"]::after,
   .scroll-card-flow-bg[data-state="fallback"]::before,
   .scroll-card-flow-bg[data-state="fallback"]::after {
-    top: calc(26% - 5px - clamp(50px, calc(10vw + 30vh - 381px), 140px));
+    top: calc(26% + 15px - clamp(50px, calc(10vw + 30vh - 381px), 140px));
     height: 38%;
   }
 
   .scroll-card-flow-bg[data-state="loading"]::after,
   .scroll-card-flow-bg[data-state="fallback"]::after {
-    top: calc(31% - 5px - clamp(50px, calc(10vw + 30vh - 381px), 140px));
+    top: calc(31% + 15px - clamp(50px, calc(10vw + 30vh - 381px), 140px));
   }
 
   .hero-title {
@@ -7564,7 +7564,7 @@ a.roadmap-step__practice-card:hover {
   }
 
   .scroll-card-flow-bg canvas {
-    transform: translateY(-54px) scale(0.86);
+    transform: translateY(-34px) scale(0.86);
     transform-origin: center 35%;
   }
 
