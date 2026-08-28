@@ -48,11 +48,11 @@ const ru = {
       homeAria: "ReAlgo home",
       navAria: "Site sections",
       nav: [
-        { href: "memory", label: "Задачи" },
-        { href: "roadmap", label: "План" },
-        { href: "reviews", label: "Повторения" },
-        { href: "pricing", label: "Тарифы" },
-        { href: "faq", label: "Вопросы" },
+        { href: "memory", label: "Tasks" },
+        { href: "roadmap", label: "Plan" },
+        { href: "reviews", label: "Reviews" },
+        { href: "pricing", label: "Pricing" },
+        { href: "faq", label: "FAQ" },
       ],
       auth: {
         login: "Войти",
@@ -204,11 +204,10 @@ const ru = {
           "Сохраняй задачи и повторяй важные темы бесплатно. С Pro ты получишь персональный план подготовки, приоритет задач под выбранную компанию и расширенные карточки, которые помогают глубже разбирать паттерны и механику решений.",
       },
       faq: {
-        kicker: "Вопросы",
+        kicker: "FAQ",
         title: "Всё, что нужно знать перед стартом.",
         description:
           "Коротко о расширении, повторениях и том, как ReAlgo встраивается в привычную подготовку.",
-        cta: "Попробовать ReAlgo бесплатно",
         items: [
           {
             question: "ReAlgo сам решает задачи?",

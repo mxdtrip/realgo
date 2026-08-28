@@ -13,6 +13,7 @@ test.describe("landing conversion path", () => {
     await expect(page.locator(".site-footer__brand p")).toHaveCSS("font-family", /JetBrains Mono/);
     await expect(page.locator(".landing-proof strong")).toHaveText(["4", "111", "FSRS"]);
     await expect(page.locator(".landing-proof strong").first()).toHaveCSS("font-family", /JetBrains Mono/);
+    await expect(page.locator(".site-nav a")).toHaveText(["Tasks", "Plan", "Reviews", "Pricing", "FAQ"]);
   });
 
   test("keeps the hero at the top while the extension demo hydrates", async ({ page }) => {
@@ -44,8 +45,9 @@ test.describe("landing conversion path", () => {
       "href",
       "/register?intent=pricing-pro",
     );
-    await expect(page.locator('a[href^="/register?intent="]')).toHaveCount(8);
+    await expect(page.locator('a[href^="/register?intent="]')).toHaveCount(7);
     await expect(page.locator('#pricing a[href^="/register?intent=pricing-"]')).toHaveCount(2);
+    await expect(page.locator('a[href="/register?intent=faq"]')).toHaveCount(0);
     await expect(page.locator(".landing-cta__note")).toHaveCount(0);
     await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(2);
   });
@@ -112,6 +114,19 @@ test.describe("landing conversion path", () => {
     await expect(page.locator("#pricing")).toHaveCSS("border-top-width", "0px");
     await expect(page.locator(".site-footer")).toHaveCSS("border-top-width", "0px");
     await expect(page.locator(".site-footer__bar")).toHaveCSS("border-top-width", "0px");
+  });
+
+  test("keeps the footer legal links inside the page width", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await page.goto("/");
+    await page.locator(".site-footer").scrollIntoViewIfNeeded();
+
+    await expect(page.getByRole("link", { name: "Конфиденциальность" })).toBeVisible();
+    const metrics = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth);
   });
 
   test("keeps section 01 popup static while switching copy into the saved-task state", async ({ page }) => {
@@ -409,10 +424,9 @@ test.describe("landing FAQ", () => {
 
     const openCount = await page.locator(".faq-item.is-open").count();
     expect(openCount).toBe(0);
+    await expect(page.locator("#faq .section-kicker")).toContainText("FAQ");
+    await expect(page.locator("#faq .landing-cta__button")).toHaveCount(0);
     await expect(page.locator("#faq-button-0")).toHaveAttribute("aria-expanded", "false");
-
-    const faqRadius = await page.locator(".faq-item").first().evaluate((element) => getComputedStyle(element).borderRadius);
-    await expect(page.locator("#faq .landing-cta__button")).toHaveCSS("border-radius", faqRadius);
   });
 
   test("clicking a question expands it", async ({ page }) => {

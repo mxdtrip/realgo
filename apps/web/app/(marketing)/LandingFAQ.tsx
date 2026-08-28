@@ -3,13 +3,11 @@
 import { useState } from "react";
 
 import { keepShortWords } from "../_content/i18n";
-import { LandingCTA } from "../components/LandingCTA";
 
 type FAQSectionCopy = Readonly<{
   kicker: string;
   title: string;
   description: string;
-  cta: string;
   items: readonly Readonly<{
     question: string;
     answer: string;
@@ -31,7 +29,6 @@ export function LandingFAQ({ section }: { section: FAQSectionCopy }) {
         <div className="section-copy faq-intro" data-reveal="left">
           <h2 id="faq-title">{keepShortWords(section.title)}</h2>
           <p>{keepShortWords(section.description)}</p>
-          <LandingCTA label={section.cta} intent="faq" align="center" />
         </div>
 
         <div aria-labelledby="faq-title" className="faq-list" data-reveal="right">
