@@ -687,7 +687,7 @@ h3 {
 .hero-tagline {
   position: absolute;
   left: 50%;
-  bottom: 11%;
+  bottom: calc(11% + 100px);
   transform: translateX(-50%);
   z-index: 3;
   width: min(720px, 86vw);
@@ -7245,7 +7245,7 @@ a.roadmap-step__practice-card:hover {
   }
 
   .hero-tagline {
-    top: 64vh;
+    top: calc(64vh - 100px);
     bottom: auto;
     width: min(960px, 86vw);
   }
@@ -7346,7 +7346,7 @@ a.roadmap-step__practice-card:hover {
   }
 
   .hero-tagline {
-    top: 620px;
+    top: 520px;
     bottom: auto;
     width: min(960px, 82vw);
   }
@@ -7592,7 +7592,7 @@ a.roadmap-step__practice-card:hover {
   }
 
   .hero-tagline {
-    bottom: 27%;
+    bottom: calc(27% + 80px);
     width: min(560px, 90vw);
   }
 
