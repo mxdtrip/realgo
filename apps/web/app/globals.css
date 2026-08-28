@@ -663,7 +663,7 @@ h3 {
   color: var(--text);
   font-family: var(--font-stack-display);
   font-size: clamp(20px, 1.6vw, 25px);
-  font-weight: 400;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1.55;
   text-wrap: balance;
@@ -1088,7 +1088,7 @@ h3 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   max-width: calc(var(--maxw) - var(--pad) * 2);
-  margin: clamp(26px, 5vw, 58px) auto 0;
+  margin: calc(clamp(26px, 5vw, 58px) - 100px) auto 0;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: rgba(22, 27, 34, 0.74);

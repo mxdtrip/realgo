@@ -79,7 +79,7 @@ test.describe("landing conversion path", () => {
         level: 1,
         name: "Подготовка к алгоритмическим собеседованиям, которая помогает не забывать решения",
       }),
-    ).toHaveCSS("font-weight", "400");
+    ).toHaveCSS("font-weight", "600");
     await expect(
       page.getByRole("heading", {
         level: 1,
@@ -105,6 +105,10 @@ test.describe("landing conversion path", () => {
     await expect(page.locator('a[href="/register?intent=faq"]')).toHaveCount(0);
     await expect(page.locator(".landing-cta__note")).toHaveCount(0);
     await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(2);
+
+    const proofTop = await page.locator(".landing-proof").evaluate((element) => element.getBoundingClientRect().top);
+    const viewportHeight = page.viewportSize()?.height ?? 720;
+    expect(proofTop).toBeLessThan(viewportHeight);
   });
 
   test("matches the landing CTA treatment and brightens on hover", async ({ page }) => {
