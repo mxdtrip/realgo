@@ -22,10 +22,12 @@ test.describe("landing conversion path", () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });
 
-  test("aligns the hero object band with the script field on desktop", async ({ page }) => {
+  test("places the hero object band 15px below the script field on desktop", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
     await expect(page.locator(".minimal-scene")).toHaveAttribute("data-scene-ready", "true");
+
+    const targetOffset = 15;
 
     await expect
       .poll(async () =>
@@ -36,8 +38,8 @@ test.describe("landing conversion path", () => {
             .filter((rect) => rect.width > 0 && rect.height > 0);
           const wordTop = Math.min(...letterRects.map((rect) => rect.top));
 
-          return Math.abs(wordTop - (code?.top ?? 0));
-        }),
+          return wordTop - (code?.top ?? 0);
+        }).then((offset) => Math.abs(offset - targetOffset)),
       )
       .toBeLessThanOrEqual(12);
 
@@ -49,17 +51,18 @@ test.describe("landing conversion path", () => {
       const wordTop = Math.min(...letterRects.map((rect) => rect.top));
       const canvas = document.querySelector(".scroll-card-flow-bg canvas");
       const canvasTransform = canvas ? getComputedStyle(canvas).transform : "";
+      const canvasY = canvasTransform === "none" ? 0 : new DOMMatrixReadOnly(canvasTransform).m42;
 
       return {
         codeTop: code?.top ?? 0,
         wordTop,
-        canvasTransform,
+        canvasY,
       };
     });
 
-    expect(Math.abs(metrics.wordTop - metrics.codeTop)).toBeLessThanOrEqual(12);
-    expect(metrics.canvasTransform).toContain("matrix");
-    expect(metrics.canvasTransform).toContain("-229");
+    expect(Math.abs(metrics.wordTop - metrics.codeTop - targetOffset)).toBeLessThanOrEqual(12);
+    expect(metrics.canvasY).toBeGreaterThanOrEqual(-230);
+    expect(metrics.canvasY).toBeLessThanOrEqual(-200);
   });
 
   test("states the product offer and repeats contextual registration CTAs", async ({ page }) => {
