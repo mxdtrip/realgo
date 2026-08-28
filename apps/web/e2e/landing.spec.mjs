@@ -22,6 +22,46 @@ test.describe("landing conversion path", () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });
 
+  test("aligns the hero object band with the script field on desktop", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await expect(page.locator(".minimal-scene")).toHaveAttribute("data-scene-ready", "true");
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const code = document.querySelector(".code-editor")?.getBoundingClientRect();
+          const letterRects = [...document.querySelectorAll(".word-letter")]
+            .map((element) => element.getBoundingClientRect())
+            .filter((rect) => rect.width > 0 && rect.height > 0);
+          const wordTop = Math.min(...letterRects.map((rect) => rect.top));
+
+          return Math.abs(wordTop - (code?.top ?? 0));
+        }),
+      )
+      .toBeLessThanOrEqual(12);
+
+    const metrics = await page.evaluate(() => {
+      const code = document.querySelector(".code-editor")?.getBoundingClientRect();
+      const letterRects = [...document.querySelectorAll(".word-letter")]
+        .map((element) => element.getBoundingClientRect())
+        .filter((rect) => rect.width > 0 && rect.height > 0);
+      const wordTop = Math.min(...letterRects.map((rect) => rect.top));
+      const canvas = document.querySelector(".scroll-card-flow-bg canvas");
+      const canvasTransform = canvas ? getComputedStyle(canvas).transform : "";
+
+      return {
+        codeTop: code?.top ?? 0,
+        wordTop,
+        canvasTransform,
+      };
+    });
+
+    expect(Math.abs(metrics.wordTop - metrics.codeTop)).toBeLessThanOrEqual(12);
+    expect(metrics.canvasTransform).toContain("matrix");
+    expect(metrics.canvasTransform).toContain("-229");
+  });
+
   test("states the product offer and repeats contextual registration CTAs", async ({ page }) => {
     await page.goto("/");
 

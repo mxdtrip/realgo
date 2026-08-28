@@ -189,6 +189,24 @@ body {
   filter: blur(8px);
 }
 
+@media (min-width: 921px) and (max-width: 1199px) {
+  .scroll-card-flow-bg canvas {
+    transform: translateY(calc(-20px - clamp(176px, calc(40vh - 130px), 190px)));
+  }
+
+  .scroll-card-flow-bg[data-state="loading"]::before,
+  .scroll-card-flow-bg[data-state="loading"]::after,
+  .scroll-card-flow-bg[data-state="fallback"]::before,
+  .scroll-card-flow-bg[data-state="fallback"]::after {
+    top: calc(26% - 20px - clamp(176px, calc(40vh - 130px), 190px));
+  }
+
+  .scroll-card-flow-bg[data-state="loading"]::after,
+  .scroll-card-flow-bg[data-state="fallback"]::after {
+    top: calc(31% - 20px - clamp(176px, calc(40vh - 130px), 190px));
+  }
+}
+
 .site-shell {
   position: relative;
   z-index: 1;
@@ -7189,27 +7207,37 @@ a.roadmap-step__practice-card:hover {
 /* Editorial first-screen composition: on wide displays the copy gets a clear
    visual field while the interactive letters and card flow form one enlarged
    object band along the lower edge of the hero. */
+@media (min-width: 921px) and (max-width: 1199px) {
+  .word-stage {
+    transform: translateY(calc(-30px - clamp(176px, calc(40vh - 130px), 190px)));
+    transform-origin: center center;
+  }
+}
+
 @media (min-width: 1200px) {
   .word-stage {
-    transform: translateY(-70px) scale(0.88);
+    /* Align the gathered interactive word with the top edge of the script
+       field. The word's layout is viewport-height dependent, so the lift has
+       to scale with vh rather than use one fixed laptop-only value. */
+    transform: translateY(calc(-70px - clamp(140px, calc(51vh - 250px), 210px))) scale(0.88);
     transform-origin: center center;
   }
 
   .scroll-card-flow-bg canvas {
-    transform: translateY(-20px);
+    transform: translateY(calc(-20px - clamp(140px, calc(51vh - 250px), 210px)));
   }
 
   .scroll-card-flow-bg[data-state="loading"]::before,
   .scroll-card-flow-bg[data-state="loading"]::after,
   .scroll-card-flow-bg[data-state="fallback"]::before,
   .scroll-card-flow-bg[data-state="fallback"]::after {
-    top: calc(26% - 20px);
+    top: calc(26% - 20px - clamp(140px, calc(51vh - 250px), 210px));
     height: 38%;
   }
 
   .scroll-card-flow-bg[data-state="loading"]::after,
   .scroll-card-flow-bg[data-state="fallback"]::after {
-    top: calc(31% - 20px);
+    top: calc(31% - 20px - clamp(140px, calc(51vh - 250px), 210px));
   }
 
   .hero-offer {
@@ -7290,25 +7318,25 @@ a.roadmap-step__practice-card:hover {
   }
 
   .word-stage {
-    transform: translateY(-130px) scale(0.78);
+    transform: translateY(calc(-130px - clamp(50px, calc(10vw + 30vh - 381px), 140px))) scale(0.78);
     transform-origin: center center;
   }
 
   .scroll-card-flow-bg canvas {
-    transform: translateY(-20px);
+    transform: translateY(calc(-20px - clamp(50px, calc(10vw + 30vh - 381px), 140px)));
   }
 
   .scroll-card-flow-bg[data-state="loading"]::before,
   .scroll-card-flow-bg[data-state="loading"]::after,
   .scroll-card-flow-bg[data-state="fallback"]::before,
   .scroll-card-flow-bg[data-state="fallback"]::after {
-    top: calc(26% - 20px);
+    top: calc(26% - 20px - clamp(50px, calc(10vw + 30vh - 381px), 140px));
     height: 38%;
   }
 
   .scroll-card-flow-bg[data-state="loading"]::after,
   .scroll-card-flow-bg[data-state="fallback"]::after {
-    top: calc(31% - 20px);
+    top: calc(31% - 20px - clamp(50px, calc(10vw + 30vh - 381px), 140px));
   }
 
   .hero-title {
