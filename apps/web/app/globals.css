@@ -642,7 +642,7 @@ h3 {
 .hero-title {
   max-width: min(720px, 100%);
   margin: 0 auto;
-  color: transparent;
+  color: var(--text);
   font-family: var(--font-stack-display);
   font-size: clamp(20px, 1.6vw, 25px);
   font-weight: 400;
@@ -650,10 +650,6 @@ h3 {
   line-height: 1.55;
   text-wrap: balance;
   text-shadow: 0 4px 26px rgba(1, 4, 9, 0.82);
-  background: linear-gradient(90deg, #a9d0ff 0%, #70b2ff 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .hero-offer p {
