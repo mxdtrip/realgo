@@ -687,7 +687,7 @@ h3 {
 .hero-tagline {
   position: absolute;
   left: 50%;
-  bottom: calc(11% + 180px);
+  bottom: calc(11% + 260px);
   transform: translateX(-50%);
   z-index: 3;
   width: min(720px, 86vw);
@@ -1088,7 +1088,7 @@ h3 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   max-width: calc(var(--maxw) - var(--pad) * 2);
-  margin: calc(clamp(26px, 5vw, 58px) - 180px) auto 0;
+  margin: calc(clamp(26px, 5vw, 58px) - 260px) auto 0;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: rgba(22, 27, 34, 0.74);
@@ -7245,7 +7245,7 @@ a.roadmap-step__practice-card:hover {
   }
 
   .hero-tagline {
-    top: calc(64vh - 180px);
+    top: calc(64vh - 260px);
     bottom: auto;
     width: min(960px, 86vw);
   }
@@ -7346,7 +7346,7 @@ a.roadmap-step__practice-card:hover {
   }
 
   .hero-tagline {
-    top: 440px;
+    top: 360px;
     bottom: auto;
     width: min(960px, 82vw);
   }
@@ -7592,7 +7592,7 @@ a.roadmap-step__practice-card:hover {
   }
 
   .hero-tagline {
-    bottom: calc(27% + 160px);
+    bottom: calc(27% + 240px);
     width: min(560px, 90vw);
   }
 
