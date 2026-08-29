@@ -3,6 +3,12 @@ INSERT INTO users (email, password_hash)
 VALUES ($1, $2)
 RETURNING *;
 
+-- name: CreateOAuthUser :one
+-- An OAuth-only signup (e.g. Yandex ID): no local password is set.
+INSERT INTO users (email, password_hash)
+VALUES ($1, NULL)
+RETURNING *;
+
 -- name: GetUserByEmail :one
 SELECT * FROM users
 WHERE email = $1;

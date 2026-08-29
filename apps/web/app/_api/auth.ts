@@ -31,6 +31,28 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return data.user;
 }
 
+/** POST /auth/yandex → exchanges a Yandex ID authorization code and starts a session. */
+export async function loginWithYandex(code: string, redirectUri: string): Promise<AuthUser> {
+  const data = await apiFetch<AuthResponse>("/auth/yandex", {
+    method: "POST",
+    auth: false,
+    body: { code, redirect_uri: redirectUri },
+  });
+  setTokens(data.tokens);
+  return data.user;
+}
+
+/** POST /auth/github → exchanges a GitHub OAuth App authorization code and starts a session. */
+export async function loginWithGithub(code: string, redirectUri: string): Promise<AuthUser> {
+  const data = await apiFetch<AuthResponse>("/auth/github", {
+    method: "POST",
+    auth: false,
+    body: { code, redirect_uri: redirectUri },
+  });
+  setTokens(data.tokens);
+  return data.user;
+}
+
 /** GET /users/me → the current authenticated user. */
 export async function getMe(): Promise<AuthUser> {
   const data = await apiFetch<{ user: AuthUser }>("/users/me");

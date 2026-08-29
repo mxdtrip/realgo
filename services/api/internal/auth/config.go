@@ -14,6 +14,40 @@ type Config struct {
 	AccessTTL  time.Duration
 	RefreshTTL time.Duration
 	Issuer     string
+	Yandex     YandexConfig
+	GitHub     GitHubConfig
+}
+
+// YandexConfig holds the "Sign in with Yandex ID" OAuth client credentials.
+// TokenURL/UserInfoURL are only ever set in tests (to point at a fake
+// server) — production always falls back to the real Yandex endpoints.
+type YandexConfig struct {
+	ClientID     string
+	ClientSecret string
+	TokenURL     string
+	UserInfoURL  string
+}
+
+// Enabled reports whether Yandex ID sign-in is configured. Like AI.Enabled(),
+// an empty client id/secret disables the feature instead of failing startup.
+func (c YandexConfig) Enabled() bool {
+	return c.ClientID != "" && c.ClientSecret != ""
+}
+
+// GitHubConfig holds the "Sign in with GitHub" OAuth App credentials.
+// TokenURL/UserURL/EmailsURL are only ever set in tests (to point at a fake
+// server) — production always falls back to the real GitHub endpoints.
+type GitHubConfig struct {
+	ClientID     string
+	ClientSecret string
+	TokenURL     string
+	UserURL      string
+	EmailsURL    string
+}
+
+// Enabled reports whether GitHub sign-in is configured.
+func (c GitHubConfig) Enabled() bool {
+	return c.ClientID != "" && c.ClientSecret != ""
 }
 
 const (
@@ -49,6 +83,14 @@ func LoadConfig() (Config, error) {
 		AccessTTL:  accessTTL,
 		RefreshTTL: refreshTTL,
 		Issuer:     issuer,
+		Yandex: YandexConfig{
+			ClientID:     os.Getenv("YANDEX_CLIENT_ID"),
+			ClientSecret: os.Getenv("YANDEX_CLIENT_SECRET"),
+		},
+		GitHub: GitHubConfig{
+			ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
+			ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
+		},
 	}, nil
 }
 

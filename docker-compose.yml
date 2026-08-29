@@ -209,6 +209,12 @@ services:
         # deliberate: Dockerfile falls back to git-<short SHA> and HEAD.
         NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-}
         NEXT_PUBLIC_COMMIT_SHA: ${COMMIT_SHA:-}
+        # "Войти через Яндекс ID" button; empty hides it. Must be the same
+        # value as the api's YANDEX_CLIENT_ID below.
+        NEXT_PUBLIC_YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
+        # "Войти через GitHub" button; empty hides it. Must be the same value
+        # as the api's GITHUB_CLIENT_ID below.
+        NEXT_PUBLIC_GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
     restart: unless-stopped
     expose:
       - "3000"
@@ -437,6 +443,12 @@ services:
       AUTH_REFRESH_TTL: ${AUTH_REFRESH_TTL:-720h}
       GOADMIN_USERNAME: ${GOADMIN_USERNAME:-}
       GOADMIN_PASSWORD: ${GOADMIN_PASSWORD:-}
+      # "Sign in with Yandex ID" (optional: empty disables POST /auth/yandex,
+      # which then returns 503 instead of failing startup).
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       # Optional: without a key the api still boots, AI card generation is
       # just disabled. Prod gets it from the GEMINI_API_KEY GitHub secret.
       # Despite the name, this currently holds a Groq key — AI_BASE_URL/AI_MODEL

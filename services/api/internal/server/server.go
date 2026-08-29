@@ -134,6 +134,8 @@ func New(deps Deps) *chi.Mux {
 		r.Route("/auth", func(r chi.Router) {
 			r.With(authRateLimit).Post("/register", ah.register)
 			r.With(authRateLimit).Post("/login", ah.login)
+			r.With(authRateLimit).Post("/yandex", ah.yandexLogin)
+			r.With(authRateLimit).Post("/github", ah.githubLogin)
 			r.With(authRateLimit).Post("/refresh", ah.refresh)
 			r.With(requireAuth(deps.Auth), authRateLimit).Post("/device-session", ah.deviceSession)
 			// No requireAuth here by design: logout must still work with an

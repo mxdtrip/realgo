@@ -170,6 +170,15 @@ type GoadminUserPermission struct {
 	UpdatedAt    pgtype.Timestamp
 }
 
+type OauthAccount struct {
+	ID             int64
+	UserID         int64
+	Provider       string
+	ProviderUserID string
+	Email          pgtype.Text
+	CreatedAt      pgtype.Timestamptz
+}
+
 type Pattern struct {
 	ID                  int64
 	Code                string
@@ -354,7 +363,7 @@ type TaxonomyVersion struct {
 type User struct {
 	ID                    int64
 	Email                 string
-	PasswordHash          string
+	PasswordHash          pgtype.Text
 	Timezone              pgtype.Text
 	Plan                  pgtype.Text
 	InterviewDate         pgtype.Timestamptz
