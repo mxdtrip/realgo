@@ -1816,7 +1816,7 @@ h3 {
 .review-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: clamp(16px, 1.4vw, 26px);
+  gap: 18px;
 }
 
 .review-card {
@@ -1873,7 +1873,7 @@ h3 {
    hidden на гранях. Уменьшенная версия под размер сетки на лендинге. */
 .review-flip {
   position: relative;
-  height: clamp(280px, 23vw, 370px);
+  height: 210px;
   perspective: 1400px;
   transition:
     filter 0.22s ease,
@@ -1883,8 +1883,8 @@ h3 {
 
 .review-card:hover .review-flip,
 .review-card:focus-within .review-flip {
-  filter: drop-shadow(0 28px 42px rgba(1, 4, 9, 0.48));
-  transform: translateY(-6px);
+  filter: drop-shadow(0 22px 34px rgba(1, 4, 9, 0.34));
+  transform: translateY(-8px);
 }
 
 .review-flip__card {
@@ -1926,38 +1926,34 @@ h3 {
    которые сами себя клипают (bugzilla #1201471) — обе грани становятся
    видны в момент переворота. Та же причина, что и у .focus-card__face. */
 .review-flip__face {
-  --review-card-background-color: transparent;
-  --review-card-border-color: rgba(255, 255, 255, 0.06);
-  --review-card-hover-border-color: rgba(255, 255, 255, 0.16);
-  --review-card-shine-opacity: 0.05;
+  --review-card-background-color: rgba(255, 255, 255, 0.015);
+  --review-card-border-color: rgba(255, 255, 255, 0.1);
+  --review-card-hover-border-color: rgba(255, 255, 255, 0.2);
+  --review-card-shine-opacity: 0.1;
   --review-card-shine-gradient: conic-gradient(
     from 205deg at 50% 50%,
-    rgba(255, 255, 255, 0) 0deg,
-    rgba(255, 255, 255, 0.48) 28deg,
-    rgba(255, 255, 255, 0.08) 292deg,
-    rgba(255, 255, 255, 0) 360deg
+    rgba(16, 185, 129, 0) 0deg,
+    #10b981 25deg,
+    rgba(52, 211, 153, 0.18) 295deg,
+    rgba(16, 185, 129, 0) 360deg
   );
-  --review-card-line-color: rgba(255, 255, 255, 0.08);
-  --review-card-tile-color: rgba(255, 255, 255, 0.06);
+  --review-card-line-color: #2a2b2c;
+  --review-card-tile-color: rgba(16, 185, 129, 0.12);
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  text-align: left;
-  border-radius: 18px;
-  padding: clamp(32px, 3.2vw, 54px);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0) 42%),
-    #020303;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-radius: 14px;
+  padding: 26px;
+  background: var(--bg);
   isolation: isolate;
   box-shadow:
-    inset 0 0 0 1px var(--review-card-border-color),
-    inset 0 0 36px rgba(255, 255, 255, 0.045),
-    0 0 0 1px rgba(255, 255, 255, 0.018),
-    0 0 18px rgba(255, 255, 255, 0.15),
-    0 22px 58px rgba(0, 0, 0, 0.58);
+    0 3px 6px rgba(0, 0, 0, 0.05),
+    0 8px 15px rgba(0, 0, 0, 0.1),
+    inset 0 0 0 1px var(--review-card-border-color);
   transition:
     box-shadow 0.28s ease,
     visibility 0s linear 0.34s;
@@ -2185,11 +2181,9 @@ h3 {
 
 .review-flip__card:hover .review-flip__face {
   box-shadow:
-    inset 0 0 0 1px var(--review-card-hover-border-color),
-    inset 0 0 48px rgba(255, 255, 255, 0.065),
-    0 0 0 1px rgba(255, 255, 255, 0.035),
-    0 0 28px rgba(255, 255, 255, 0.22),
-    0 30px 70px rgba(0, 0, 0, 0.68);
+    0 3px 6px rgba(0, 0, 0, 0.04),
+    0 15px 25px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px var(--review-card-hover-border-color);
 }
 
 .review-flip__card:hover .review-flip__shine,
@@ -2263,66 +2257,36 @@ h3 {
 
 .review-flip__face--back {
   transform: rotateY(180deg);
-  border: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0) 48%),
-    #020303;
+  border: 1px solid rgba(63, 185, 80, 0.32);
+  background: rgba(13, 22, 18, 0.94);
 }
 
-.review-flip__type {
+.review-flip__face span {
   display: inline-block;
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.54);
-  margin-bottom: 18px;
+  color: var(--accent);
+  margin-bottom: 16px;
 }
 
-.review-flip__face--back .review-flip__type {
-  color: rgba(255, 255, 255, 0.54);
+.review-flip__face--back span {
+  color: var(--success-fg, var(--accent));
 }
 
 .review-flip__face h3 {
   font-family: var(--font-stack-display);
-  max-width: 92%;
-  margin: 0;
-  color: #ffffff;
-  font-size: clamp(25px, 2.15vw, 38px);
-  line-height: 1.12;
-  font-weight: 800;
-  letter-spacing: -0.035em;
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .review-flip__face p {
   margin: 0;
-  max-width: 92%;
-  color: rgba(255, 255, 255, 0.86);
-  font-size: clamp(19px, 1.45vw, 26px);
-  line-height: 1.24;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.review-flip__detail {
-  display: inline-flex;
-  align-items: center;
-  gap: 13px;
-  margin-top: auto;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: clamp(16px, 1.2vw, 21px);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.review-flip__detail::before {
-  content: "";
-  display: inline-block;
-  width: 0.58em;
-  height: 0.58em;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.42);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-dim);
 }
 
 .pricing-grid {
