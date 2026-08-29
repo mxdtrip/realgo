@@ -348,7 +348,7 @@ test.describe("landing roadmap interaction", () => {
 });
 
 test.describe("landing review cards", () => {
-  test("uses the referenced tiled shine effect on hover", async ({ page }) => {
+  test("matches the black glow card reference on hover", async ({ page }) => {
     await page.goto("/");
     const card = page.locator("#reviews .review-card").first();
     const face = card.locator(".review-flip__face--front");
@@ -356,6 +356,9 @@ test.describe("landing review cards", () => {
     await expect(face.locator(".review-flip__shine")).toHaveCount(1);
     await expect(face.locator(".review-flip__tile")).toHaveCount(10);
     await expect(face.locator(".review-flip__line")).toHaveCount(3);
+    await expect(face.locator(".review-flip__detail")).toHaveText("подробнее");
+    await expect(face.locator("h3")).toHaveCSS("font-weight", "800");
+    await expect(face).toHaveCSS("text-align", "left");
     await expect(face.locator(".review-flip__shine")).toHaveCSS("opacity", "0");
     await expect(face.locator(".review-flip__tiles")).toHaveCSS("opacity", "0");
 
@@ -364,7 +367,7 @@ test.describe("landing review cards", () => {
     await expect(face.locator(".review-flip__tiles")).toHaveCSS("opacity", "1");
     await expect(face.locator(".review-flip__line").first()).toHaveCSS("opacity", "1");
     await expect(face.locator(".review-flip__tile").first()).toHaveCSS("animation-name", "review-flip-tile");
-    await expect(face.locator(".review-flip__tile").first()).toHaveCSS("background-color", "rgba(16, 185, 129, 0.12)");
+    await expect(face.locator(".review-flip__tile").first()).toHaveCSS("background-color", "rgba(255, 255, 255, 0.06)");
   });
 });
 

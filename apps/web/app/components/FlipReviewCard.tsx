@@ -48,13 +48,15 @@ export function FlipReviewCard({
         <span className="review-flip__inner">
           <span className="review-flip__face review-flip__face--front" aria-hidden={flipped}>
             <CardHoverEffect />
-            <span>{keepShortWords(type)}</span>
+            <span className="review-flip__type">{keepShortWords(type)}</span>
             <h3>{keepShortWords(front)}</h3>
+            <span className="review-flip__detail">подробнее</span>
           </span>
           <span className="review-flip__face review-flip__face--back" aria-hidden={!flipped}>
             <CardHoverEffect />
-            <span>{keepShortWords(type)}</span>
+            <span className="review-flip__type">{keepShortWords(type)}</span>
             <p>{keepShortWords(back)}</p>
+            <span className="review-flip__detail">подробнее</span>
           </span>
         </span>
       </button>
