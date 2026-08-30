@@ -52,6 +52,15 @@ type CompanyProblem struct {
 	SourceType    string
 }
 
+type EmailVerification struct {
+	ID         pgtype.UUID
+	UserID     int64
+	TokenHash  string
+	ExpiresAt  pgtype.Timestamptz
+	ConsumedAt pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+}
+
 type ExtensionEvent struct {
 	ID               int64
 	UserID           pgtype.Int8
@@ -168,6 +177,15 @@ type GoadminUserPermission struct {
 	PermissionID int32
 	CreatedAt    pgtype.Timestamp
 	UpdatedAt    pgtype.Timestamp
+}
+
+type PasswordReset struct {
+	ID         pgtype.UUID
+	UserID     int64
+	TokenHash  string
+	ExpiresAt  pgtype.Timestamptz
+	ConsumedAt pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
 }
 
 type Pattern struct {
@@ -372,6 +390,7 @@ type User struct {
 	Platform              pgtype.Text
 	IsDemo                bool
 	NotifyStreakReminder  bool
+	EmailVerifiedAt       pgtype.Timestamptz
 }
 
 type UserPracticePattern struct {

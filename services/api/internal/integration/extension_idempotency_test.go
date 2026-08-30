@@ -40,11 +40,13 @@ func TestExtensionEventIdempotencyUnderConcurrentPosts(t *testing.T) {
 	require.NoError(t, err)
 
 	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, auth.Config{
-		JWTSecret:  []byte("integration-secret-with-more-than-32-bytes"),
-		AccessTTL:  time.Hour,
-		RefreshTTL: time.Hour,
-		Issuer:     "freeburger",
-	})
+		JWTSecret:            []byte("integration-secret-with-more-than-32-bytes"),
+		AccessTTL:            time.Hour,
+		RefreshTTL:           time.Hour,
+		Issuer:               "freeburger",
+		PublicSiteURL:        "https://realgo.test",
+		EmailVerificationTTL: time.Hour,
+	}, testMailer)
 	h := server.New(server.Deps{
 		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Postgres: pg,
@@ -204,11 +206,14 @@ func TestExtensionSolvedCreatesSchedule(t *testing.T) {
 		db.New(pg.Pool),
 		rdb.Client,
 		auth.Config{
-			JWTSecret:  []byte("integration-secret-with-more-than-32-bytes"),
-			AccessTTL:  time.Hour,
-			RefreshTTL: time.Hour,
-			Issuer:     "freeburger",
+			JWTSecret:            []byte("integration-secret-with-more-than-32-bytes"),
+			AccessTTL:            time.Hour,
+			RefreshTTL:           time.Hour,
+			Issuer:               "freeburger",
+			PublicSiteURL:        "https://realgo.test",
+			EmailVerificationTTL: time.Hour,
 		},
+		testMailer,
 	)
 
 	h := server.New(server.Deps{
@@ -356,11 +361,13 @@ func TestExtensionDuplicateSelfHealsMissingSchedule(t *testing.T) {
 	require.NoError(t, err)
 
 	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, auth.Config{
-		JWTSecret:  []byte("integration-secret-with-more-than-32-bytes"),
-		AccessTTL:  time.Hour,
-		RefreshTTL: time.Hour,
-		Issuer:     "freeburger",
-	})
+		JWTSecret:            []byte("integration-secret-with-more-than-32-bytes"),
+		AccessTTL:            time.Hour,
+		RefreshTTL:           time.Hour,
+		Issuer:               "freeburger",
+		PublicSiteURL:        "https://realgo.test",
+		EmailVerificationTTL: time.Hour,
+	}, testMailer)
 	h := server.New(server.Deps{
 		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Postgres: pg,

@@ -62,6 +62,7 @@ services:
     network_mode: "service:vpngw"
     environment:
       APP_ENV: production
+      AUTH_PUBLIC_SITE_URL: https://${REALGO_SITE_ADDRESS:-realgo.dev}
     depends_on:
       vpngw:
         condition: service_healthy

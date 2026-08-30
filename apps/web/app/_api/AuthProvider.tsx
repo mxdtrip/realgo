@@ -21,7 +21,12 @@ type AuthContextValue = {
   user: AuthUser | null;
   status: AuthStatus;
   login: (email: string, password: string) => Promise<AuthUser>;
-  register: (email: string, password: string) => Promise<AuthUser>;
+  /** Sends a confirmation link. Does not start a session — see auth.ts register(). */
+  register: (email: string, password: string) => Promise<{ status: string; email: string }>;
+  /** Verifies a confirm-email magic link and starts the session (auto-login). */
+  confirmEmail: (id: string, token: string) => Promise<AuthUser>;
+  /** Verifies a reset-password magic link, sets the new password and starts the session (auto-login). */
+  resetPassword: (id: string, token: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   /** Re-runs the session check — CabinetGuard's retry action on `status === "error"`. */
   retry: () => void;
@@ -82,7 +87,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(async (email: string, password: string) => {
-    const u = await authApi.register(email, password);
+    return authApi.register(email, password);
+  }, []);
+
+  const confirmEmail = useCallback(async (id: string, token: string) => {
+    const u = await authApi.confirmEmail(id, token);
+    setUser(u);
+    setStatus("authenticated");
+    return u;
+  }, []);
+
+  const resetPassword = useCallback(async (id: string, token: string, password: string) => {
+    const u = await authApi.resetPassword(id, token, password);
     setUser(u);
     setStatus("authenticated");
     return u;
@@ -103,8 +119,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [sync]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, register, logout, retry }),
-    [user, status, login, register, logout, retry],
+    () => ({ user, status, login, register, confirmEmail, resetPassword, logout, retry }),
+    [user, status, login, register, confirmEmail, resetPassword, logout, retry],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

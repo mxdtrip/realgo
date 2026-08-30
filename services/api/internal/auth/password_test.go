@@ -26,7 +26,7 @@ func TestHashAndCheckPassword(t *testing.T) {
 
 func TestRegisterRejectsPasswordLongerThanBcryptLimit(t *testing.T) {
 	s := testService()
-	_, _, err := s.Register(t.Context(), "user@example.com", strings.Repeat("a", maxPasswordBytes+1))
+	_, err := s.Register(t.Context(), "user@example.com", strings.Repeat("a", maxPasswordBytes+1))
 	if !errors.Is(err, ErrPasswordTooLong) {
 		t.Fatalf("Register error: want %v, got %v", ErrPasswordTooLong, err)
 	}
