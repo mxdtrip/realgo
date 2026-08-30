@@ -662,9 +662,9 @@ h3 {
   margin: 0 auto;
   color: var(--text);
   font-family: var(--font-stack-display);
-  font-size: clamp(20px, 1.6vw, 25px);
-  font-weight: 600;
-  letter-spacing: 0;
+  font-size: clamp(23px, 1.9vw, 30px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
   line-height: 1.55;
   text-wrap: balance;
   text-shadow: 0 4px 26px rgba(1, 4, 9, 0.82);
@@ -687,8 +687,8 @@ h3 {
 .hero-tagline {
   position: absolute;
   left: 50%;
-  bottom: calc(11% + 260px);
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 3;
   width: min(720px, 86vw);
   text-align: center;
@@ -1119,7 +1119,8 @@ h3 {
 
 .landing-proof span {
   color: var(--text-dim);
-  font-size: 12.5px;
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1.4;
 }
 
@@ -7245,7 +7246,7 @@ a.roadmap-step__practice-card:hover {
   }
 
   .hero-tagline {
-    top: calc(64vh - 260px);
+    top: 50%;
     bottom: auto;
     width: min(960px, 86vw);
   }
@@ -7266,6 +7267,13 @@ a.roadmap-step__practice-card:hover {
     max-width: 340px;
     justify-self: end;
     margin: 0 16px 16px;
+  }
+}
+
+@media (min-width: 1400px) and (max-width: 1599px) {
+  .word-stage {
+    transform: translateY(calc(-28px - clamp(140px, calc(51vh - 250px), 210px))) scale(0.88);
+    transform-origin: center center;
   }
 }
 
@@ -7341,12 +7349,12 @@ a.roadmap-step__practice-card:hover {
 
   .hero-title {
     max-width: 920px;
-    font-size: clamp(25px, 1.5vw, 32px);
+    font-size: clamp(29px, 1.8vw, 38px);
     line-height: 1.4;
   }
 
   .hero-tagline {
-    top: 360px;
+    top: 50%;
     bottom: auto;
     width: min(960px, 82vw);
   }
@@ -7592,7 +7600,8 @@ a.roadmap-step__practice-card:hover {
   }
 
   .hero-tagline {
-    bottom: calc(27% + 240px);
+    top: 50%;
+    bottom: auto;
     width: min(560px, 90vw);
   }
 
@@ -7602,7 +7611,7 @@ a.roadmap-step__practice-card:hover {
   }
 
   .hero-title {
-    font-size: 19px;
+    font-size: 21px;
   }
 
   .hero-offer p {
@@ -12368,14 +12377,14 @@ a.roadmap-step__practice-card:hover {
     transform 0.22s ease;
 }
 
-/* Верхняя CTA повторяет визуальную ширину собранного слова `realgo`. */
+/* Верхняя CTA остаётся компактной и не растягивается шире необходимого. */
 .hero-cta a {
-  width: min(100%, 450px, 40vw);
+  width: min(100%, 380px, 36vw);
 }
 
 @media (min-width: 1200px) and (max-width: 1599px) {
 .hero-cta a {
-    width: 350px;
+    width: 300px;
   }
 }
 
@@ -12439,7 +12448,7 @@ a.roadmap-step__practice-card:hover {
 
 @media (min-width: 1600px) {
   .hero-cta a {
-    width: 300px;
+    width: 280px;
   }
 
   .hero-cta a,

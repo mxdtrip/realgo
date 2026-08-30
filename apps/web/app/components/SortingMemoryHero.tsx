@@ -89,6 +89,18 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function heroTitleFontSize(width: number) {
+  if (width <= 640) return 21;
+  if (width >= 1600) return clamp(width * 0.018, 29, 38);
+  return clamp(width * 0.019, 23, 30);
+}
+
+function wordStageScale(width: number) {
+  if (width <= 640 || width >= 1600) return 0.78;
+  if (width >= 1200) return 0.88;
+  return 1;
+}
+
 function stageCenter(size: SceneSize) {
   return size.width <= 640 ? 0.46 : 0.5;
 }
@@ -115,8 +127,11 @@ function shuffle(order: number[]) {
 }
 
 function geometry(size: SceneSize) {
-  const font = clamp(Math.floor(size.width / 8.2), 54, 132);
-  const gap = 0;
+  // The letters are rendered inside a scaled stage on desktop/mobile. Compensate
+  // for that scale so their visible size stays tied to the hero title below them.
+  const scale = wordStageScale(size.width);
+  const font = Math.round((heroTitleFontSize(size.width) * 2.2) / scale);
+  const gap = Math.round(14 / scale);
   const ratios = wordGlyphRatios ?? Array.from({ length: LETTER_COUNT }, () => FALLBACK_WORD_GLYPH_RATIO);
   const widths = ratios.map((ratio) => ratio * font);
   const total = widths.reduce((sum, w) => sum + w, 0) + (LETTER_COUNT - 1) * gap;
