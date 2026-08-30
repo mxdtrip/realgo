@@ -1,7 +1,6 @@
-const CACHE_NAME = "realgo-shell-v3";
+const CACHE_NAME = "realgo-shell-v4";
 const OFFLINE_URL = "/offline.html";
 const APP_SHELL = [
-  "/",
   "/dashboard",
   "/cards",
   "/cards/session",
@@ -50,6 +49,10 @@ function shouldHandle(request) {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return false;
   if (url.pathname.startsWith("/api/")) return false;
+  // The marketing landing changes frequently and must always come from the
+  // network. Do not let an offline fallback make a deployed redesign look
+  // stale in a browser that has visited the site before.
+  if (url.pathname === "/" || url.pathname === "/sw.js") return false;
   return request.mode === "navigate" || CACHEABLE_DESTINATIONS.has(request.destination);
 }
 

@@ -8,7 +8,7 @@ export function PWAProvider() {
   useEffect(() => {
     const registerServiceWorker = () => {
       if (!("serviceWorker" in navigator)) return;
-      navigator.serviceWorker.register("/sw.js").catch((error) => {
+      navigator.serviceWorker.register("/sw.js?v=4", { updateViaCache: "none" }).catch((error) => {
         console.error("Failed to register realgo service worker", error);
       });
     };
