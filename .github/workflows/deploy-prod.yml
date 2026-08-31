@@ -50,7 +50,11 @@ jobs:
           # Domain mailbox for all transactional and product mail. The API
           # rejects any sender identity other than support@realgo.dev.
           MAIL_ENABLED: ${{ secrets.MAIL_SMTP_PASSWORD != '' }}
-          MAIL_SMTP_HOST: mail.realgo.dev
+          # Use the private appbox Docker network. The API shares vpngw's
+          # network namespace, so connecting to the public MX address would be
+          # redirected through the VPN provider, where SMTP submission may be
+          # blocked or silently dropped.
+          MAIL_SMTP_HOST: smtp.realgo.internal
           MAIL_SMTP_PORT: "587"
           MAIL_SMTP_USERNAME: support@realgo.dev
           MAIL_SMTP_PASSWORD: ${{ secrets.MAIL_SMTP_PASSWORD }}
@@ -60,6 +64,11 @@ jobs:
           # Groq calls ride this tunnel instead of the ISP's flagged egress).
           VPN_SUB_URL: ${{ secrets.VPN_SUB_URL }}
         run: |
+          # Shared only by the production VPN namespace and the local Stalwart
+          # container. Creating it here keeps a fresh appbox deploy self-healing.
+          docker network inspect realgo-mail-internal >/dev/null 2>&1 ||
+            docker network create realgo-mail-internal
+
           docker compose -f docker-compose.yml -f docker-compose.prod.yml pull --ignore-buildable || true
           docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --build --remove-orphans
 
