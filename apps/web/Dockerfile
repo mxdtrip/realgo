@@ -10,7 +10,16 @@
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# The production runner builds inside a self-hosted Docker network where npm
+# registry reads can occasionally time out. Keep the build deterministic while
+# allowing transient registry/network stalls to recover without restarting the
+# whole deploy.
+RUN npm ci \
+    --fetch-retries=5 \
+    --fetch-retry-factor=2 \
+    --fetch-retry-mintimeout=2000 \
+    --fetch-retry-maxtimeout=60000 \
+    --fetch-timeout=120000
 
 # ---- builder: produce the standalone server bundle ----
 FROM node:22-bookworm-slim AS builder
