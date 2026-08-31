@@ -14,6 +14,7 @@ type Config struct {
 	HTTPServer `yaml:"http_server"`
 	Database   `yaml:"database"`
 	Redis      `yaml:"redis"`
+	Mail       Mail  `yaml:"mail"`
 	AI         `yaml:"ai"`
 	FSRS       `yaml:"fsrs"`
 }
@@ -44,6 +45,18 @@ type Redis struct {
 	DB       int    `yaml:"db" env:"REDIS_DB" env-default:"0"`
 }
 
+// Mail configures the domain mailbox used for every application email. The
+// sender identity is fixed in internal/mail to prevent accidental Gmail or
+// personal-account delivery.
+type Mail struct {
+	Enabled  bool          `yaml:"enabled" env:"MAIL_ENABLED" env-default:"false"`
+	Host     string        `yaml:"smtp_host" env:"MAIL_SMTP_HOST" env-default:"mail.realgo.dev"`
+	Port     int           `yaml:"smtp_port" env:"MAIL_SMTP_PORT" env-default:"587"`
+	Username string        `yaml:"smtp_username" env:"MAIL_SMTP_USERNAME" env-default:"support@realgo.dev"`
+	Password string        `yaml:"smtp_password" env:"MAIL_SMTP_PASSWORD"`
+	BaseURL  string        `yaml:"base_url" env:"MAIL_BASE_URL" env-default:"https://realgo.dev"`
+	Timeout  time.Duration `yaml:"smtp_timeout" env:"MAIL_SMTP_TIMEOUT" env-default:"10s"`
+}
 // AI configures the LLM provider (Gemini via its OpenAI-compatible endpoint)
 // used for card generation. The key is optional: when empty the API boots
 // normally and generation is disabled.

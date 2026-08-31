@@ -23,6 +23,16 @@ redis:
   password: ""
   db: 0
 
+mail:
+  # Transactional mail is disabled until the support mailbox password is
+  # supplied at runtime. The sender is fixed to support@realgo.dev in code.
+  enabled: false
+  smtp_host: mail.realgo.dev
+  smtp_port: 587
+  smtp_username: support@realgo.dev
+  smtp_password: ""
+  base_url: https://realgo.dev
+  smtp_timeout: 10s
 ai:
   # Empty key = AI card generation disabled. Personal free keys:
   # https://aistudio.google.com/apikey (never commit real keys).

@@ -93,6 +93,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
           />
         </label>
 
+        {mode === "login" ? (
+          <Link href="/forgot-password">Забыли пароль?</Link>
+        ) : null}
+
         {mode === "register" ? (
           <label className="auth-consent">
             <input
