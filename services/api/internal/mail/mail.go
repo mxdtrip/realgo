@@ -113,7 +113,7 @@ func (s *SMTP) Send(ctx context.Context, message Message) error {
 	if err != nil {
 		return fmt.Errorf("dial SMTP: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(s.cfg.Timeout))
 
 	if s.cfg.Port == 465 {
@@ -128,7 +128,7 @@ func (s *SMTP) Send(ctx context.Context, message Message) error {
 	if err != nil {
 		return fmt.Errorf("create SMTP client: %w", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	if s.cfg.Port == 587 {
 		if err := client.StartTLS(&tls.Config{ServerName: s.cfg.Host, MinVersion: tls.VersionTLS12}); err != nil {
