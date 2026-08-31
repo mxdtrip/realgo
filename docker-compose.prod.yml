@@ -57,11 +57,15 @@ services:
     # own service block has no network attachment of its own to expose from.
     expose:
       - "8080"
+    networks:
+      default:
+      realgo-mail:
 
   api:
     network_mode: "service:vpngw"
     environment:
       APP_ENV: production
+      MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-smtp.realgo.internal}
     depends_on:
       vpngw:
         condition: service_healthy
@@ -119,3 +123,8 @@ services:
   caddy:
     volumes:
       - ./Caddyfile.internal.prod:/etc/caddy/Caddyfile:ro
+
+networks:
+  realgo-mail:
+    name: realgo-mail-internal
+    external: true
