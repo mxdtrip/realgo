@@ -2,6 +2,9 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -20,6 +23,10 @@ import (
 
 const minPasswordLen = 8
 const maxPasswordBytes = 72
+
+// PasswordResetTTL is deliberately short because reset links are bearer
+// credentials and are invalidated after their first successful use.
+const PasswordResetTTL = 30 * time.Minute
 
 // A valid pre-computed bcrypt hash keeps the unknown-account login path close
 // in cost to the wrong-password path. Its plaintext is irrelevant and is never
@@ -189,6 +196,99 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 		return ErrInvalidToken
 	}
 	return nil
+}
+
+// IssuePasswordReset creates a single-use reset credential. The bool result is
+// false for an unknown or malformed address so the HTTP layer can return the
+// same response for every address and avoid account enumeration.
+func (s *Service) IssuePasswordReset(ctx context.Context, email string) (db.User, string, bool, error) {
+	normalized, err := normalizeEmail(email)
+	if err != nil {
+		return db.User{}, "", false, nil
+	}
+	user, err := s.queries.GetUserByEmail(ctx, normalized)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.User{}, "", false, nil
+	}
+	if err != nil {
+		return db.User{}, "", false, err
+	}
+
+	token, err := generatePasswordResetToken()
+	if err != nil {
+		return db.User{}, "", false, err
+	}
+	hash := sha256.Sum256([]byte(token))
+	if err := s.queries.CreatePasswordResetToken(ctx, db.CreatePasswordResetTokenParams{
+		UserID:    user.ID,
+		TokenHash: fmt.Sprintf("%x", hash[:]),
+		ExpiresAt: pgtype.Timestamptz{Time: s.now().Add(PasswordResetTTL), Valid: true},
+	}); err != nil {
+		return db.User{}, "", false, err
+	}
+	return user, token, true, nil
+}
+
+// ResetPassword atomically consumes the reset token and replaces the password.
+// Refresh sessions are revoked after commit so a recovered account cannot keep
+// an already-issued session alive.
+func (s *Service) ResetPassword(ctx context.Context, token, newPassword string) (db.User, error) {
+	if err := validatePassword(newPassword); err != nil {
+		return db.User{}, err
+	}
+	hash, err := hashPassword(newPassword)
+	if err != nil {
+		return db.User{}, err
+	}
+	tokenHash := sha256.Sum256([]byte(token))
+
+	tx, err := s.queries.BeginTx(ctx)
+	if err != nil {
+		return db.User{}, fmt.Errorf("begin password reset: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+
+	q := s.queries.WithTx(tx)
+	userID, err := q.ConsumePasswordResetToken(ctx, fmt.Sprintf("%x", tokenHash[:]))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.User{}, ErrInvalidToken
+	}
+	if err != nil {
+		return db.User{}, fmt.Errorf("consume password reset token: %w", err)
+	}
+	rows, err := q.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{ID: userID, PasswordHash: hash})
+	if err != nil {
+		return db.User{}, fmt.Errorf("update reset password: %w", err)
+	}
+	if rows == 0 {
+		return db.User{}, ErrInvalidToken
+	}
+	user, err := q.GetUserByID(ctx, userID)
+	if err != nil {
+		return db.User{}, fmt.Errorf("load reset user: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.User{}, fmt.Errorf("commit password reset: %w", err)
+	}
+	committed = true
+
+	if err := s.revokeAllRefreshTokens(ctx, userID); err != nil {
+		slog.Error("auth: revoke sessions after password reset failed", slog.Int64("user_id", userID), slog.Any("err", err))
+	}
+	return user, nil
+}
+
+func generatePasswordResetToken() (string, error) {
+	var raw [32]byte
+	if _, err := rand.Read(raw[:]); err != nil {
+		return "", fmt.Errorf("generate password reset token: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(raw[:]), nil
 }
 
 // RevokeAllSessions invalidates all refresh sessions for userID, including
