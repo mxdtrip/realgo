@@ -793,6 +793,7 @@ h3 {
   width: 17px;
   height: 17px;
   margin-top: 1px;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.05);
@@ -810,13 +811,13 @@ h3 {
 .auth-consent input::after {
   content: "";
   position: absolute;
-  top: 4.5px;
-  left: 6.5px;
-  width: 4px;
-  height: 8px;
-  border: solid #ffffff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg) scale(0);
+  inset: 0;
+  margin: auto;
+  width: 11px;
+  height: 11px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  transform: scale(0);
   transform-origin: center;
   transition: transform 0.14s ease;
 }
@@ -827,7 +828,7 @@ h3 {
 }
 
 .auth-consent input:checked::after {
-  transform: rotate(45deg) scale(1);
+  transform: scale(1);
 }
 
 .auth-consent input:focus-visible {
