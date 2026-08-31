@@ -810,8 +810,8 @@ h3 {
 .auth-consent input::after {
   content: "";
   position: absolute;
-  top: 2px;
-  left: 5px;
+  top: 4.5px;
+  left: 6.5px;
   width: 4px;
   height: 8px;
   border: solid #ffffff;
