@@ -6,13 +6,27 @@ test.describe("landing conversion path", () => {
   test("renders the interactive word on the first client frame", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator(".word-letter")).toHaveCount(6);
+    await expect(page.locator(".hero-wordmark")).toHaveCount(0);
+    await expect(page.locator(".hero-visual-tag--result")).toHaveText(/Результат/);
     await expect(page.locator(".word-letter").first()).toHaveCSS("font-family", /JetBrains Mono/);
     await expect(page.locator(".code-sheet")).toHaveCSS("font-family", /JetBrains Mono/);
     await expect(page.locator(".site-strip .site-brand")).toHaveCSS("font-family", /JetBrains Mono/);
     await expect(page.locator(".site-footer")).toHaveCSS("font-family", /JetBrains Mono/);
     await expect(page.locator(".site-footer__brand p")).toHaveCSS("font-family", /JetBrains Mono/);
-    await expect(page.locator(".landing-proof strong")).toHaveText(["4", "111", "FSRS"]);
+    await expect(page.locator(".landing-proof strong")).toHaveText(["4", "111", "428"]);
+    await expect(page.locator(".landing-proof")).toContainText("компаний в базе задач с собеседований");
     await expect(page.locator(".landing-proof strong").first()).toHaveCSS("font-family", /JetBrains Mono/);
+    await expect(page.locator(".landing-proof")).toHaveCSS("background-color", "rgb(10, 17, 29)");
+    await expect(page.locator(".landing-proof")).toHaveCSS("backdrop-filter", "none");
+    await expect(page.locator(".landing-awards__title")).toHaveText(
+      "ReAlgo выиграл 4 номинации на хакатоне Kodik Launchpad",
+    );
+    await expect(page.locator(".landing-awards strong > span")).toHaveText([
+      "Лучший проект хакатона",
+      "Проект с максимальным коммерческим потенциалом",
+      "Лучшая презентация продукта",
+      "Выбор коммьюнити",
+    ]);
     await expect(page.locator(".site-nav a")).toHaveText(["Tasks", "Plan", "Reviews", "Pricing", "FAQ"]);
   });
 
@@ -22,47 +36,103 @@ test.describe("landing conversion path", () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });
 
-  test("places the hero object band 15px below the script field on desktop", async ({ page }) => {
+  test("keeps the split hero composition separated on desktop", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
     await expect(page.locator(".minimal-scene")).toHaveAttribute("data-scene-ready", "true");
 
-    const targetOffset = 15;
-
-    await expect
-      .poll(async () =>
-        page.evaluate(() => {
-          const code = document.querySelector(".code-editor")?.getBoundingClientRect();
-          const letterRects = [...document.querySelectorAll(".word-letter")]
-            .map((element) => element.getBoundingClientRect())
-            .filter((rect) => rect.width > 0 && rect.height > 0);
-          const wordTop = Math.min(...letterRects.map((rect) => rect.top));
-
-          return wordTop - (code?.top ?? 0);
-        }).then((offset) => Math.abs(offset - targetOffset)),
-      )
-      .toBeLessThanOrEqual(12);
-
     const metrics = await page.evaluate(() => {
+      const copy = document.querySelector(".hero-reference-copy")?.getBoundingClientRect();
       const code = document.querySelector(".code-editor")?.getBoundingClientRect();
+      const cta = document.querySelector(".hero-cta a")?.getBoundingClientRect();
+      const proof = document.querySelector(".landing-proof")?.getBoundingClientRect();
       const letterRects = [...document.querySelectorAll(".word-letter")]
         .map((element) => element.getBoundingClientRect())
         .filter((rect) => rect.width > 0 && rect.height > 0);
-      const wordTop = Math.min(...letterRects.map((rect) => rect.top));
       const canvas = document.querySelector(".scroll-card-flow-bg canvas");
       const canvasTransform = canvas ? getComputedStyle(canvas).transform : "";
-      const canvasY = canvasTransform === "none" ? 0 : new DOMMatrixReadOnly(canvasTransform).m42;
+      const matrix = canvasTransform === "none" ? new DOMMatrixReadOnly() : new DOMMatrixReadOnly(canvasTransform);
 
       return {
-        codeTop: code?.top ?? 0,
-        wordTop,
-        canvasY,
+        copyLeft: copy?.left ?? 0,
+        copyRight: copy?.right ?? 0,
+        codeLeft: code?.left ?? 0,
+        titleTop: document.querySelector(".hero-title")?.getBoundingClientRect().top ?? 0,
+        ctaBottom: cta?.bottom ?? 0,
+        proofTop: proof?.top ?? 0,
+        wordLeft: Math.min(...letterRects.map((rect) => rect.left)),
+        wordTop: Math.min(...letterRects.map((rect) => rect.top)),
+        wordBottom: Math.max(...letterRects.map((rect) => rect.bottom)),
+        canvasX: matrix.m41,
       };
     });
 
-    expect(Math.abs(metrics.wordTop - metrics.codeTop - targetOffset)).toBeLessThanOrEqual(12);
-    expect(metrics.canvasY).toBeGreaterThanOrEqual(-210);
-    expect(metrics.canvasY).toBeLessThanOrEqual(-180);
+    expect(metrics.copyRight).toBeLessThan(metrics.codeLeft);
+    expect(metrics.ctaBottom).toBeLessThan(metrics.proofTop);
+    expect(Math.abs(metrics.wordLeft - metrics.copyLeft)).toBeLessThanOrEqual(1);
+    expect(metrics.wordTop).toBeGreaterThan(260);
+    expect(metrics.wordBottom).toBeLessThan(metrics.titleTop);
+    expect(metrics.canvasX).toBeGreaterThan(0);
+  });
+
+  test("uses the original word treatment and fills a tall desktop first screen", async ({ page }) => {
+    await page.setViewportSize({ width: 2004, height: 1258 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    await expect(page.locator(".minimal-scene")).toHaveAttribute("data-scene-ready", "true");
+
+    const metrics = await page.evaluate(() => {
+      const word = document.querySelector(".word-letter");
+      const proof = document.querySelector(".landing-proof")?.getBoundingClientRect();
+      const platforms = document.querySelector(".landing-platforms")?.getBoundingClientRect();
+      const style = word ? getComputedStyle(word) : null;
+
+      return {
+        fontFamily: style?.fontFamily ?? "",
+        color: style?.color ?? "",
+        fontSize: style?.fontSize ?? "",
+        wordTop: word?.getBoundingClientRect().top ?? 0,
+        titleTop: document.querySelector(".hero-title")?.getBoundingClientRect().top ?? 0,
+        copyLeft: document.querySelector(".hero-reference-copy")?.getBoundingClientRect().left ?? 0,
+        proofLeft: proof?.left ?? 0,
+        proofRight: proof?.right ?? 0,
+        proofTop: proof?.top ?? 0,
+        platformsBottom: platforms?.bottom ?? 0,
+      };
+    });
+
+    expect(metrics.fontFamily).toContain("JetBrains Mono");
+    expect(metrics.color).toBe("rgb(240, 246, 252)");
+    expect(metrics.fontSize).toBe("88px");
+    expect(metrics.wordTop).toBeGreaterThan(350);
+    expect(metrics.titleTop).toBeGreaterThan(500);
+    expect(metrics.copyLeft).toBeLessThan(140);
+    expect(metrics.proofLeft).toBeLessThan(140);
+    expect(2004 - metrics.proofRight).toBeLessThan(140);
+    expect(metrics.proofTop).toBeGreaterThan(900);
+    expect(metrics.platformsBottom).toBeGreaterThan(1150);
+    expect(metrics.platformsBottom).toBeLessThan(1258);
+  });
+
+  test("keeps the mobile hero centred without horizontal overflow", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    await expect(page.locator(".minimal-scene")).toHaveAttribute("data-scene-ready", "true");
+    await expect(page.locator(".word-letter")).toHaveCount(6);
+
+    const metrics = await page.evaluate(() => {
+      const copy = document.querySelector(".hero-reference-copy")?.getBoundingClientRect();
+      return {
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        copyCenter: copy ? copy.left + copy.width / 2 : 0,
+      };
+    });
+
+    expect(metrics.scrollWidth).toBe(metrics.clientWidth);
+    expect(Math.abs(metrics.copyCenter - metrics.clientWidth / 2)).toBeLessThanOrEqual(1);
   });
 
   test("states the product offer and repeats contextual registration CTAs", async ({ page }) => {
@@ -79,7 +149,7 @@ test.describe("landing conversion path", () => {
         level: 1,
         name: "Подготовка к алгоритмическим собеседованиям, которая помогает не забывать решения",
       }),
-    ).toHaveCSS("font-weight", "600");
+    ).toHaveCSS("font-weight", "400");
     await expect(
       page.getByRole("heading", {
         level: 1,
@@ -138,8 +208,8 @@ test.describe("landing conversion path", () => {
       backgroundImage: expect.stringContaining("linear-gradient"),
       borderStyle: "none",
       borderWidth: "0px",
-      radius: "8px",
-      shadow: "none",
+      radius: "7px",
+      shadow: expect.stringContaining("rgba(47, 129, 247"),
       color: "rgb(255, 255, 255)",
       size: "14px",
       weight: "600",
@@ -298,13 +368,28 @@ test.describe("landing card-flow background", () => {
     const background = page.locator(".scroll-card-flow-bg");
     await expect(background).toHaveAttribute("data-state", "ready");
     await expect(background.locator("canvas")).toHaveCount(1);
-    await expect(background).toHaveAttribute("data-card-count", "40");
-    await expect(background).toHaveAttribute("data-visible-cards", "40");
+    await expect(background).toHaveAttribute("data-card-count", "34");
+    await expect(background).toHaveAttribute("data-visible-cards", "34");
+
+    const renderQuality = await background.evaluate((element) => {
+      const canvas = element.querySelector("canvas");
+      const transform = canvas ? getComputedStyle(canvas).transform : "none";
+      const matrix = transform === "none" ? new DOMMatrixReadOnly() : new DOMMatrixReadOnly(transform);
+      return {
+        hostWidth: element.clientWidth,
+        backingWidth: canvas?.width ?? 0,
+        cssScale: Math.abs(matrix.a),
+        pixelRatio: Number(element.getAttribute("data-pixel-ratio")),
+      };
+    });
+    expect(renderQuality.pixelRatio).toBeGreaterThanOrEqual(1);
+    expect(renderQuality.backingWidth).toBeGreaterThanOrEqual(renderQuality.hostWidth);
+    expect(renderQuality.cssScale).toBeLessThanOrEqual(1);
 
     await page.locator("#memory").scrollIntoViewIfNeeded();
     await page.evaluate(() => window.scrollTo(0, document.getElementById("memory").offsetTop + 800));
     await expect.poll(async () => Number(await background.getAttribute("data-progress"))).toBeGreaterThan(0.9);
-    await expect(background).toHaveAttribute("data-visible-cards", "40");
+    await expect(background).toHaveAttribute("data-visible-cards", "34");
     await expect(background).toHaveAttribute("data-on-curve-cards", "0");
 
     await page.reload();
@@ -313,7 +398,7 @@ test.describe("landing card-flow background", () => {
         timeout: 8000,
       })
       .toBeGreaterThan(0.9);
-    await expect(page.locator(".scroll-card-flow-bg")).toHaveAttribute("data-visible-cards", "40");
+    await expect(page.locator(".scroll-card-flow-bg")).toHaveAttribute("data-visible-cards", "34");
     await expect(page.locator(".scroll-card-flow-bg")).toHaveAttribute("data-on-curve-cards", "0");
     await expect(page.locator("video[src='/realgo-hero.mp4']")).toHaveCount(0);
   });
@@ -452,6 +537,7 @@ test.describe("landing pricing interaction", () => {
           priceTransform: getComputedStyle(price).transform,
           featuresTransform: getComputedStyle(features).transform,
           ctaTransform: getComputedStyle(cta).transform,
+          ctaTranslateY: new DOMMatrixReadOnly(getComputedStyle(cta).transform).m42,
           ctaOpacity: getComputedStyle(cta).opacity,
           ctaFilter: getComputedStyle(cta).filter,
         };
@@ -470,7 +556,7 @@ test.describe("landing pricing interaction", () => {
     expect(hovered.nameTransform).toBe("none");
     expect(hovered.priceTransform).toBe("none");
     expect(hovered.featuresTransform).not.toBe(initial.featuresTransform);
-    expect(hovered.ctaTransform).toMatch(/matrix\(1, 0, 0, 1, 0, 0\)/);
+    expect(Math.abs(hovered.ctaTranslateY)).toBeLessThan(0.05);
     expect(hovered.ctaOpacity).toBe("1");
     expect(hovered.ctaFilter).toBe("none");
   });

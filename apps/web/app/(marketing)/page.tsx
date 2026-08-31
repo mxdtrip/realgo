@@ -120,13 +120,38 @@ export default function Home() {
       <SortingMemoryHero />
 
       <aside className="landing-proof" aria-label="ReAlgo в цифрах">
-        {copy.proof.map((item) => (
+        {copy.proof.map((item, index) => (
           <div key={item.label}>
-            <strong>{item.value}</strong>
-            <span>{keepShortWords(item.label)}</span>
+            <span className="landing-proof__icon" aria-hidden="true">
+              {index === 0 ? (
+                <svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3" /><circle cx="16" cy="8" r="3" /><circle cx="8" cy="16" r="3" /><circle cx="16" cy="16" r="3" /></svg>
+              ) : index === 1 ? (
+                <svg viewBox="0 0 24 24"><path d="M7 7h11M7 12h11M7 17h11" /><circle cx="4" cy="7" r="1" /><circle cx="4" cy="12" r="1" /><circle cx="4" cy="17" r="1" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24"><path d="M4 20V7l8-4 8 4v13M2 20h20M8 20v-5h8v5" /><path d="M8 9h.01M12 9h.01M16 9h.01M8 12h.01M12 12h.01M16 12h.01" /></svg>
+              )}
+            </span>
+            <div className="landing-proof__copy">
+              <strong>{item.value}</strong>
+              <span>{keepShortWords(item.label)}</span>
+            </div>
           </div>
         ))}
       </aside>
+
+      <div className="landing-platforms landing-awards" aria-label="Награды ReAlgo на хакатоне Kodik Launchpad">
+        <span className="landing-awards__title">{copy.awards.title}</span>
+        <div>
+          {copy.awards.items.map((item, index) => (
+            <strong key={item}>
+              <i aria-hidden="true">{String(index + 1).padStart(2, "0")}</i>
+              <span>{keepShortWords(item)}</span>
+            </strong>
+          ))}
+        </div>
+      </div>
+
+      <div className="landing-hero-transition" aria-hidden="true" />
 
       <MemoryJourney section={copy.sections.memory} />
 

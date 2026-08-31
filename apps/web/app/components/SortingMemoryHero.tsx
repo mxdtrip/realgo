@@ -89,20 +89,36 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-function heroTitleFontSize(width: number) {
-  if (width <= 640) return 21;
-  if (width >= 1600) return clamp(width * 0.018, 29, 38);
-  return clamp(width * 0.019, 23, 30);
-}
-
-function wordStageScale(width: number) {
-  if (width <= 640 || width >= 1600) return 0.78;
-  if (width >= 1200) return 0.88;
-  return 1;
+function interactiveWordFontSize(width: number) {
+  if (width <= 640) return clamp(width * 0.135, 48, 56);
+  if (width <= 920) return clamp(width * 0.09, 56, 74);
+  if (width >= 1600) return 88;
+  return clamp(width * 0.068, 74, 92);
 }
 
 function stageCenter(size: SceneSize) {
   return size.width <= 640 ? 0.46 : 0.5;
+}
+
+function wordRowLeft(size: SceneSize, total: number) {
+  if (size.width <= 920) return (size.width - total) / 2;
+  if (size.width >= 1600) {
+    const contentWidth = Math.min(1784, size.width - 220);
+    return (size.width - contentWidth) / 2;
+  }
+  if (size.width >= 1200) {
+    const contentWidth = Math.min(1248, size.width - 192);
+    return (size.width - contentWidth) / 2;
+  }
+  const contentWidth = Math.min(1120, size.width - 64);
+  return (size.width - contentWidth) / 2;
+}
+
+function wordRowTop(size: SceneSize) {
+  if (size.width <= 640) return 90;
+  if (size.width <= 920) return 104;
+  if (size.width >= 1600) return 164;
+  return clamp(size.height * 0.185, 132, 150);
 }
 
 function sleep(ms: number) {
@@ -127,11 +143,11 @@ function shuffle(order: number[]) {
 }
 
 function geometry(size: SceneSize) {
-  // The letters are rendered inside a scaled stage on desktop/mobile. Compensate
-  // for that scale so their visible size stays tied to the hero title below them.
-  const scale = wordStageScale(size.width);
-  const font = Math.round((heroTitleFontSize(size.width) * 2.2) / scale);
-  const gap = Math.round(14 / scale);
+  // The interactive word is the hero wordmark itself. Its layout is calculated
+  // directly in viewport coordinates so CSS transforms cannot produce a second,
+  // differently-sized logo elsewhere in the scene.
+  const font = Math.round(interactiveWordFontSize(size.width));
+  const gap = Math.round(clamp(size.width * 0.003, 2, 5));
   const ratios = wordGlyphRatios ?? Array.from({ length: LETTER_COUNT }, () => FALLBACK_WORD_GLYPH_RATIO);
   const widths = ratios.map((ratio) => ratio * font);
   const total = widths.reduce((sum, w) => sum + w, 0) + (LETTER_COUNT - 1) * gap;
@@ -140,9 +156,9 @@ function geometry(size: SceneSize) {
     font,
     gap,
     widths,
-    startX: (size.width - total) / 2,
-    // Sit the word above the vertical centre (0.5 = middle, lower = higher).
-    y: size.height * stageCenter(size) - font * 0.56,
+    total,
+    startX: wordRowLeft(size, total),
+    y: wordRowTop(size),
   };
 }
 
@@ -375,7 +391,7 @@ export function SortingMemoryHero() {
 
   const setChaos = useCallback(() => {
     if (isSorting) return;
-    const next = shuffle(order);
+    const next = prefersReducedMotionRef.current ? order : shuffle(order);
     runIdRef.current += 1;
     setOrder(next);
     setActiveKeys([]);
@@ -568,7 +584,7 @@ export function SortingMemoryHero() {
     // hydration nondeterministic).
     if (!measured || initialPlacementRef.current || isSorting) return;
     initialPlacementRef.current = true;
-    const next = shuffle(order);
+    const next = prefersReducedMotionRef.current ? order : shuffle(order);
     setOrder(next);
     setPoses(
       prefersReducedMotionRef.current ? rowPoses(size, next) : chaosPoses(size, next),
@@ -657,6 +673,10 @@ export function SortingMemoryHero() {
     };
   }, [measured]);
 
+  const heroTitle = keepShortWords(copy.title);
+  const heroTitleAccent = keepShortWords(copy.titleAccent);
+  const heroTitleAccentStart = heroTitle.indexOf(heroTitleAccent);
+
   return (
     <main
       className="minimal-scene"
@@ -713,6 +733,57 @@ export function SortingMemoryHero() {
         </div>
       </header>
 
+      <section className="hero-reference-layout" aria-labelledby="landing-hero-title">
+        <div className="hero-reference-copy">
+          <h1 className="hero-title" id="landing-hero-title">
+            {heroTitleAccentStart >= 0 ? (
+              <>
+                {heroTitle.slice(0, heroTitleAccentStart)}
+                <span className="hero-title__accent">{heroTitleAccent}</span>
+                {heroTitle.slice(heroTitleAccentStart + heroTitleAccent.length)}
+              </>
+            ) : heroTitle}
+          </h1>
+          <p className="hero-reference-lead">{keepShortWords(copy.lead)}</p>
+          <div className="hero-action-row">
+            <div className="hero-cta">
+              <a href="/register?intent=hero">{keepShortWords(copy.cta)}</a>
+            </div>
+            <div className="hero-platform-note" aria-label="4 поддерживаемые платформы">
+              <div className="hero-platform-dots" aria-hidden="true">
+                <span>LC</span>
+                <span>HR</span>
+                <span>CF</span>
+              </div>
+              <p>
+                <strong>4 платформы</strong>
+                <span>единый прогресс</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="hero-visual-aura" aria-hidden="true" />
+        <div className="hero-visual-tags" aria-hidden="true">
+          <span className="hero-visual-tag hero-visual-tag--algorithms">
+            <svg viewBox="0 0 20 20"><path d="m7 4-4 6 4 6M13 4l4 6-4 6M11.5 2 8.5 18" /></svg>
+            Алгоритмы
+          </span>
+          <span className="hero-visual-tag hero-visual-tag--patterns">
+            <svg viewBox="0 0 20 20"><path d="M7 3v3H4v4h3v3h4v-3h3V6h-3V3H7Zm4 10v4H7v-4M14 8h3v4h-3" /></svg>
+            Паттерны
+          </span>
+          <span className="hero-visual-tag hero-visual-tag--reviews">
+            <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></svg>
+            Повторение
+          </span>
+          <span className="hero-visual-tag hero-visual-tag--result">
+            <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3.5" /><path d="m10 10 6-6M13 4h3v3" /></svg>
+            Результат
+          </span>
+        </div>
+      </section>
+
       <div className={codeError ? "code-editor has-error" : "code-editor"}>
         <pre className="code-lines" aria-hidden="true" ref={codeLinesRef}>
           {code.split("\n").map((line, index) => (
@@ -750,15 +821,6 @@ export function SortingMemoryHero() {
         ) : null}
       </div>
 
-      <div className="hero-tagline">
-        <h1 className="hero-title">{keepShortWords(copy.title)}</h1>
-        <div className="hero-cta">
-          <a href="/register?intent=hero">
-            {keepShortWords(copy.cta)}
-          </a>
-        </div>
-      </div>
-
       <div className="word-stage" aria-label={copy.wordAria}>
         {/* Render in a FIXED key order (0..5), never in `order`/array sequence.
             Visual position is driven entirely by `transform`, so keeping the DOM
@@ -771,8 +833,8 @@ export function SortingMemoryHero() {
           // The further a letter sits from the scene centre, the more it blurs
           // and fades — so scattered letters dissolve and sharpen as they gather.
           const width = g.widths[pose.key];
-          const dx = pose.x + width / 2 - size.width / 2;
-          const dy = pose.y + g.font * 0.54 - size.height * stageCenter(size);
+          const dx = pose.x + width / 2 - (g.startX + g.total / 2);
+          const dy = pose.y + g.font * 0.54 - (g.y + g.font * 0.54);
           // Vertical offset counts double, so letters drifting up/down fade and
           // blur twice as hard as those spreading sideways.
           const distance = Math.hypot(dx, dy * 2);
@@ -782,7 +844,10 @@ export function SortingMemoryHero() {
 
           return (
             <span
-              className={["word-letter", activeKeys.includes(pose.key) ? "active" : ""]
+              className={[
+                "word-letter",
+                activeKeys.includes(pose.key) ? "active" : "",
+              ]
                 .concat(`motion-${motionMode}`)
                 .filter(Boolean)
                 .join(" ")}
