@@ -24,6 +24,7 @@ import (
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
 	"github.com/mxdtrip/realgo/services/api/internal/cards"
 	"github.com/mxdtrip/realgo/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/mail"
 	"github.com/mxdtrip/realgo/services/api/internal/reports"
 	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
 	"github.com/mxdtrip/realgo/services/api/internal/server"
@@ -81,6 +82,25 @@ func Run(ctx context.Context) error {
 	}
 
 	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, authCfg)
+	smtpMailer, err := mail.NewSMTP(mail.Config{
+		Enabled:  cfg.Mail.Enabled,
+		Host:     cfg.Mail.Host,
+		Port:     cfg.Mail.Port,
+		Username: cfg.Mail.Username,
+		Password: cfg.Mail.Password,
+		BaseURL:  cfg.Mail.BaseURL,
+		Timeout:  cfg.Mail.Timeout,
+	})
+	if err != nil {
+		return fmt.Errorf("configure mailer: %w", err)
+	}
+	var mailer mail.Sender
+	if smtpMailer == nil {
+		logger.Warn("transactional mail disabled: MAIL_ENABLED is false")
+	} else {
+		mailer = smtpMailer
+		logger.Info("transactional mail enabled", slog.String("from", mail.SenderAddress), slog.String("smtp_host", cfg.Mail.Host), slog.Int("smtp_port", cfg.Mail.Port))
+	}
 
 	// Single FSRS scheduler shared by extension ingest and review/cards/quiz
 	// rate paths (FSRS audit A1). Built once from operator-facing config so
@@ -94,11 +114,13 @@ func Run(ctx context.Context) error {
 	})
 
 	deps := server.Deps{
-		Logger:    logger,
-		Postgres:  pg,
-		Redis:     rdb,
-		Auth:      authSvc,
-		Scheduler: sched,
+		Logger:      logger,
+		Postgres:    pg,
+		Redis:       rdb,
+		Auth:        authSvc,
+		Mailer:      mailer,
+		MailBaseURL: cfg.Mail.BaseURL,
+		Scheduler:   sched,
 	}
 	if cfg.Enabled() {
 		geminiProvider := ai.NewGeminiProvider(cfg.AI)

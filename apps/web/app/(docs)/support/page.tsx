@@ -15,7 +15,7 @@ export default function SupportPage() {
           <h1>Есть вопрос или что-то не работает?</h1>
           <p className="pattern-profile__lead">
             Напишите нам напрямую на{" "}
-            <a href="mailto:mixkageyt@gmail.com">mixkageyt@gmail.com</a> — отвечаем
+            <a href="mailto:support@realgo.dev">support@realgo.dev</a> — отвечаем
             с этого же адреса — или заполните форму ниже, она откроет письмо в
             вашей почте с уже подставленной темой.
           </p>

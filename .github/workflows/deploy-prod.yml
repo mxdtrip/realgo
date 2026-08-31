@@ -48,6 +48,15 @@ jobs:
           # Gemini key for AI card generation. Optional: when unset the api
           # boots normally with generation disabled.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Domain mailbox for all transactional and product mail. The API
+          # rejects any sender identity other than support@realgo.dev.
+          MAIL_ENABLED: ${{ secrets.MAIL_SMTP_PASSWORD != '' }}
+          MAIL_SMTP_HOST: mail.realgo.dev
+          MAIL_SMTP_PORT: "587"
+          MAIL_SMTP_USERNAME: support@realgo.dev
+          MAIL_SMTP_PASSWORD: ${{ secrets.MAIL_SMTP_PASSWORD }}
+          MAIL_BASE_URL: https://realgo.dev
+          MAIL_SMTP_TIMEOUT: 10s
           # VLESS subscription for the vpngw gateway (api shares its netns so
           # Groq calls ride this tunnel instead of the ISP's flagged egress).
           VPN_SUB_URL: ${{ secrets.VPN_SUB_URL }}

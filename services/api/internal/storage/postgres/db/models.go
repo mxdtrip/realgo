@@ -170,6 +170,15 @@ type GoadminUserPermission struct {
 	UpdatedAt    pgtype.Timestamp
 }
 
+type PasswordResetToken struct {
+	ID        int64
+	UserID    int64
+	TokenHash string
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
 type Pattern struct {
 	ID                  int64
 	Code                string

@@ -11,6 +11,7 @@ const publicRoutes = [
   { path: "/presentation/", priority: 0.6, changeFrequency: "monthly" },
   { path: "/login", priority: 0.3, changeFrequency: "monthly" },
   { path: "/register", priority: 0.4, changeFrequency: "monthly" },
+  { path: "/forgot-password", priority: 0.2, changeFrequency: "monthly" },
 ] as const;
 
 function getSiteUrl() {

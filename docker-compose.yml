@@ -437,6 +437,15 @@ services:
       AUTH_REFRESH_TTL: ${AUTH_REFRESH_TTL:-720h}
       GOADMIN_USERNAME: ${GOADMIN_USERNAME:-}
       GOADMIN_PASSWORD: ${GOADMIN_PASSWORD:-}
+      # Transactional mail is deliberately domain-only; production supplies
+      # the support mailbox password through the deployment secret.
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-mail.realgo.dev}
+      MAIL_SMTP_PORT: ${MAIL_SMTP_PORT:-587}
+      MAIL_SMTP_USERNAME: ${MAIL_SMTP_USERNAME:-support@realgo.dev}
+      MAIL_SMTP_PASSWORD: ${MAIL_SMTP_PASSWORD:-}
+      MAIL_BASE_URL: ${MAIL_BASE_URL:-https://realgo.dev}
+      MAIL_SMTP_TIMEOUT: ${MAIL_SMTP_TIMEOUT:-10s}
       # Optional: without a key the api still boots, AI card generation is
       # just disabled. Prod gets it from the GEMINI_API_KEY GitHub secret.
       # Despite the name, this currently holds a Groq key — AI_BASE_URL/AI_MODEL
