@@ -65,7 +65,7 @@ services:
     network_mode: "service:vpngw"
     environment:
       APP_ENV: production
-      MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-smtp.realgo.internal}
+      MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-mail.realgo.dev}
     depends_on:
       vpngw:
         condition: service_healthy
