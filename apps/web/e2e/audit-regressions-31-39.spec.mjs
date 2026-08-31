@@ -11,6 +11,6 @@ test.describe("audit regressions 31-39", () => {
 
     await expect(page.getByText(/не может проверить, открылся ли почтовый клиент/i)).toBeVisible();
     await expect(page.getByRole("button", { name: "Скопировать сообщение" })).toBeVisible();
-    await expect(page.getByRole("status").getByText(/mixkageyt@gmail\.com/)).toBeVisible();
+    await expect(page.getByRole("status").getByText(/support@realgo\.dev/)).toBeVisible();
   });
 });

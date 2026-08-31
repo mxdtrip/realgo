@@ -14,7 +14,7 @@ type Config struct {
 	HTTPServer `yaml:"http_server"`
 	Database   `yaml:"database"`
 	Redis      `yaml:"redis"`
-	Mail       Mail  `yaml:"mail"`
+	Mail       Mail `yaml:"mail"`
 	AI         `yaml:"ai"`
 	FSRS       `yaml:"fsrs"`
 }
@@ -57,6 +57,7 @@ type Mail struct {
 	BaseURL  string        `yaml:"base_url" env:"MAIL_BASE_URL" env-default:"https://realgo.dev"`
 	Timeout  time.Duration `yaml:"smtp_timeout" env:"MAIL_SMTP_TIMEOUT" env-default:"10s"`
 }
+
 // AI configures the LLM provider (Gemini via its OpenAI-compatible endpoint)
 // used for card generation. The key is optional: when empty the API boots
 // normally and generation is disabled.
