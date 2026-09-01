@@ -36,6 +36,20 @@ test.describe("landing conversion path", () => {
       "display",
       "inline",
     );
+    await expect(page.locator(".landing-awards__copy strong")).toHaveText(
+      "«Kodik Launchpad 2026»",
+    );
+
+    const laurelGaps = await page.evaluate(() => {
+      const left = document.querySelector(".landing-awards__branch:not(.landing-awards__branch--mirrored)")?.getBoundingClientRect();
+      const copy = document.querySelector(".landing-awards__copy")?.getBoundingClientRect();
+      const right = document.querySelector(".landing-awards__branch--mirrored")?.getBoundingClientRect();
+      return {
+        left: copy && left ? copy.left - left.right : 0,
+        right: copy && right ? right.left - copy.right : 0,
+      };
+    });
+    expect(Math.abs(laurelGaps.left - laurelGaps.right)).toBeLessThanOrEqual(1);
     await expect(page.locator(".memory-ext-demo .realgo-popup")).toHaveCSS(
       "background-color",
       "rgb(8, 13, 21)",

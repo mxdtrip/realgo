@@ -168,7 +168,7 @@ export default function Home() {
           <span className="landing-awards__copy">
             <span>{copy.awards.title}</span>
             <span>
-              «<strong>{copy.awards.eventName}</strong> {copy.awards.eventYear}»
+              <strong>«{copy.awards.eventName} {copy.awards.eventYear}»</strong>
             </span>
           </span>
           <svg className="landing-awards__branch landing-awards__branch--mirrored" viewBox="0 0 64 128" aria-hidden="true">
