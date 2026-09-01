@@ -841,7 +841,7 @@ export function SortingMemoryHero() {
         <div className="hero-visual-aura" aria-hidden="true" />
         <div className="hero-visual-tags" aria-hidden="true">
           <span className="hero-visual-tag hero-visual-tag--algorithms">
-            <svg viewBox="0 0 20 20"><path d="m7 4-4 6 4 6M13 4l4 6-4 6M11.5 2 8.5 18" /></svg>
+            <svg viewBox="0 0 20 20"><path d="M7 4 3 10l4 6M14 4l4 6-4 6M12.5 2.5 9 17.5" /></svg>
             Алгоритмы
           </span>
           <span className="hero-visual-tag hero-visual-tag--patterns">
