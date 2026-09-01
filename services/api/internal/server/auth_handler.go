@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -12,6 +14,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
 	"github.com/mxdtrip/realgo/services/api/internal/mail"
@@ -156,6 +160,13 @@ func (h *authHandler) requestPasswordReset(w http.ResponseWriter, r *http.Reques
 		response.Fail(w, http.StatusInternalServerError, "internal_error", "something went wrong")
 		return
 	}
+	emailHash := emailLogHash(req.Email)
+	requestID := middleware.GetReqID(r.Context())
+	if !found {
+		slog.Info("auth: password reset skipped", slog.String("reason", "unknown_or_invalid_email"), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
+		response.JSON(w, http.StatusAccepted, map[string]string{"status": "reset_requested"})
+		return
+	}
 	if found {
 		message, renderErr := mail.RenderPasswordReset(mail.PasswordResetData{
 			Email:     user.Email,
@@ -163,10 +174,10 @@ func (h *authHandler) requestPasswordReset(w http.ResponseWriter, r *http.Reques
 			ResetURL:  h.resetURL(token),
 		}, h.mailBaseURL)
 		if renderErr != nil {
-			slog.Error("auth: render password reset email failed", slog.Int64("user_id", user.ID), slog.Any("err", renderErr))
+			slog.Error("auth: render password reset email failed", slog.Int64("user_id", user.ID), slog.String("email_hash", emailHash), slog.String("request_id", requestID), slog.Any("err", renderErr))
 		} else {
 			message.To = user.Email
-			h.deliverMail(message, user.ID, "password_reset")
+			h.deliverMail(r.Context(), message, user.ID, "password_reset", emailHash)
 		}
 	}
 	response.JSON(w, http.StatusAccepted, map[string]string{"status": "reset_requested"})
@@ -572,22 +583,32 @@ func (h *authHandler) sendPasswordChanged(r *http.Request, user db.User) {
 		return
 	}
 	message.To = user.Email
-	h.deliverMail(message, user.ID, "password_changed")
+	h.deliverMail(r.Context(), message, user.ID, "password_changed", emailLogHash(user.Email))
 }
 
-func (h *authHandler) deliverMail(message mail.Message, userID int64, kind string) {
+func (h *authHandler) deliverMail(ctx context.Context, message mail.Message, userID int64, kind string, emailHash string) {
+	requestID := middleware.GetReqID(ctx)
 	if h.mailer == nil {
+		slog.Warn("auth: email delivery skipped", slog.Int64("user_id", userID), slog.String("kind", kind), slog.String("reason", "mailer_disabled"), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	if err := h.mailer.Send(ctx, message); err != nil {
-		slog.Error("auth: email delivery failed", slog.Int64("user_id", userID), slog.String("kind", kind), slog.Any("err", err))
+		slog.Error("auth: email delivery failed", slog.Int64("user_id", userID), slog.String("kind", kind), slog.String("email_hash", emailHash), slog.String("request_id", requestID), slog.Any("err", err))
+		return
 	}
+	slog.Info("auth: email delivered", slog.Int64("user_id", userID), slog.String("kind", kind), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
 }
 
 func (h *authHandler) resetURL(token string) string {
 	return strings.TrimRight(h.mailBaseURL, "/") + "/reset-password?token=" + url.QueryEscape(token)
+}
+
+func emailLogHash(email string) string {
+	normalized := strings.ToLower(strings.TrimSpace(email))
+	sum := sha256.Sum256([]byte(normalized))
+	return fmt.Sprintf("%x", sum[:])[:16]
 }
 
 func truncateHeader(value string, limit int) string {
