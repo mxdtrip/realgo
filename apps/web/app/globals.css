@@ -13224,6 +13224,9 @@ body {
 }
 
 .landing-awards__copy strong {
+  display: inline;
+  margin: 0;
+  padding: 0;
   color: inherit;
   font-size: inherit;
   font-weight: 700;
