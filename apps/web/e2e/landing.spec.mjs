@@ -21,14 +21,8 @@ test.describe("landing conversion path", () => {
     await expect(page.locator(".scroll-card-flow-bg")).toHaveAttribute("data-light-pool-count", "4");
     await expect(page.locator(".scroll-card-flow-bg")).toHaveAttribute("data-light-parallax", "0.38-0.48");
     await expect(page.locator(".landing-awards__title")).toHaveText(
-      "ReAlgo выиграл 4 номинации на хакатоне Kodik Launchpad",
+      "Победитель хакатона «Kodik Launchpad 2026»",
     );
-    await expect(page.locator(".landing-awards strong > span")).toHaveText([
-      "Лучший проект хакатона",
-      "Проект с максимальным коммерческим потенциалом",
-      "Лучшая презентация продукта",
-      "Выбор коммьюнити",
-    ]);
     await expect(page.locator(".memory-ext-demo .realgo-popup")).toHaveCSS(
       "background-color",
       "rgb(8, 13, 21)",
@@ -46,6 +40,38 @@ test.describe("landing conversion path", () => {
       "rgb(8, 13, 21)",
     );
     await expect(page.locator(".site-nav a")).toHaveText(["Tasks", "Plan", "Reviews", "Pricing", "FAQ"]);
+  });
+
+  test("reveals and executes the Python sorting script", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await expect(page.locator(".minimal-scene")).toHaveAttribute("data-scene-ready", "true");
+
+    const scene = page.locator(".minimal-scene");
+    const editor = page.locator(".code-editor");
+    const pythonCode = `def sort(a):
+    for i in range(len(a)):
+        for j in range(0, len(a) - i - 1):
+            if compare(j, j + 1) > 0:
+                swap(j, j + 1)`;
+
+    await expect(scene).toHaveAttribute("data-sort-state", "sorted", { timeout: 10000 });
+    await expect(scene).toHaveAttribute("data-code-language", "python");
+    await expect(editor).toHaveAttribute("data-language", "python");
+    await expect(editor).toHaveCSS("opacity", "0");
+    await editor.hover();
+    await expect(editor).toHaveCSS("opacity", "0.96");
+    await editor.locator(".code-sheet").fill(pythonCode);
+
+    // The first click scatters the letters and the second click starts the
+    // worker-backed Python sort. The editor must reveal for that active run,
+    // not only for pointer hover.
+    await scene.click({ position: { x: 40, y: 700 } });
+    await scene.click({ position: { x: 40, y: 700 } });
+    await expect(scene).toHaveAttribute("data-sort-state", "sorting");
+    await expect(editor).toHaveCSS("opacity", "0.96");
+    await expect(scene).toHaveAttribute("data-sort-state", "sorted", { timeout: 15000 });
+    await expect(page.locator(".code-error")).toHaveCount(0);
   });
 
   test("keeps the hero at the top while the extension demo hydrates", async ({ page }) => {
@@ -74,8 +100,7 @@ test.describe("landing conversion path", () => {
 
       return {
         copyLeft: copy?.left ?? 0,
-        copyRight: copy?.right ?? 0,
-        codeLeft: code?.left ?? 0,
+        codeBottom: code?.bottom ?? 0,
         titleTop: document.querySelector(".hero-title")?.getBoundingClientRect().top ?? 0,
         ctaBottom: cta?.bottom ?? 0,
         proofTop: proof?.top ?? 0,
@@ -86,7 +111,7 @@ test.describe("landing conversion path", () => {
       };
     });
 
-    expect(metrics.copyRight).toBeLessThan(metrics.codeLeft);
+    expect(metrics.codeBottom).toBeLessThanOrEqual(metrics.wordTop + 1);
     expect(metrics.ctaBottom).toBeLessThan(metrics.proofTop);
     expect(Math.abs(metrics.wordLeft - metrics.copyLeft)).toBeLessThanOrEqual(1);
     expect(metrics.wordTop).toBeGreaterThan(260);

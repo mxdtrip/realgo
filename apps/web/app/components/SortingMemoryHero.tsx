@@ -49,15 +49,11 @@ const GATHER_MS = 600;
 const COMPARE_MS = 55;
 const SWAP_MS = 260;
 const SWAP_PAUSE_MS = 25;
-const DEFAULT_CODE = `function bubbleSort(a) {
-  for (let i = 0; i < a.length; i++) {
-    for (let j = 0; j < a.length - i - 1; j++) {
-      if (compare(j, j + 1) > 0) {
-        swap(j, j + 1);
-      }
-    }
-  }
-}`;
+const DEFAULT_CODE = `def sort(a):
+    for i in range(len(a)):
+        for j in range(0, len(a) - i - 1):
+            if compare(j, j + 1) > 0:
+                swap(j, j + 1)`;
 
 type Pose = {
   key: number;
@@ -94,10 +90,6 @@ function interactiveWordFontSize(width: number) {
   if (width <= 920) return clamp(width * 0.09, 56, 74);
   if (width >= 1600) return 88;
   return clamp(width * 0.068, 74, 92);
-}
-
-function stageCenter(size: SceneSize) {
-  return size.width <= 640 ? 0.46 : 0.5;
 }
 
 function wordRowLeft(size: SceneSize, total: number) {
@@ -175,18 +167,20 @@ function rowPoses(size: SceneSize, order: number[]) {
   });
 }
 
-// Scatter the letters onto random points of an invisible, width-stretched oval
-// centred on the word, with a small ±jitter along the radius so the ring of
-// letters looks organic rather than perfectly geometric.
-const CHAOS_JITTER = 50;
+// Scatter the letters onto random points of an invisible oval centred on the
+// gathered word itself. The word moved into the left copy column, so using the
+// viewport centre here made the letters fly too far into the visual and bunch
+// up near the top-right tags. A tighter orbit keeps the interaction attached to
+// the word while still giving each letter a distinct path.
+const CHAOS_JITTER = 28;
 
 function chaosPoses(size: SceneSize, order: number[]) {
   const g = geometry(size);
   const isPhone = size.width <= 640;
-  const centerX = size.width / 2;
-  const centerY = size.height * stageCenter(size);
-  const radiusX = size.width * (isPhone ? 0.3 : 0.42);
-  const radiusY = size.height * (isPhone ? 0.22 : 0.32);
+  const centerX = g.startX + g.total / 2;
+  const centerY = g.y + g.font * 0.54;
+  const radiusX = size.width * (isPhone ? 0.22 : 0.29);
+  const radiusY = size.height * (isPhone ? 0.15 : 0.21);
   const edgeInset = isPhone ? 40 : 12;
 
   return order.map((key, index) => {
@@ -194,7 +188,7 @@ function chaosPoses(size: SceneSize, order: number[]) {
     const ex = radiusX * Math.cos(angle);
     const ey = radiusY * Math.sin(angle);
     const radius = Math.hypot(ex, ey) || 1;
-    const jitter = (Math.random() * 2 - 1) * CHAOS_JITTER;
+    const jitter = (Math.random() * 2 - 1) * (isPhone ? 18 : CHAOS_JITTER);
     const px = centerX + ex + (ex / radius) * jitter;
     const py = centerY + ey + (ey / radius) * jitter;
     const width = g.widths[key];
@@ -240,13 +234,92 @@ self.onmessage = (event) => {
     [arr[a], arr[b]] = [arr[b], arr[a]];
   };
 
+  // The visible editor uses a small, deliberately constrained Python dialect.
+  // Translating only the constructs needed by the educational bubble-sort
+  // example keeps execution in the same isolated worker without pretending
+  // that arbitrary Python can run in a browser with no Python runtime.
+  const pythonToJavaScript = (source) => {
+    const output = [];
+    const blocks = [];
+    const normalizeExpression = (expression) => expression
+      .replace(/\\blen\\(([^()]*)\\)/g, "$1.length")
+      .replace(/\\band\\b/g, "&&")
+      .replace(/\\bor\\b/g, "||")
+      .replace(/\\bnot\\b/g, "!");
+    const closeBlocks = (indent) => {
+      while (blocks.length && indent < blocks[blocks.length - 1]) {
+        output.push("}");
+        blocks.pop();
+      }
+    };
+
+    source.split("\\n").forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) return;
+      const indent = (line.match(/^\\s*/) || [""])[0].length;
+      closeBlocks(indent);
+
+      const definition = trimmed.match(/^def\\s+(sort|bubble_sort)\\s*\\(\\s*a\\s*\\)\\s*:\\s*$/);
+      if (definition) {
+        output.push("function " + (definition[1] === "bubble_sort" ? "bubbleSort" : "sort") + "(a) {");
+        blocks.push(indent);
+        return;
+      }
+
+      const loop = trimmed.match(/^for\\s+([A-Za-z_]\\w*)\\s+in\\s+range\\((.*)\\)\\s*:\\s*$/);
+      if (loop) {
+        const rangeArguments = loop[2].split(",").map((part) => normalizeExpression(part.trim()));
+        if (rangeArguments.length === 1) {
+          output.push("for (let " + loop[1] + " = 0; " + loop[1] + " < " + rangeArguments[0] + "; " + loop[1] + " += 1) {");
+        } else if (rangeArguments.length === 2) {
+          output.push("for (let " + loop[1] + " = " + rangeArguments[0] + "; " + loop[1] + " < " + rangeArguments[1] + "; " + loop[1] + " += 1) {");
+        } else {
+          throw new Error("unsupported range");
+        }
+        blocks.push(indent);
+        return;
+      }
+
+      const condition = trimmed.match(/^if\\s+(.+)\\s*:\\s*$/);
+      if (condition) {
+        output.push("if (" + normalizeExpression(condition[1]) + ") {");
+        blocks.push(indent);
+        return;
+      }
+
+      if (trimmed === "else:") {
+        output.push("} else {");
+        return;
+      }
+
+      if (/^(compare|swap)\\s*\\(/.test(trimmed)) {
+        output.push(trimmed + ";");
+        return;
+      }
+
+      if (/^return\\s+/.test(trimmed)) {
+        output.push(trimmed + ";");
+        return;
+      }
+
+      throw new Error("unsupported Python syntax");
+    });
+
+    while (blocks.length) {
+      output.push("}");
+      blocks.pop();
+    }
+    return output.join("\\n");
+  };
+
   try {
+    const executableCode = /\\bdef\\s+/.test(code) ? pythonToJavaScript(code) : code;
     const factory = new Function(
       "compare",
       "swap",
       '"use strict";\\n' +
         'const window = undefined; const document = undefined; const localStorage = undefined; const sessionStorage = undefined; const fetch = undefined; const importScripts = undefined;\\n' +
-        code +
+        executableCode +
         '\\nreturn typeof bubbleSort === "function" ? bubbleSort : typeof sort === "function" ? sort : null;'
     );
     const sort = factory(compare, swap);
@@ -681,6 +754,8 @@ export function SortingMemoryHero() {
     <main
       className="minimal-scene"
       data-scene-ready={sceneReady ? "true" : "false"}
+      data-code-language="python"
+      data-sort-state={codeError ? "error" : isSorting ? "sorting" : scattered ? "scattered" : "sorted"}
       ref={sceneRef}
       onClick={handleSceneClick}
     >
@@ -784,7 +859,11 @@ export function SortingMemoryHero() {
         </div>
       </section>
 
-      <div className={codeError ? "code-editor has-error" : "code-editor"}>
+      <div
+        className={codeError ? "code-editor has-error" : "code-editor"}
+        data-language="python"
+      >
+        <span className="code-editor__language" aria-hidden="true">python</span>
         <pre className="code-lines" aria-hidden="true" ref={codeLinesRef}>
           {code.split("\n").map((line, index) => (
             <span
@@ -839,8 +918,8 @@ export function SortingMemoryHero() {
           // blur twice as hard as those spreading sideways.
           const distance = Math.hypot(dx, dy * 2);
           const t = clamp((distance - size.width * 0.22) / (size.width * 0.32), 0, 1);
-          const blur = t * 7;
-          const fade = 1 - t * 0.92;
+          const blur = t * 13;
+          const fade = 1 - t * 0.96;
 
           return (
             <span

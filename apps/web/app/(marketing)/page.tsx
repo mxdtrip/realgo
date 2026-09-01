@@ -140,15 +140,17 @@ export default function Home() {
       </aside>
 
       <div className="landing-platforms landing-awards" aria-label="Награды ReAlgo на хакатоне Kodik Launchpad">
-        <span className="landing-awards__title">{copy.awards.title}</span>
-        <div>
-          {copy.awards.items.map((item, index) => (
-            <strong key={item}>
-              <i aria-hidden="true">{String(index + 1).padStart(2, "0")}</i>
-              <span>{keepShortWords(item)}</span>
-            </strong>
-          ))}
-        </div>
+        <span className="landing-awards__title">
+          <svg className="landing-awards__laurel landing-awards__laurel--left" viewBox="0 0 48 30" aria-hidden="true">
+            <path d="M44 27C31 25 20 17 11 5" />
+            <path d="M35 23c-1-4-1-7 0-10M27 19c-1-4-1-7-3-10M19 14c0-3-1-6-3-8M12 7C9 7 7 6 5 4" />
+          </svg>
+          <span>{copy.awards.title}</span>
+          <svg className="landing-awards__laurel landing-awards__laurel--right" viewBox="0 0 48 30" aria-hidden="true">
+            <path d="M4 27C17 25 28 17 37 5" />
+            <path d="M13 23c1-4 1-7 0-10M21 19c1-4 1-7 3-10M29 14c0-3 1-6 3-8M36 7c3 0 5-1 7-3" />
+          </svg>
+        </span>
       </div>
 
       <div className="landing-hero-transition" aria-hidden="true" />

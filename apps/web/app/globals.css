@@ -12967,54 +12967,76 @@ body {
 }
 
 .hero-visual-tag--algorithms {
-  top: 88px;
+  top: 158px;
   left: 59%;
 }
 
 .hero-visual-tag--patterns {
-  top: 184px;
+  top: 254px;
   right: -1.5vw;
 }
 
 .hero-visual-tag--reviews {
-  top: 282px;
+  top: 352px;
   right: 7%;
 }
 
 .hero-visual-tag--result {
-  top: 410px;
+  top: 480px;
   right: 21%;
 }
 
-/* Turn the original code surface into a native product card inside the right
-   composition. It remains fully editable and still drives the word animation. */
+/* Turn the original code surface into a native product card above the
+   interactive word. It remains fully editable and still drives the animation. */
 .code-editor {
-  top: 264px;
-  left: calc(50% + 120px);
+  top: 110px;
+  left: max(32px, calc((100% - min(1784px, calc(100% - 220px))) / 2));
   z-index: 3;
-  width: min(340px, 28vw);
-  height: 172px;
+  width: min(380px, 32vw);
+  height: 160px;
   padding: 16px 17px;
   overflow: hidden;
   border: 1px solid rgba(109, 134, 204, 0.16);
   border-radius: 12px;
-  background: linear-gradient(145deg, rgba(15, 23, 40, 0.74), rgba(6, 11, 22, 0.38));
+  background: rgba(8, 13, 21, 0.96);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.035),
     0 30px 60px -36px rgba(1, 4, 9, 0.96);
   opacity: 0;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  transform: perspective(900px) rotateY(-4deg) rotateZ(-1deg);
+  /* Keep the editor on a true horizontal/vertical grid. The old perspective
+     treatment made this small surface look accidentally skewed rather than
+     like a deliberate product panel. */
+  transform: translateY(8px);
   transform-origin: center;
-  transition: opacity 220ms ease, border-color 220ms ease, background 220ms ease;
+  transition:
+    opacity 220ms ease,
+    border-color 220ms ease,
+    background 220ms ease,
+    transform 220ms ease;
 }
 
 .code-editor:hover,
-.code-editor:focus-within {
+.code-editor:focus-within,
+.minimal-scene[data-sort-state="sorting"] .code-editor {
   border-color: rgba(109, 134, 204, 0.28);
-  background: linear-gradient(145deg, rgba(15, 23, 40, 0.88), rgba(6, 11, 22, 0.68));
-  opacity: 0.78;
+  background: #080d15;
+  opacity: 0.96;
+  transform: translateY(0);
+}
+
+.code-editor__language {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 3;
+  color: rgba(112, 151, 229, 0.78);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: lowercase;
+  pointer-events: none;
 }
 
 .code-lines,
@@ -13157,12 +13179,37 @@ body {
 }
 
 .landing-platforms > .landing-awards__title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  max-width: 100%;
   color: rgba(183, 194, 214, 0.68);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.08em;
   line-height: 1.4;
   text-transform: none;
+}
+
+.landing-awards__title > span {
+  min-width: 0;
+}
+
+.landing-awards__laurel {
+  width: 44px;
+  height: 28px;
+  flex: 0 0 auto;
+  overflow: visible;
+  color: rgba(92, 137, 225, 0.68);
+}
+
+.landing-awards__laurel path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.25;
 }
 
 .landing-awards > div {
@@ -13307,10 +13354,10 @@ body {
   }
 
   .code-editor {
-    top: calc(320px + var(--landing-hero-tall-shift) + var(--landing-hero-left-shift));
-    left: calc(50% + 170px);
+    top: calc(110px + var(--landing-hero-tall-shift));
+    left: max(32px, calc((100% - min(1784px, calc(100% - 220px))) / 2));
     width: 420px;
-    height: 210px;
+    height: 160px;
   }
 
   .word-stage {
@@ -13326,22 +13373,22 @@ body {
   }
 
   .hero-visual-tag--algorithms {
-    top: calc(115px + var(--landing-hero-tall-shift) + var(--landing-hero-left-shift));
+    top: calc(185px + var(--landing-hero-tall-shift) + var(--landing-hero-left-shift));
     left: 62%;
   }
 
   .hero-visual-tag--patterns {
-    top: calc(244px + var(--landing-hero-tall-shift) + var(--landing-hero-left-shift));
+    top: calc(314px + var(--landing-hero-tall-shift) + var(--landing-hero-left-shift));
     right: -4vw;
   }
 
   .hero-visual-tag--reviews {
-    top: calc(375px + var(--landing-hero-tall-shift) + var(--landing-hero-left-shift));
+    top: calc(445px + var(--landing-hero-tall-shift) + var(--landing-hero-left-shift));
     right: 6%;
   }
 
   .hero-visual-tag--result {
-    top: calc(550px + var(--landing-hero-tall-shift) + var(--landing-hero-left-shift));
+    top: calc(620px + var(--landing-hero-tall-shift) + var(--landing-hero-left-shift));
     right: 12%;
   }
 
@@ -13443,6 +13490,13 @@ body {
     width: min(1248px, calc(100% - 192px));
   }
 
+  .code-editor {
+    top: 110px;
+    left: max(32px, calc((100% - min(1248px, calc(100% - 192px))) / 2));
+    width: min(380px, 32vw);
+    height: 160px;
+  }
+
   .word-stage {
     transform: translateY(var(--landing-hero-left-shift));
   }
@@ -13504,12 +13558,14 @@ body {
   }
 
   .code-editor {
-    left: 65%;
-    width: 29vw;
+    top: 110px;
+    left: 32px;
+    width: min(360px, 38vw);
+    height: 160px;
   }
 
   .hero-visual-tag--patterns {
-    top: 220px;
+    top: 290px;
     right: 1%;
   }
 
@@ -13599,17 +13655,17 @@ body {
   }
 
   .hero-visual-tag--algorithms {
-    top: 476px;
+    top: 546px;
     left: 12%;
   }
 
   .hero-visual-tag--patterns {
-    top: 550px;
+    top: 620px;
     right: 7%;
   }
 
   .hero-visual-tag--reviews {
-    top: 658px;
+    top: 728px;
     right: 30%;
   }
 
@@ -13710,7 +13766,7 @@ body {
   }
 
   .hero-visual-tag--algorithms {
-    top: 496px;
+    top: 566px;
     left: 2%;
   }
 
@@ -13719,7 +13775,7 @@ body {
   }
 
   .hero-visual-tag--reviews {
-    top: 650px;
+    top: 720px;
     right: 2%;
   }
 

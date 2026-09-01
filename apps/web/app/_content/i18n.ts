@@ -239,13 +239,7 @@ const ru = {
       { value: "428", label: "компаний в базе задач с собеседований" },
     ],
     awards: {
-      title: "ReAlgo выиграл 4 номинации на хакатоне Kodik Launchpad",
-      items: [
-        "Лучший проект хакатона",
-        "Проект с максимальным коммерческим потенциалом",
-        "Лучшая презентация продукта",
-        "Выбор коммьюнити",
-      ],
+      title: "Победитель хакатона «Kodik Launchpad 2026»",
     },
     // Dismissible toast in the bottom-right corner of the landing page,
     // rendered in Kodik's brand colours. See app/components/KodikWinNotice.tsx.
