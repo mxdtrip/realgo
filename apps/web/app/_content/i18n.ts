@@ -241,6 +241,8 @@ const ru = {
     awards: {
       title: "Победитель хакатона",
       event: "«Kodik Launchpad 2026»",
+      eventName: "Kodik Launchpad",
+      eventYear: "2026",
     },
     // Dismissible toast in the bottom-right corner of the landing page,
     // rendered in Kodik's brand colours. See app/components/KodikWinNotice.tsx.

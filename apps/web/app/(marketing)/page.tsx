@@ -140,10 +140,58 @@ export default function Home() {
       </aside>
 
       <div className="landing-platforms landing-awards" aria-label="Награды ReAlgo на хакатоне Kodik Launchpad">
-        <span className="landing-awards__title">
-          <span>{copy.awards.title}</span>
-          {" "}
-          <span>{copy.awards.event}</span>
+        <span
+          className="landing-awards__title"
+          aria-label={`${copy.awards.title} ${copy.awards.event}`}
+        >
+          <svg className="landing-awards__branch" viewBox="0 0 64 128" aria-hidden="true">
+            <defs>
+              <linearGradient id="landingLaurelGoldLeft" x1="0" y1="0" x2="0.3" y2="1">
+                <stop offset="0" stopColor="#fbf1c7" />
+                <stop offset="0.36" stopColor="#e6c86a" />
+                <stop offset="0.72" stopColor="#c99a2e" />
+                <stop offset="1" stopColor="#8d6d21" />
+              </linearGradient>
+            </defs>
+            <path d="M52 124 C14 104 4 52 38 4" fill="none" stroke="url(#landingLaurelGoldLeft)" strokeWidth="2.6" strokeLinecap="round" />
+            <g fill="url(#landingLaurelGoldLeft)">
+              <ellipse cx="34.24" cy="118.75" rx="8.61" ry="3.49" transform="rotate(166.93 34.24 118.75)" />
+              <ellipse cx="23.11" cy="106.48" rx="9.36" ry="3.8" transform="rotate(-179.6 23.11 106.48)" />
+              <ellipse cx="15.13" cy="91.88" rx="10.1" ry="4.1" transform="rotate(-166.47 15.13 91.88)" />
+              <ellipse cx="10.89" cy="75.68" rx="10.35" ry="4.2" transform="rotate(-153.95 10.89 75.68)" />
+              <ellipse cx="10.73" cy="58.86" rx="9.61" ry="3.9" transform="rotate(-142.18 10.73 58.86)" />
+              <ellipse cx="13.83" cy="41.57" rx="8.86" ry="3.59" transform="rotate(-131.15 13.83 41.57)" />
+              <ellipse cx="20.25" cy="24.11" rx="8.11" ry="3.29" transform="rotate(-120.85 20.25 24.11)" />
+              <ellipse cx="30.06" cy="6.77" rx="7.37" ry="2.99" transform="rotate(-111.24 30.06 6.77)" />
+            </g>
+          </svg>
+          <span className="landing-awards__copy">
+            <span>{copy.awards.title}</span>
+            <span>
+              «<strong>{copy.awards.eventName}</strong> {copy.awards.eventYear}»
+            </span>
+          </span>
+          <svg className="landing-awards__branch landing-awards__branch--mirrored" viewBox="0 0 64 128" aria-hidden="true">
+            <defs>
+              <linearGradient id="landingLaurelGoldRight" x1="0" y1="0" x2="0.3" y2="1">
+                <stop offset="0" stopColor="#fbf1c7" />
+                <stop offset="0.36" stopColor="#e6c86a" />
+                <stop offset="0.72" stopColor="#c99a2e" />
+                <stop offset="1" stopColor="#8d6d21" />
+              </linearGradient>
+            </defs>
+            <path d="M52 124 C14 104 4 52 38 4" fill="none" stroke="url(#landingLaurelGoldRight)" strokeWidth="2.6" strokeLinecap="round" />
+            <g fill="url(#landingLaurelGoldRight)">
+              <ellipse cx="34.24" cy="118.75" rx="8.61" ry="3.49" transform="rotate(166.93 34.24 118.75)" />
+              <ellipse cx="23.11" cy="106.48" rx="9.36" ry="3.8" transform="rotate(-179.6 23.11 106.48)" />
+              <ellipse cx="15.13" cy="91.88" rx="10.1" ry="4.1" transform="rotate(-166.47 15.13 91.88)" />
+              <ellipse cx="10.89" cy="75.68" rx="10.35" ry="4.2" transform="rotate(-153.95 10.89 75.68)" />
+              <ellipse cx="10.73" cy="58.86" rx="9.61" ry="3.9" transform="rotate(-142.18 10.73 58.86)" />
+              <ellipse cx="13.83" cy="41.57" rx="8.86" ry="3.59" transform="rotate(-131.15 13.83 41.57)" />
+              <ellipse cx="20.25" cy="24.11" rx="8.11" ry="3.29" transform="rotate(-120.85 20.25 24.11)" />
+              <ellipse cx="30.06" cy="6.77" rx="7.37" ry="2.99" transform="rotate(-111.24 30.06 6.77)" />
+            </g>
+          </svg>
         </span>
       </div>
 

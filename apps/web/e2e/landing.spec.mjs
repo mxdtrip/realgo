@@ -20,9 +20,14 @@ test.describe("landing conversion path", () => {
     await expect(page.locator(".landing-proof")).toHaveCSS("backdrop-filter", "none");
     await expect(page.locator(".scroll-card-flow-bg")).toHaveAttribute("data-light-pool-count", "4");
     await expect(page.locator(".scroll-card-flow-bg")).toHaveAttribute("data-light-parallax", "0.38-0.48");
-    await expect(page.locator(".landing-awards__title")).toHaveText(
-      /Победитель хакатона\s+«Kodik Launchpad 2026»/,
+    await expect(page.locator(".landing-awards__title")).toHaveAttribute(
+      "aria-label",
+      "Победитель хакатона «Kodik Launchpad 2026»",
     );
+    await expect(page.locator(".landing-awards__copy > span")).toHaveText([
+      "Победитель хакатона",
+      "«Kodik Launchpad 2026»",
+    ]);
     await expect(page.locator(".memory-ext-demo .realgo-popup")).toHaveCSS(
       "background-color",
       "rgb(8, 13, 21)",

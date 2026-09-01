@@ -13195,10 +13195,10 @@ body {
 }
 
 .landing-platforms > .landing-awards__title {
-  display: grid;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 14px;
   max-width: 100%;
   color: rgba(183, 194, 214, 0.68);
   font-size: 11px;
@@ -13210,6 +13210,34 @@ body {
 
 .landing-awards__title > span {
   min-width: 0;
+}
+
+.landing-awards__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.landing-awards__copy > span {
+  display: block;
+}
+
+.landing-awards__copy strong {
+  color: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  letter-spacing: inherit;
+}
+
+.landing-awards__branch {
+  width: 24px;
+  height: 48px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.2));
+}
+
+.landing-awards__branch--mirrored {
+  transform: scaleX(-1);
 }
 
 .landing-awards > div {
