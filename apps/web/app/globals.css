@@ -12878,62 +12878,6 @@ body {
   transform: translateY(-1px);
 }
 
-.hero-platform-note {
-  display: flex;
-  align-items: center;
-  min-width: 158px;
-}
-
-.hero-platform-dots {
-  display: flex;
-  align-items: center;
-  padding-left: 8px;
-}
-
-.hero-platform-dots span {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  margin-left: -8px;
-  border: 2px solid rgba(5, 10, 19, 0.92);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.24), transparent 30%),
-    linear-gradient(145deg, #293750, #131b2b);
-  color: rgba(230, 237, 243, 0.9);
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  box-shadow: 0 6px 18px rgba(1, 4, 9, 0.48);
-}
-
-.hero-platform-dots span:nth-child(2) {
-  background: linear-gradient(145deg, #41344e, #191724);
-}
-
-.hero-platform-dots span:nth-child(3) {
-  background: linear-gradient(145deg, #24484a, #101d24);
-}
-
-.hero-platform-note p {
-  display: grid;
-  gap: 1px;
-  margin: 0 0 0 10px;
-  font-size: 10px;
-  line-height: 1.28;
-}
-
-.hero-platform-note strong {
-  color: rgba(230, 237, 243, 0.8);
-  font-size: 10px;
-  font-weight: 500;
-}
-
-.hero-platform-note p span {
-  color: var(--text-faint);
-}
-
 .hero-visual-aura {
   position: absolute;
   top: 78px;
@@ -13374,17 +13318,6 @@ body {
     font-size: 16px;
   }
 
-  .hero-platform-dots span {
-    width: 36px;
-    height: 36px;
-    font-size: 9px;
-  }
-
-  .hero-platform-note p,
-  .hero-platform-note strong {
-    font-size: 12px;
-  }
-
   .code-editor {
     top: calc(110px + var(--landing-hero-tall-shift));
     left: max(32px, calc((100% - min(1784px, calc(100% - 220px))) / 2));
@@ -13581,14 +13514,6 @@ body {
     font-size: 13px;
   }
 
-  .hero-platform-note {
-    min-width: 0;
-  }
-
-  .hero-platform-note p {
-    display: none;
-  }
-
   .code-editor {
     top: 110px;
     left: 32px;
@@ -13776,10 +13701,6 @@ body {
   .hero-reference-copy .hero-cta,
   .hero-reference-copy .hero-cta a {
     width: min(100%, 330px);
-  }
-
-  .hero-platform-note {
-    justify-content: center;
   }
 
   .word-stage {

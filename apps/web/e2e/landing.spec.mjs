@@ -16,6 +16,7 @@ test.describe("landing conversion path", () => {
     await expect(page.locator(".landing-proof strong")).toHaveText(["4", "111", "428"]);
     await expect(page.locator(".landing-proof")).toContainText("компаний в базе задач с собеседований");
     await expect(page.locator(".landing-proof strong").first()).toHaveCSS("font-family", /JetBrains Mono/);
+    await expect(page.locator(".hero-platform-note")).toHaveCount(0);
     await expect(page.locator(".landing-proof")).toHaveCSS("background-color", "rgb(10, 17, 29)");
     await expect(page.locator(".landing-proof")).toHaveCSS("backdrop-filter", "none");
     await expect(page.locator(".scroll-card-flow-bg")).toHaveAttribute("data-light-pool-count", "4");

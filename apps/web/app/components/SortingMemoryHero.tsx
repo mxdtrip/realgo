@@ -824,17 +824,6 @@ export function SortingMemoryHero() {
             <div className="hero-cta">
               <a href="/register?intent=hero">{keepShortWords(copy.cta)}</a>
             </div>
-            <div className="hero-platform-note" aria-label="4 поддерживаемые платформы">
-              <div className="hero-platform-dots" aria-hidden="true">
-                <span>LC</span>
-                <span>HR</span>
-                <span>CF</span>
-              </div>
-              <p>
-                <strong>4 платформы</strong>
-                <span>единый прогресс</span>
-              </p>
-            </div>
           </div>
         </div>
 
