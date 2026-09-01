@@ -45,9 +45,8 @@ type Redis struct {
 	DB       int    `yaml:"db" env:"REDIS_DB" env-default:"0"`
 }
 
-// Mail configures the domain mailbox used for every application email. The
-// sender identity is fixed in internal/mail to prevent accidental Gmail or
-// personal-account delivery.
+// Mail configures the SMTP relay used for every application email. The visible
+// sender identity is fixed in internal/mail to support@realgo.dev.
 type Mail struct {
 	Enabled  bool          `yaml:"enabled" env:"MAIL_ENABLED" env-default:"false"`
 	Host     string        `yaml:"smtp_host" env:"MAIL_SMTP_HOST" env-default:"mail.realgo.dev"`
