@@ -55,6 +55,7 @@ type Mail struct {
 	Password string        `yaml:"smtp_password" env:"MAIL_SMTP_PASSWORD"`
 	BaseURL  string        `yaml:"base_url" env:"MAIL_BASE_URL" env-default:"https://realgo.dev"`
 	Timeout  time.Duration `yaml:"smtp_timeout" env:"MAIL_SMTP_TIMEOUT" env-default:"10s"`
+	TLSMode  string        `yaml:"smtp_tls_mode" env:"MAIL_SMTP_TLS_MODE" env-default:"auto"`
 }
 
 // AI configures the LLM provider (Gemini via its OpenAI-compatible endpoint)

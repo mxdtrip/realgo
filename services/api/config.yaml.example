@@ -33,6 +33,7 @@ mail:
   smtp_password: ""
   base_url: https://realgo.dev
   smtp_timeout: 10s
+  smtp_tls_mode: auto
 ai:
   # Empty key = AI card generation disabled. Personal free keys:
   # https://aistudio.google.com/apikey (never commit real keys).

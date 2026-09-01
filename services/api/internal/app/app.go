@@ -75,6 +75,7 @@ func Run(ctx context.Context) error {
 		Password: cfg.Mail.Password,
 		BaseURL:  cfg.Mail.BaseURL,
 		Timeout:  cfg.Mail.Timeout,
+		TLSMode:  cfg.Mail.TLSMode,
 	})
 	if err != nil {
 		return fmt.Errorf("configure mailer: %w", err)
@@ -84,7 +85,7 @@ func Run(ctx context.Context) error {
 		logger.Warn("transactional mail disabled: MAIL_ENABLED is false")
 	} else {
 		mailer = smtpMailer
-		logger.Info("transactional mail enabled", slog.String("from", mail.SenderAddress), slog.String("smtp_host", cfg.Mail.Host), slog.Int("smtp_port", cfg.Mail.Port))
+		logger.Info("transactional mail enabled", slog.String("from", mail.SenderAddress), slog.String("smtp_host", cfg.Mail.Host), slog.Int("smtp_port", cfg.Mail.Port), slog.String("smtp_tls_mode", cfg.Mail.TLSMode))
 	}
 
 	// Single FSRS scheduler shared by extension ingest and review/cards/quiz

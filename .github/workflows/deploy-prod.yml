@@ -47,13 +47,11 @@ jobs:
           # Gemini key for AI card generation. Optional: when unset the api
           # boots normally with generation disabled.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # Gmail SMTP relay for transactional mail. The visible sender stays
-          # fixed to support@realgo.dev in code; Gmail must have that address
-          # confirmed under "Send mail as" for MAIL FROM to succeed.
+          # Gmail app password used by the internal mail-relay container. The
+          # API sends to that relay over Docker networking so it can remain
+          # inside vpngw for AI egress.
           MAIL_ENABLED: ${{ secrets.MAIL_SMTP_PASSWORD != '' }}
-          MAIL_SMTP_HOST: smtp.gmail.com
-          MAIL_SMTP_PORT: "587"
-          MAIL_SMTP_USERNAME: freeburger.team@gmail.com
+          GMAIL_SMTP_USERNAME: freeburger.team@gmail.com
           MAIL_SMTP_PASSWORD: ${{ secrets.MAIL_SMTP_PASSWORD }}
           MAIL_BASE_URL: https://realgo.dev
           MAIL_SMTP_TIMEOUT: 10s

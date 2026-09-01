@@ -1,0 +1,13 @@
+{
+  "name": "realgo-gmail-smtp-relay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "healthcheck": "node healthcheck.mjs"
+  },
+  "dependencies": {
+    "smtp-server": "3.19.3"
+  }
+}

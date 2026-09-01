@@ -35,6 +35,48 @@ func TestConfigRejectsEmptySMTPLogin(t *testing.T) {
 	}
 }
 
+func TestConfigAllowsInternalPlainSMTPRelay(t *testing.T) {
+	err := (Config{
+		Enabled: true,
+		Host:    "mail-relay",
+		Port:    2526,
+		BaseURL: "https://realgo.dev",
+		Timeout: 10 * time.Second,
+		TLSMode: "none",
+	}).Validate()
+	if err != nil {
+		t.Fatalf("Validate() error = %v, want nil", err)
+	}
+}
+
+func TestConfigRejectsAutoTLSOnCustomPort(t *testing.T) {
+	err := (Config{
+		Enabled: true,
+		Host:    "mail-relay",
+		Port:    2526,
+		BaseURL: "https://realgo.dev",
+		Timeout: 10 * time.Second,
+	}).Validate()
+	if err == nil || !strings.Contains(err.Error(), "MAIL_SMTP_TLS_MODE=auto") {
+		t.Fatalf("Validate() error = %v, want an auto TLS mode error", err)
+	}
+}
+
+func TestConfigRejectsPartialSMTPAuth(t *testing.T) {
+	err := (Config{
+		Enabled:  true,
+		Host:     "mail-relay",
+		Port:     2526,
+		Username: "support@realgo.dev",
+		BaseURL:  "https://realgo.dev",
+		Timeout:  10 * time.Second,
+		TLSMode:  "none",
+	}).Validate()
+	if err == nil || !strings.Contains(err.Error(), "MAIL_SMTP_USERNAME and MAIL_SMTP_PASSWORD") {
+		t.Fatalf("Validate() error = %v, want a partial auth error", err)
+	}
+}
+
 func TestRenderPasswordResetUsesPreparedTemplates(t *testing.T) {
 	message, err := RenderPasswordReset(PasswordResetData{
 		Email:     "user@example.com",
