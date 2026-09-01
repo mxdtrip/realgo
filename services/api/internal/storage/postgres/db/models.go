@@ -68,6 +68,15 @@ type ExtensionEvent struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
+type PasswordResetToken struct {
+	ID        int64
+	UserID    int64
+	TokenHash string
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
 type Pattern struct {
 	ID                  int64
 	Code                string
@@ -125,6 +134,25 @@ type Problem struct {
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
 	ExternalID      pgtype.Text
+}
+
+type ProblemReport struct {
+	ID                  pgtype.UUID
+	UserID              int64
+	SchemaVersion       int16
+	Description         string
+	Diagnostics         []byte
+	Fingerprint         string
+	ReleaseVersion      pgtype.Text
+	CommitSha           pgtype.Text
+	SourceRequestID     string
+	Screenshot          []byte
+	ScreenshotMime      pgtype.Text
+	ScreenshotWidth     pgtype.Int4
+	ScreenshotHeight    pgtype.Int4
+	ScreenshotExpiresAt pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	ExpiresAt           pgtype.Timestamptz
 }
 
 type ProblemSubpattern struct {

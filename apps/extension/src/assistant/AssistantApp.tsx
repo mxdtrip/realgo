@@ -30,11 +30,18 @@ interface AssistantAppProps {
   ) => Promise<AssistantHintResult>;
   variant?: "dock" | "panel";
   onClose?: () => void;
+  draggableLauncher?: boolean;
 }
 
 type AskStatus = "idle" | "loading";
 
-export function AssistantApp({ task, onAsk, variant = "dock", onClose }: AssistantAppProps) {
+export function AssistantApp({
+  task,
+  onAsk,
+  variant = "dock",
+  onClose,
+  draggableLauncher = false,
+}: AssistantAppProps) {
   const [open, setOpen] = useState(variant === "panel");
   const [closing, setClosing] = useState(false);
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
@@ -268,7 +275,11 @@ export function AssistantApp({ task, onAsk, variant = "dock", onClose }: Assista
     return (
       <div className="realgo-assistant realgo-assistant--closed">
         <style>{ASSISTANT_CSS}</style>
-        <button type="button" className="realgo-agent-button" onClick={() => setOpen(true)}>
+        <button
+          type="button"
+          className={`realgo-agent-button${draggableLauncher ? " realgo-agent-button--draggable" : ""}`}
+          onClick={() => setOpen(true)}
+        >
           <img className="realgo-agent-logo" src={BRAND_LOGO_URL} alt="" />
           ReAlgo
         </button>

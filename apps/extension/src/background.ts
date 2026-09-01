@@ -1,6 +1,7 @@
 import { ApiError, getProblemCards, saveSubmission, streamAssistantHint } from "./lib/api";
 import { syncWebSession } from "./lib/auth";
 import { addPendingSubmission, getPendingSubmissions, removePendingSubmission } from "./lib/storage";
+import { createSubmissionPopupController } from "./lib/submissionPopup";
 import type {
   AssistantHintStreamMessage,
   AssistantHintStreamStartMessage,
@@ -10,6 +11,16 @@ import type {
   SaveResponse,
 } from "./lib/types";
 import { ASSISTANT_HINT_STREAM_PORT } from "./lib/types";
+
+const submissionPopup = createSubmissionPopupController({
+  openActionPopup: () => chrome.action.openPopup(),
+  createPopupWindow: (url) =>
+    chrome.windows.create({ url, type: "popup", width: 440, height: 680, focused: true }),
+  focusWindow: (windowId) => chrome.windows.update(windowId, { focused: true }),
+  popupUrl: chrome.runtime.getURL("popup.html"),
+});
+chrome.windows.onRemoved.addListener(submissionPopup.handleWindowRemoved);
+const handledSubmissionEvents = new Set<string>();
 
 /**
  * Background service worker.
@@ -22,7 +33,7 @@ import { ASSISTANT_HINT_STREAM_PORT } from "./lib/types";
 chrome.runtime.onMessage.addListener(
   (message: RuntimeMessage, _sender, sendResponse) => {
     if (message.type === "REALGO_SUBMISSION_DETECTED") {
-      handleDetected(message.submission)
+      handleDetectedOnce(message.submission)
         .then(({ popupOpened }) => sendResponse({ ok: true, popupOpened }))
         .catch((e) => sendResponse({ ok: false, popupOpened: false, error: String(e) }));
       return true; // keep the message channel open for the async response
@@ -177,14 +188,24 @@ async function handleDetected(submission: DetectedSubmission): Promise<{ popupOp
   await addPendingSubmission(submission);
   await syncBadge();
 
+  await submissionPopup.open();
+  return { popupOpened: true };
+}
+
+async function handleDetectedOnce(
+  submission: DetectedSubmission
+): Promise<{ popupOpened: boolean }> {
+  if (handledSubmissionEvents.has(submission.eventId)) return { popupOpened: true };
+  handledSubmissionEvents.add(submission.eventId);
   try {
-    // Chrome 127+ only, and only within a user gesture window — may throw.
-    await chrome.action.openPopup();
-    return { popupOpened: true };
-  } catch {
-    // Expected on most versions/browsers — the caller reports this back to
-    // the content script so it shows its own in-page overlay as the
-    // fallback. It must NOT show unconditionally, or the two UIs stack.
-    return { popupOpened: false };
+    const result = await handleDetected(submission);
+    if (handledSubmissionEvents.size > 100) {
+      const oldest = handledSubmissionEvents.values().next().value;
+      if (oldest) handledSubmissionEvents.delete(oldest);
+    }
+    return result;
+  } catch (error) {
+    handledSubmissionEvents.delete(submission.eventId);
+    throw error;
   }
 }

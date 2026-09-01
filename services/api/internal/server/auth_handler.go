@@ -2,23 +2,32 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/go-chi/chi/v5/middleware"
+
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/mail"
 	"github.com/mxdtrip/realgo/services/api/internal/server/response"
 	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 )
 
 // authHandler exposes the authentication endpoints over the auth service.
 type authHandler struct {
-	svc *auth.Service
+	svc         *auth.Service
+	mailer      mail.Sender
+	mailBaseURL string
 }
 
 const maxJSONBodyBytes = 1 << 20
@@ -123,6 +132,76 @@ func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 
 func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 	h.handleCredentials(w, r, h.svc.Login, http.StatusOK, "Login")
+}
+
+type passwordResetRequest struct {
+	Email string `json:"email"`
+}
+
+type passwordResetConfirmRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+
+// requestPasswordReset deliberately returns the same success response for
+// unknown addresses. This prevents the endpoint from becoming an account
+// enumeration oracle.
+func (h *authHandler) requestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	var req passwordResetRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	user, token, found, err := h.svc.IssuePasswordReset(r.Context(), req.Email)
+	if err != nil {
+		slog.Error("auth: request password reset failed", slog.Any("err", err))
+		response.Fail(w, http.StatusInternalServerError, "internal_error", "something went wrong")
+		return
+	}
+	emailHash := emailLogHash(req.Email)
+	requestID := middleware.GetReqID(r.Context())
+	if !found {
+		slog.Info("auth: password reset skipped", slog.String("reason", "unknown_or_invalid_email"), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
+		response.JSON(w, http.StatusAccepted, map[string]string{"status": "reset_requested"})
+		return
+	}
+	if found {
+		message, renderErr := mail.RenderPasswordReset(mail.PasswordResetData{
+			Email:     user.Email,
+			ExpiresIn: strconv.Itoa(int(auth.PasswordResetTTL / time.Minute)),
+			ResetURL:  h.resetURL(token),
+		}, h.mailBaseURL)
+		if renderErr != nil {
+			slog.Error("auth: render password reset email failed", slog.Int64("user_id", user.ID), slog.String("email_hash", emailHash), slog.String("request_id", requestID), slog.Any("err", renderErr))
+		} else {
+			message.To = user.Email
+			h.deliverMail(r.Context(), message, user.ID, "password_reset", emailHash)
+		}
+	}
+	response.JSON(w, http.StatusAccepted, map[string]string{"status": "reset_requested"})
+}
+
+func (h *authHandler) confirmPasswordReset(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	var req passwordResetConfirmRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if strings.TrimSpace(req.Token) == "" || req.NewPassword == "" {
+		response.Fail(w, http.StatusBadRequest, "validation_error", "token and new_password are required")
+		return
+	}
+	user, err := h.svc.ResetPassword(r.Context(), req.Token, req.NewPassword)
+	if err != nil {
+		writeAuthError(w, err, "ConfirmPasswordReset")
+		return
+	}
+	h.sendPasswordChanged(r, user)
+	response.JSON(w, http.StatusOK, map[string]string{"status": "password_reset"})
 }
 
 func (h *authHandler) handleCredentials(
@@ -478,11 +557,69 @@ func (h *authHandler) changePassword(w http.ResponseWriter, r *http.Request) {
 		response.Fail(w, http.StatusBadRequest, "validation_error", "current_password and new_password are required")
 		return
 	}
+	user, err := h.svc.UserByID(r.Context(), userID)
+	if err != nil {
+		writeAuthError(w, err, "ChangePassword", slog.Int64("user_id", userID))
+		return
+	}
 	if err := h.svc.ChangePassword(r.Context(), userID, req.CurrentPassword, req.NewPassword); err != nil {
 		writeAuthError(w, err, "ChangePassword", slog.Int64("user_id", userID))
 		return
 	}
+	h.sendPasswordChanged(r, user)
 	response.JSON(w, http.StatusOK, map[string]string{"status": "password_changed"})
+}
+
+func (h *authHandler) sendPasswordChanged(r *http.Request, user db.User) {
+	message, err := mail.RenderPasswordChanged(mail.PasswordResetData{
+		Email:       user.Email,
+		ChangedAt:   time.Now().UTC().Format("02 January 2006, 15:04 MST"),
+		Device:      truncateHeader(r.UserAgent(), 120),
+		Region:      clientIP(r),
+		RecoveryURL: strings.TrimRight(h.mailBaseURL, "/") + "/reset-password",
+	}, h.mailBaseURL)
+	if err != nil {
+		slog.Error("auth: render password changed email failed", slog.Int64("user_id", user.ID), slog.Any("err", err))
+		return
+	}
+	message.To = user.Email
+	h.deliverMail(r.Context(), message, user.ID, "password_changed", emailLogHash(user.Email))
+}
+
+func (h *authHandler) deliverMail(ctx context.Context, message mail.Message, userID int64, kind string, emailHash string) {
+	requestID := middleware.GetReqID(ctx)
+	if h.mailer == nil {
+		slog.Warn("auth: email delivery skipped", slog.Int64("user_id", userID), slog.String("kind", kind), slog.String("reason", "mailer_disabled"), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := h.mailer.Send(ctx, message); err != nil {
+		slog.Error("auth: email delivery failed", slog.Int64("user_id", userID), slog.String("kind", kind), slog.String("email_hash", emailHash), slog.String("request_id", requestID), slog.Any("err", err))
+		return
+	}
+	slog.Info("auth: email delivered", slog.Int64("user_id", userID), slog.String("kind", kind), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
+}
+
+func (h *authHandler) resetURL(token string) string {
+	return strings.TrimRight(h.mailBaseURL, "/") + "/reset-password?token=" + url.QueryEscape(token)
+}
+
+func emailLogHash(email string) string {
+	normalized := strings.ToLower(strings.TrimSpace(email))
+	sum := sha256.Sum256([]byte(normalized))
+	return fmt.Sprintf("%x", sum[:])[:16]
+}
+
+func truncateHeader(value string, limit int) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "Не определено"
+	}
+	if len(value) <= limit {
+		return value
+	}
+	return value[:limit]
 }
 
 func (h *authHandler) revokeAllSessions(w http.ResponseWriter, r *http.Request) {

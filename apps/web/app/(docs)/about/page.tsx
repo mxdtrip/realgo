@@ -82,18 +82,6 @@ export default function AboutPage() {
               помогают кандидату системно готовиться и не терять уже
               полученные знания.
             </p>
-            <p>
-              Исходный код, документация и история разработки находятся в
-              основном репозитории —{" "}
-              <a
-                href="https://github.com/mxdtrip/realgo"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                github.com/mxdtrip/realgo
-              </a>
-              .
-            </p>
           </div>
         </section>
       </article>

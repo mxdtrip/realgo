@@ -31,6 +31,24 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return data.user;
 }
 
+/** POST /auth/password-reset/request — always returns a generic success. */
+export async function requestPasswordReset(email: string): Promise<void> {
+  await apiFetch<{ status: string }>("/auth/password-reset/request", {
+    method: "POST",
+    auth: false,
+    body: { email },
+  });
+}
+
+/** POST /auth/password-reset/confirm — consumes a one-time reset token. */
+export async function confirmPasswordReset(token: string, newPassword: string): Promise<void> {
+  await apiFetch<{ status: string }>("/auth/password-reset/confirm", {
+    method: "POST",
+    auth: false,
+    body: { token, new_password: newPassword },
+  });
+}
+
 /** GET /users/me → the current authenticated user. */
 export async function getMe(): Promise<AuthUser> {
   const data = await apiFetch<{ user: AuthUser }>("/users/me");

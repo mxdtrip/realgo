@@ -12,6 +12,7 @@ import {
   setTokens,
 } from "./tokens";
 import { ApiError, type ApiEnvelope, type ApiErrorBody, type AuthTokens } from "./types";
+import { recordNetworkEnd, recordNetworkStart } from "../_diagnostics/reportDiagnostics";
 
 const configuredApiBase = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
 // The deployed app is fronted by Caddy, which routes same-origin `/api/*` to
@@ -22,7 +23,14 @@ const API_BASE = configuredApiBase ? configuredApiBase.replace(/\/$/, "") : "";
 const API_PREFIX = "/api/v1";
 const REFRESH_LEASE_KEY = "realgo:auth-refresh-lease:v1";
 const REFRESH_LEASE_TTL_MS = 30_000;
-const REFRESH_LEASE_SETTLE_MS = 40;
+// Two tabs that both observe an expired lease write their own owner id, then
+// wait this long before re-reading to see whose write survived. 40ms worked
+// locally but was too tight under CI's noisier scheduling/storage IPC, so
+// both tabs sometimes still saw themselves as owner (2 refreshes instead of
+// 1). This path only runs for browsers without the Web Locks API (Safari,
+// embedded webviews), so the extra latency here is not user-visible in the
+// common case.
+const REFRESH_LEASE_SETTLE_MS = 200;
 const REFRESH_LEASE_RETRY_MS = 100;
 
 export type RequestOptions = {
@@ -44,17 +52,31 @@ async function rawEnvelopeRequest<T, M = unknown>(
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
 
+  const method = options.method ?? (options.body !== undefined ? "POST" : "GET");
+  const endpoint = `${API_PREFIX}${path}`;
+  const networkBreadcrumbId = recordNetworkStart(method, endpoint);
+
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${API_PREFIX}${path}`, {
-      method: options.method ?? (options.body !== undefined ? "POST" : "GET"),
+      method,
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: options.signal,
     });
   } catch {
+    recordNetworkEnd(networkBreadcrumbId, {
+      status: options.signal?.aborted ? "aborted" : "network_error",
+      statusText: options.signal?.aborted ? "Request aborted" : "Network error",
+    });
     throw new ApiError("Не удалось связаться с сервером. Проверьте, что бэкенд запущен.", 0, "network");
   }
+
+  recordNetworkEnd(networkBreadcrumbId, {
+    status: res.status,
+    statusText: res.statusText || undefined,
+    requestId: res.headers.get("X-Request-Id") || undefined,
+  });
 
   const payload = await res.json().catch(() => null);
 

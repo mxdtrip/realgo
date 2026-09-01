@@ -36,6 +36,8 @@ jobs:
       - name: Build & start
         if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl')
         env:
+          APP_VERSION: production-${{ github.run_number }}
+          COMMIT_SHA: ${{ github.sha }}
           AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
           FRP_VPS_HOST: ${{ secrets.FRP_VPS_HOST }}
           FRP_TOKEN: ${{ secrets.FRP_TOKEN }}
@@ -45,10 +47,23 @@ jobs:
           # Gemini key for AI card generation. Optional: when unset the api
           # boots normally with generation disabled.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Gmail app password used by the internal mail-relay container. The
+          # API sends to that relay over Docker networking so it can remain
+          # inside vpngw for AI egress.
+          MAIL_ENABLED: ${{ secrets.MAIL_SMTP_PASSWORD != '' }}
+          GMAIL_SMTP_USERNAME: freeburger.team@gmail.com
+          MAIL_SMTP_PASSWORD: ${{ secrets.MAIL_SMTP_PASSWORD }}
+          MAIL_BASE_URL: https://realgo.dev
+          MAIL_SMTP_TIMEOUT: 10s
           # VLESS subscription for the vpngw gateway (api shares its netns so
           # Groq calls ride this tunnel instead of the ISP's flagged egress).
           VPN_SUB_URL: ${{ secrets.VPN_SUB_URL }}
         run: |
+          # Shared only by the production VPN namespace and the local Stalwart
+          # container. Creating it here keeps a fresh appbox deploy self-healing.
+          docker network inspect realgo-mail-internal >/dev/null 2>&1 ||
+            docker network create realgo-mail-internal
+
           docker compose -f docker-compose.yml -f docker-compose.prod.yml pull --ignore-buildable || true
           docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --build --remove-orphans
 

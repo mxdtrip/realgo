@@ -15,12 +15,14 @@ import (
 	v1 "github.com/mxdtrip/realgo/services/api/internal/controller/v1"
 	"github.com/mxdtrip/realgo/services/api/internal/dashboard"
 	"github.com/mxdtrip/realgo/services/api/internal/extension"
+	"github.com/mxdtrip/realgo/services/api/internal/mail"
 	"github.com/mxdtrip/realgo/services/api/internal/patterns"
 	"github.com/mxdtrip/realgo/services/api/internal/practice"
 	"github.com/mxdtrip/realgo/services/api/internal/problemcards"
 	"github.com/mxdtrip/realgo/services/api/internal/problems"
 	"github.com/mxdtrip/realgo/services/api/internal/quiz"
 	"github.com/mxdtrip/realgo/services/api/internal/repo"
+	"github.com/mxdtrip/realgo/services/api/internal/reports"
 	"github.com/mxdtrip/realgo/services/api/internal/roadmap"
 	"github.com/mxdtrip/realgo/services/api/internal/roadmaps"
 	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
@@ -36,10 +38,12 @@ const requestTimeout = 60 * time.Second
 
 // Deps are the dependencies required to build the HTTP handler.
 type Deps struct {
-	Logger   *slog.Logger
-	Postgres *postgres.Storage
-	Redis    *redis.Storage
-	Auth     *auth.Service
+	Logger      *slog.Logger
+	Postgres    *postgres.Storage
+	Redis       *redis.Storage
+	Auth        *auth.Service
+	Mailer      mail.Sender
+	MailBaseURL string
 	// Scheduler is the single FSRS scheduler shared by every code path that
 	// plans a review (extension ingest, manual review-rate, card-rate,
 	// quiz-rate). Created once in app.Run from config.FSRS so that one set of
@@ -116,6 +120,7 @@ func New(deps Deps) http.Handler {
 	}
 	aiHandler := ai.NewHandler(ai.NewRepository(deps.Postgres.Pool), cardGenerator)
 	assistantHandler := ai.NewAssistantHandler(ai.NewRepository(deps.Postgres.Pool), deps.AssistantProvider)
+	reportsHandler := reports.NewHandler(reports.NewRepository(deps.Postgres.Pool))
 
 	// Browser-extension ingest: FSRS scheduler behind the Scheduler interface,
 	// sharing the same algorithm (and the same instance) as the review service
@@ -128,11 +133,13 @@ func New(deps Deps) http.Handler {
 	extensionStatusHandler := extension.NewStatusHandler(extension.NewStatusService(extension.NewStatusRepository(deps.Postgres.Pool)))
 
 	r.Route("/api/v1", func(r chi.Router) {
-		ah := &authHandler{svc: deps.Auth}
+		ah := &authHandler{svc: deps.Auth, mailer: deps.Mailer, mailBaseURL: deps.MailBaseURL}
 		authRateLimit := rateLimit(deps.Redis, "auth", 20, time.Minute)
 		r.Route("/auth", func(r chi.Router) {
 			r.With(authRateLimit).Post("/register", ah.register)
 			r.With(authRateLimit).Post("/login", ah.login)
+			r.With(rateLimit(deps.Redis, "password-reset-request", 5, time.Hour)).Post("/password-reset/request", ah.requestPasswordReset)
+			r.With(rateLimit(deps.Redis, "password-reset-confirm", 10, time.Hour)).Post("/password-reset/confirm", ah.confirmPasswordReset)
 			r.With(authRateLimit).Post("/refresh", ah.refresh)
 			r.With(requireAuth(deps.Auth), authRateLimit).Post("/device-session", ah.deviceSession)
 			// No requireAuth here by design: logout must still work with an
@@ -148,6 +155,10 @@ func New(deps Deps) http.Handler {
 		r.With(requireAuth(deps.Auth)).Post("/me/password", ah.changePassword)
 		r.With(requireAuth(deps.Auth)).Post("/me/sessions/revoke", ah.revokeAllSessions)
 		r.With(requireAuth(deps.Auth)).Post("/me/export", ah.postExport)
+		r.With(
+			requireAuth(deps.Auth),
+			rateLimit(deps.Redis, "problem-reports", 5, 10*time.Minute),
+		).Post("/me/problem-reports", reportsHandler.Create)
 		r.With(requireAuth(deps.Auth)).Delete("/me", ah.deleteMe)
 		r.Route("/users", func(r chi.Router) {
 			// Backward-compatible alias. New clients should call GET /api/v1/me.

@@ -60,6 +60,18 @@ export interface PlatformAdapter {
    */
   detectSubmitResult(): SubmitResult;
 
+  /** Stable text snapshot of the platform's current result UI. When present,
+      a same-page watcher waits for this snapshot to change after Submit so a
+      result left over from an earlier attempt cannot be accepted as new. */
+  submissionResultFingerprint?(): string;
+
+  /** Optional structural signal for result UIs that can be replaced with an
+      identical final text on a repeated successful submission. */
+  didSubmissionResultMutate?(records: MutationRecord[]): boolean;
+
+  /** Platform-specific judge timeout for same-page submissions. */
+  resultTimeoutMs?: number;
+
   /**
    * Present only for platforms whose submit control navigates to a different
    * page before a verdict appears (Codeforces: the problem page's Submit link
@@ -86,7 +98,16 @@ export interface PlatformAdapter {
  */
 export function classifyVerdict(text: string): SubmitResult {
   const t = text.toLowerCase();
-  if (t.includes("all test cases passed")) return "accepted";
+  if (
+    t.includes("all test cases passed") ||
+    t.includes("passed all the test cases") ||
+    t.includes("passed all test cases") ||
+    t.includes("solved this challenge") ||
+    t.includes("congratulations")
+  ) {
+    return "accepted";
+  }
+  if (t.includes("problem solved successfully")) return "accepted";
   if (t.includes("correct answer")) return "accepted";
   if (/\baccepted\b/.test(t) && !/\bacceptance\b/.test(t)) return "accepted";
   if (t.includes("wrong answer")) return "wrong_answer";

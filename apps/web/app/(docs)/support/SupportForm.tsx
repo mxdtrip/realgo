@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const SUPPORT_EMAIL = "mixkageyt@gmail.com";
+const SUPPORT_EMAIL = "support@realgo.dev";
 
 export function SupportForm() {
   const [subject, setSubject] = useState("");
