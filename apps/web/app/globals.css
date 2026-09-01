@@ -13220,6 +13220,7 @@ body {
 
 .landing-awards__copy > span {
   display: block;
+  white-space: nowrap;
 }
 
 .landing-awards__copy strong {

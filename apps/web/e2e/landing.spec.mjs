@@ -28,6 +28,10 @@ test.describe("landing conversion path", () => {
       "Победитель хакатона",
       "«Kodik Launchpad 2026»",
     ]);
+    await expect(page.locator(".landing-awards__copy > span").nth(1)).toHaveCSS(
+      "white-space",
+      "nowrap",
+    );
     await expect(page.locator(".memory-ext-demo .realgo-popup")).toHaveCSS(
       "background-color",
       "rgb(8, 13, 21)",
