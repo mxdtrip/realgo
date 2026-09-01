@@ -6,18 +6,32 @@ import (
 	"time"
 )
 
-func TestConfigRejectsNonDomainSenderAccount(t *testing.T) {
+func TestConfigAllowsSeparateSMTPLoginAndDomainSender(t *testing.T) {
 	err := (Config{
 		Enabled:  true,
-		Host:     "mail.realgo.dev",
+		Host:     "smtp.gmail.com",
 		Port:     587,
 		Username: "freeburger.team@gmail.com",
 		Password: "test-only",
 		BaseURL:  "https://realgo.dev",
 		Timeout:  10 * time.Second,
 	}).Validate()
-	if err == nil || !strings.Contains(err.Error(), SenderAddress) {
-		t.Fatalf("Validate() error = %v, want a domain-sender error", err)
+	if err != nil {
+		t.Fatalf("Validate() error = %v, want nil", err)
+	}
+}
+
+func TestConfigRejectsEmptySMTPLogin(t *testing.T) {
+	err := (Config{
+		Enabled:  true,
+		Host:     "smtp.gmail.com",
+		Port:     587,
+		Password: "test-only",
+		BaseURL:  "https://realgo.dev",
+		Timeout:  10 * time.Second,
+	}).Validate()
+	if err == nil || !strings.Contains(err.Error(), "MAIL_SMTP_USERNAME") {
+		t.Fatalf("Validate() error = %v, want a username error", err)
 	}
 }
 

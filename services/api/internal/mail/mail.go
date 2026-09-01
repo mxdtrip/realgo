@@ -1,6 +1,7 @@
 // Package mail contains the ReAlgo transactional mail transport and templates.
-// The sender identity is intentionally fixed to the domain mailbox so a
-// deployment cannot accidentally send product mail from a personal account.
+// The sender identity is intentionally fixed to the domain mailbox. The SMTP
+// account may still differ when a relay such as Gmail is authorized to send as
+// support@realgo.dev.
 package mail
 
 import (
@@ -49,8 +50,8 @@ func (c Config) Validate() error {
 	if c.Port != 465 && c.Port != 587 {
 		return errors.New("MAIL_SMTP_PORT must be 465 or 587")
 	}
-	if strings.TrimSpace(c.Username) != SenderAddress {
-		return fmt.Errorf("MAIL_SMTP_USERNAME must be %s", SenderAddress)
+	if strings.TrimSpace(c.Username) == "" {
+		return errors.New("MAIL_SMTP_USERNAME must be set when MAIL_ENABLED=true")
 	}
 	if c.Password == "" {
 		return errors.New("MAIL_SMTP_PASSWORD must be set when MAIL_ENABLED=true")
@@ -135,7 +136,7 @@ func (s *SMTP) Send(ctx context.Context, message Message) error {
 			return fmt.Errorf("SMTP STARTTLS: %w", err)
 		}
 	}
-	if err := client.Auth(smtp.PlainAuth("", SenderAddress, s.cfg.Password, s.cfg.Host)); err != nil {
+	if err := client.Auth(smtp.PlainAuth("", s.cfg.Username, s.cfg.Password, s.cfg.Host)); err != nil {
 		return fmt.Errorf("SMTP authentication: %w", err)
 	}
 	if err := client.Mail(SenderAddress); err != nil {

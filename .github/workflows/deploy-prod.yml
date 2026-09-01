@@ -47,15 +47,13 @@ jobs:
           # Gemini key for AI card generation. Optional: when unset the api
           # boots normally with generation disabled.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # Domain mailbox for all transactional and product mail. The API
-          # rejects any sender identity other than support@realgo.dev.
+          # Gmail SMTP relay for transactional mail. The visible sender stays
+          # fixed to support@realgo.dev in code; Gmail must have that address
+          # confirmed under "Send mail as" for MAIL FROM to succeed.
           MAIL_ENABLED: ${{ secrets.MAIL_SMTP_PASSWORD != '' }}
-          # Stalwart owns this DNS alias on the private realgo-mail network.
-          # Keeping its public certificate name here preserves full TLS
-          # verification while Docker routes the connection locally.
-          MAIL_SMTP_HOST: mail.realgo.dev
+          MAIL_SMTP_HOST: smtp.gmail.com
           MAIL_SMTP_PORT: "587"
-          MAIL_SMTP_USERNAME: support@realgo.dev
+          MAIL_SMTP_USERNAME: freeburger.team@gmail.com
           MAIL_SMTP_PASSWORD: ${{ secrets.MAIL_SMTP_PASSWORD }}
           MAIL_BASE_URL: https://realgo.dev
           MAIL_SMTP_TIMEOUT: 10s
