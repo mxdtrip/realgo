@@ -7,6 +7,23 @@
 # unbuildable image here would break that for everyone (as it briefly did).
 
 services:
+  mail-relay:
+    build:
+      context: ./services/smtp-relay
+    restart: unless-stopped
+    environment:
+      GMAIL_SMTP_USERNAME: ${GMAIL_SMTP_USERNAME:-freeburger.team@gmail.com}
+      GMAIL_SMTP_PASSWORD: ${MAIL_SMTP_PASSWORD:?MAIL_SMTP_PASSWORD must be set}
+      SENDER_ADDRESS: support@realgo.dev
+      SMTP_LISTEN_HOST: 0.0.0.0
+      SMTP_LISTEN_PORT: "2526"
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.mjs"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   # Demo identities stay available in the base local stack, but are not
   # started by the production `prod-demo` profile. Run this separate profile
   # explicitly only when a disposable public demo really needs seeded users.
@@ -65,9 +82,15 @@ services:
     network_mode: "service:vpngw"
     environment:
       APP_ENV: production
-      MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-mail.realgo.dev}
+      MAIL_SMTP_HOST: mail-relay
+      MAIL_SMTP_PORT: "2526"
+      MAIL_SMTP_USERNAME: ""
+      MAIL_SMTP_PASSWORD: ""
+      MAIL_SMTP_TLS_MODE: none
     depends_on:
       vpngw:
+        condition: service_healthy
+      mail-relay:
         condition: service_healthy
 
   # The product presentation runs in prod exactly as it does locally — the base

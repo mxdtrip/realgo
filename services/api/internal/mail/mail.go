@@ -38,6 +38,7 @@ type Config struct {
 	Password string
 	BaseURL  string
 	Timeout  time.Duration
+	TLSMode  string
 }
 
 func (c Config) Validate() error {
@@ -47,14 +48,16 @@ func (c Config) Validate() error {
 	if strings.TrimSpace(c.Host) == "" {
 		return errors.New("MAIL_SMTP_HOST must be set when MAIL_ENABLED=true")
 	}
-	if c.Port != 465 && c.Port != 587 {
-		return errors.New("MAIL_SMTP_PORT must be 465 or 587")
+	if c.Port <= 0 || c.Port > 65535 {
+		return errors.New("MAIL_SMTP_PORT must be a valid TCP port")
 	}
-	if strings.TrimSpace(c.Username) == "" {
-		return errors.New("MAIL_SMTP_USERNAME must be set when MAIL_ENABLED=true")
+	if _, err := c.smtpTLSMode(); err != nil {
+		return err
 	}
-	if c.Password == "" {
-		return errors.New("MAIL_SMTP_PASSWORD must be set when MAIL_ENABLED=true")
+	hasUsername := strings.TrimSpace(c.Username) != ""
+	hasPassword := c.Password != ""
+	if hasUsername != hasPassword {
+		return errors.New("MAIL_SMTP_USERNAME and MAIL_SMTP_PASSWORD must be set together")
 	}
 	if c.BaseURL == "" {
 		return errors.New("MAIL_BASE_URL must be set when MAIL_ENABLED=true")
@@ -63,6 +66,26 @@ func (c Config) Validate() error {
 		return errors.New("MAIL_SMTP_TIMEOUT must be greater than zero")
 	}
 	return nil
+}
+
+func (c Config) smtpTLSMode() (string, error) {
+	mode := strings.ToLower(strings.TrimSpace(c.TLSMode))
+	if mode == "" || mode == "auto" {
+		switch c.Port {
+		case 465:
+			return "implicit", nil
+		case 587:
+			return "starttls", nil
+		default:
+			return "", errors.New("MAIL_SMTP_TLS_MODE=auto requires MAIL_SMTP_PORT 465 or 587")
+		}
+	}
+	switch mode {
+	case "implicit", "starttls", "none":
+		return mode, nil
+	default:
+		return "", errors.New("MAIL_SMTP_TLS_MODE must be auto, implicit, starttls, or none")
+	}
 }
 
 // Message is a fully rendered email. Sender is not configurable by callers.
@@ -109,6 +132,10 @@ func (s *SMTP) Send(ctx context.Context, message Message) error {
 
 	port := strconv.Itoa(s.cfg.Port)
 	address := net.JoinHostPort(s.cfg.Host, port)
+	tlsMode, err := s.cfg.smtpTLSMode()
+	if err != nil {
+		return err
+	}
 	dialer := net.Dialer{Timeout: s.cfg.Timeout}
 	conn, err := dialer.DialContext(ctx, "tcp", address)
 	if err != nil {
@@ -117,7 +144,7 @@ func (s *SMTP) Send(ctx context.Context, message Message) error {
 	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(s.cfg.Timeout))
 
-	if s.cfg.Port == 465 {
+	if tlsMode == "implicit" {
 		tlsConn := tls.Client(conn, &tls.Config{ServerName: s.cfg.Host, MinVersion: tls.VersionTLS12})
 		if err := tlsConn.HandshakeContext(ctx); err != nil {
 			return fmt.Errorf("SMTP TLS handshake: %w", err)
@@ -131,13 +158,15 @@ func (s *SMTP) Send(ctx context.Context, message Message) error {
 	}
 	defer func() { _ = client.Close() }()
 
-	if s.cfg.Port == 587 {
+	if tlsMode == "starttls" {
 		if err := client.StartTLS(&tls.Config{ServerName: s.cfg.Host, MinVersion: tls.VersionTLS12}); err != nil {
 			return fmt.Errorf("SMTP STARTTLS: %w", err)
 		}
 	}
-	if err := client.Auth(smtp.PlainAuth("", s.cfg.Username, s.cfg.Password, s.cfg.Host)); err != nil {
-		return fmt.Errorf("SMTP authentication: %w", err)
+	if strings.TrimSpace(s.cfg.Username) != "" && s.cfg.Password != "" {
+		if err := client.Auth(smtp.PlainAuth("", s.cfg.Username, s.cfg.Password, s.cfg.Host)); err != nil {
+			return fmt.Errorf("SMTP authentication: %w", err)
+		}
 	}
 	if err := client.Mail(SenderAddress); err != nil {
 		return fmt.Errorf("SMTP MAIL FROM: %w", err)
