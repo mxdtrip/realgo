@@ -13154,7 +13154,7 @@ body {
   gap: 15px;
 }
 
-.landing-awards__title {
+.landing-platforms > .landing-awards__title {
   color: rgba(183, 194, 214, 0.68);
   font-size: 11px;
   font-weight: 500;

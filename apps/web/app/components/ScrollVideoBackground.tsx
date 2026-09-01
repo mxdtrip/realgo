@@ -533,6 +533,17 @@ export function ScrollVideoBackground() {
     const glowTexture = createRadialGlowTexture();
     const lightVolumeMaterials: THREE.SpriteMaterial[] = [];
     const lightVolumes: THREE.Sprite[] = [];
+    const lightVolumeTracks: Array<{
+      volume: THREE.Sprite;
+      material: THREE.SpriteMaterial;
+      factor: number;
+      travel: number;
+      width: number;
+      height: number;
+      yOffset: number;
+      horizontalOffset: number;
+      opacity: number;
+    }> = [];
     if (glowTexture) {
       const addLightVolume = (
         factor: number,
@@ -550,26 +561,43 @@ export function ScrollVideoBackground() {
           transparent: true,
           opacity,
           blending: THREE.AdditiveBlending,
+          // These are atmospheric layers behind the card stream. Keeping
+          // depth testing off makes the soft volume continuous, while the
+          // lower render order prevents it from reading as a bright stain on
+          // the card faces themselves.
           depthTest: false,
           depthWrite: false,
           toneMapped: false,
         });
         lightMaterial.color.multiplyScalar(intensity);
         const volume = new THREE.Sprite(lightMaterial);
-        CARD_CURVE.getPointAt(factor, volume.position);
-        volume.position.z =
-          volume.position.z * FLOW_HORIZONTAL_SCALE + FLOW_HORIZONTAL_OFFSET;
-        volume.position.y += yOffset;
-        volume.position.z += horizontalOffset;
         volume.scale.set(width, height, 1);
-        volume.renderOrder = 1;
+        volume.renderOrder = 0;
         lightVolumeMaterials.push(lightMaterial);
         lightVolumes.push(volume);
+        lightVolumeTracks.push({
+          volume,
+          material: lightMaterial,
+          factor,
+          // Atmospheric light has a shallower scroll parallax than the cards.
+          // It stays attached to the same bend, but recedes more slowly.
+          travel: factor < 0.4 ? 0.48 : 0.38,
+          width,
+          height,
+          yOffset,
+          horizontalOffset,
+          opacity,
+        });
         scene.add(volume);
       };
 
-      addLightVolume(0.285, 0x1838ff, 0.12, 2.1, 1.7, 1.1, -0.6, 2);
-      addLightVolume(0.545, 0x1838ff, 0.11, 1.9, 1.8, -1.2, 1.05, 2);
+      // Uneven pools of light replace the accidental fixed blobs: the left
+      // fan carries the strongest cool glow, while the fold and receding tail
+      // are intentionally quieter so the reference keeps its depth.
+      addLightVolume(0.22, 0x254cff, 0.075, 2.8, 2.0, 1.05, -0.62, 1.9);
+      addLightVolume(0.39, 0x193dff, 0.052, 2.25, 1.7, 0.15, -0.18, 1.45);
+      addLightVolume(0.56, 0x1838ff, 0.062, 2.55, 2.0, -1.15, 1.02, 1.7);
+      addLightVolume(0.76, 0x2745e8, 0.026, 3.3, 1.55, -0.25, 0.5, 1.15);
     }
 
     const ambient = new THREE.AmbientLight(0x40578f, 0.035);
@@ -644,6 +672,23 @@ export function ScrollVideoBackground() {
         THREE.MathUtils.smoothstep(progress, EXIT_RUNOUT_START, 1) *
         EXIT_RUNOUT_DISTANCE;
       let onCurveCards = 0;
+
+      lightVolumeTracks.forEach((track, index) => {
+        const lightFactor = track.factor + progress * track.travel;
+        sampleExtendedCurve(lightFactor, position);
+        position.z = position.z * FLOW_HORIZONTAL_SCALE + FLOW_HORIZONTAL_OFFSET;
+        position.y += track.yOffset;
+        position.z += track.horizontalOffset;
+        track.volume.position.copy(position);
+
+        // Keep each pool legible, but let the scene breathe as it advances.
+        // The phase offsets are spatial rather than random, so screenshots
+        // and reduced-motion renders remain deterministic.
+        const phase = progress * Math.PI * 1.4 + index * 0.9;
+        track.material.opacity = track.opacity * (0.82 + 0.18 * (0.5 + 0.5 * Math.sin(phase)));
+        const scalePulse = 0.96 + 0.06 * (0.5 + 0.5 * Math.sin(phase + 0.7));
+        track.volume.scale.set(track.width * scalePulse, track.height * scalePulse, 1);
+      });
 
       for (let index = 0; index < CARD_COUNT; index += 1) {
         const factor = streamProgress + exitRunout - index * CARD_GAP;
