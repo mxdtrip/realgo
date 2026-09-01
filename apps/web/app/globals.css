@@ -13223,7 +13223,7 @@ body {
   white-space: nowrap;
 }
 
-.landing-awards__copy strong {
+.landing-awards .landing-awards__copy strong {
   display: inline;
   margin: 0;
   padding: 0;

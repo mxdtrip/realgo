@@ -32,6 +32,10 @@ test.describe("landing conversion path", () => {
       "white-space",
       "nowrap",
     );
+    await expect(page.locator(".landing-awards__copy strong")).toHaveCSS(
+      "display",
+      "inline",
+    );
     await expect(page.locator(".memory-ext-demo .realgo-popup")).toHaveCSS(
       "background-color",
       "rgb(8, 13, 21)",
