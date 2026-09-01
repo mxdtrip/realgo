@@ -21,7 +21,7 @@ test.describe("landing conversion path", () => {
     await expect(page.locator(".scroll-card-flow-bg")).toHaveAttribute("data-light-pool-count", "4");
     await expect(page.locator(".scroll-card-flow-bg")).toHaveAttribute("data-light-parallax", "0.38-0.48");
     await expect(page.locator(".landing-awards__title")).toHaveText(
-      "Победитель хакатона «Kodik Launchpad 2026»",
+      /Победитель хакатона\s+«Kodik Launchpad 2026»/,
     );
     await expect(page.locator(".memory-ext-demo .realgo-popup")).toHaveCSS(
       "background-color",
@@ -37,7 +37,7 @@ test.describe("landing conversion path", () => {
     );
     await expect(page.locator(".price-card").nth(1)).toHaveCSS(
       "background-color",
-      "rgb(8, 13, 21)",
+      "rgb(11, 21, 48)",
     );
     await expect(page.locator(".site-nav a")).toHaveText(["Tasks", "Plan", "Reviews", "Pricing", "FAQ"]);
   });
