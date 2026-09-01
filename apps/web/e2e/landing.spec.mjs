@@ -66,7 +66,7 @@ test.describe("landing conversion path", () => {
       "background-color",
       "rgb(11, 21, 48)",
     );
-    await expect(page.locator(".site-nav a")).toHaveText(["Tasks", "Plan", "Reviews", "Pricing", "FAQ"]);
+    await expect(page.locator(".site-nav a")).toHaveText(["Задачи", "План", "Отзывы", "Тарифы", "FAQ"]);
   });
 
   test("reveals and executes the Python sorting script", async ({ page }) => {

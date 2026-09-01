@@ -48,10 +48,10 @@ const ru = {
       homeAria: "ReAlgo home",
       navAria: "Site sections",
       nav: [
-        { href: "memory", label: "Tasks" },
-        { href: "roadmap", label: "Plan" },
-        { href: "reviews", label: "Reviews" },
-        { href: "pricing", label: "Pricing" },
+        { href: "memory", label: "Задачи" },
+        { href: "roadmap", label: "План" },
+        { href: "reviews", label: "Отзывы" },
+        { href: "pricing", label: "Тарифы" },
         { href: "faq", label: "FAQ" },
       ],
       auth: {
