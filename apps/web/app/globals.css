@@ -48,6 +48,7 @@
   --bg-2: #010409;
   --panel: #161b22;
   --panel-strong: #1c2128;
+  --surface-extension: #080d15;
   --border: #30363d;
   --border-strong: #444c56;
 
@@ -1495,7 +1496,7 @@ h3 {
 .memory-ext-demo .realgo-popup {
   overflow: hidden;
   border-color: rgba(88, 166, 255, 0.2);
-  background: #080d15;
+  background: var(--surface-extension);
 }
 
 .memory-ext-demo .realgo-popup::before,
@@ -1849,14 +1850,15 @@ h3 {
   position: relative;
   border-radius: 14px;
   padding: 26px;
-  background: var(--panel);
+  border: 1px solid rgba(88, 166, 255, 0.12);
+  background: var(--surface-extension);
   transition:
     transform 0.2s ease,
     background 0.2s ease;
 }
 
 .price-card:hover {
-  background: var(--panel-strong);
+  background: #0b1220;
   transform: translateY(-3px);
 }
 
@@ -1949,7 +1951,7 @@ h3 {
   text-align: center;
   border-radius: 14px;
   padding: 26px;
-  background: var(--bg);
+  background: var(--surface-extension);
   isolation: isolate;
   box-shadow:
     0 3px 6px rgba(0, 0, 0, 0.05),
@@ -2353,7 +2355,7 @@ h3 {
 }
 
 .price-card:last-child {
-  background: linear-gradient(180deg, var(--accent-soft), transparent 60%), var(--panel);
+  background: var(--surface-extension);
 }
 
 /* Pricing sits lower in the page and the two-card grid is short, so the shared

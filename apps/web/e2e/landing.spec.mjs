@@ -18,6 +18,8 @@ test.describe("landing conversion path", () => {
     await expect(page.locator(".landing-proof strong").first()).toHaveCSS("font-family", /JetBrains Mono/);
     await expect(page.locator(".landing-proof")).toHaveCSS("background-color", "rgb(10, 17, 29)");
     await expect(page.locator(".landing-proof")).toHaveCSS("backdrop-filter", "none");
+    await expect(page.locator(".scroll-card-flow-bg")).toHaveAttribute("data-light-pool-count", "4");
+    await expect(page.locator(".scroll-card-flow-bg")).toHaveAttribute("data-light-parallax", "0.38-0.48");
     await expect(page.locator(".landing-awards__title")).toHaveText(
       "ReAlgo выиграл 4 номинации на хакатоне Kodik Launchpad",
     );
@@ -27,6 +29,22 @@ test.describe("landing conversion path", () => {
       "Лучшая презентация продукта",
       "Выбор коммьюнити",
     ]);
+    await expect(page.locator(".memory-ext-demo .realgo-popup")).toHaveCSS(
+      "background-color",
+      "rgb(8, 13, 21)",
+    );
+    await expect(page.locator(".review-flip__face").first()).toHaveCSS(
+      "background-color",
+      "rgb(8, 13, 21)",
+    );
+    await expect(page.locator(".price-card").first()).toHaveCSS(
+      "background-color",
+      "rgb(8, 13, 21)",
+    );
+    await expect(page.locator(".price-card").nth(1)).toHaveCSS(
+      "background-color",
+      "rgb(8, 13, 21)",
+    );
     await expect(page.locator(".site-nav a")).toHaveText(["Tasks", "Plan", "Reviews", "Pricing", "FAQ"]);
   });
 

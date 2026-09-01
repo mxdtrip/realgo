@@ -490,6 +490,7 @@ export function ScrollVideoBackground() {
     });
     const cards = new THREE.InstancedMesh(geometry, material, CARD_COUNT);
     cards.frustumCulled = false;
+    cards.renderOrder = 1;
     cards.castShadow = true;
     cards.receiveShadow = true;
     cards.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -770,6 +771,8 @@ export function ScrollVideoBackground() {
       host.dataset.cardCount = String(CARD_COUNT);
       host.dataset.visibleCards = String(CARD_COUNT);
       host.dataset.onCurveCards = String(onCurveCards);
+      host.dataset.lightPoolCount = String(lightVolumeTracks.length);
+      host.dataset.lightParallax = "0.38-0.48";
     };
 
     const tick = () => {
