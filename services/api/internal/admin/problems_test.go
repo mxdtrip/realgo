@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	formValues "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
 	"github.com/GoAdminGroup/go-admin/template/types"
 	"github.com/lib/pq"
 )
@@ -30,6 +31,11 @@ func TestProblemFormError(t *testing.T) {
 			err:  &pq.Error{Code: "23514", Constraint: "problems_difficulty_check"},
 			want: difficultyRequiredError,
 		},
+		{
+			name: "source constraint",
+			err:  &pq.Error{Code: "23514", Constraint: "problems_source_type_check"},
+			want: sourceRequiredError,
+		},
 		{name: "ordinary error", err: errors.New("database unavailable"), want: "database unavailable"},
 	}
 
@@ -49,13 +55,52 @@ func TestProblemDifficultyIsRequired(t *testing.T) {
 		t.Fatal("difficulty must be a required select with an empty prompt")
 	}
 
-	values := formValues.Values{"title": {"Two Sum"}, "url": {"https://example.com/two-sum"}}
+	values := formValues.Values{
+		"title":         {"Two Sum"},
+		"url":           {"https://example.com/two-sum"},
+		"platform_id":   {"1"},
+		"external_slug": {"two-sum"},
+		"source_type":   {"manual"},
+	}
 	if err := validateProblemForm(values); err == nil || err.Error() != difficultyRequiredError {
 		t.Fatalf("validateProblemForm() error = %v, want %q", err, difficultyRequiredError)
 	}
 	values["difficulty"] = []string{"medium"}
 	if err := validateProblemForm(values); err != nil {
 		t.Fatalf("validateProblemForm() error = %v", err)
+	}
+}
+
+func TestProblemSourceAndNewForm(t *testing.T) {
+	problems := Problems(nil)
+	if !problems.GetCanAdd() {
+		t.Fatal("problem form must allow creating records")
+	}
+
+	form := problems.GetForm()
+	for _, fieldName := range []string{"platform_id", "external_slug", "source_type"} {
+		field := form.FieldList.FindByFieldName(fieldName)
+		if field == nil || !field.Must {
+			t.Fatalf("%s must be required", fieldName)
+		}
+	}
+
+	values := formValues.Values{
+		"title":         {"Two Sum"},
+		"url":           {"https://example.com/two-sum"},
+		"platform_id":   {"1"},
+		"external_slug": {"two-sum"},
+		"difficulty":    {"medium"},
+	}
+	if err := validateProblemForm(values); err == nil || err.Error() != sourceRequiredError {
+		t.Fatalf("validateProblemForm() error = %v, want %q", err, sourceRequiredError)
+	}
+
+	for _, source := range []string{"roadmap", "manual", "extension", "ai", "dataset"} {
+		values["source_type"] = []string{source}
+		if err := validateProblemForm(values); err != nil {
+			t.Fatalf("validateProblemForm(%q) error = %v", source, err)
+		}
 	}
 }
 
@@ -72,5 +117,16 @@ func TestProblemEditRefreshesUpdatedAt(t *testing.T) {
 	})
 	if got == old {
 		t.Fatal("updated_at was not refreshed")
+	}
+}
+
+func TestProblemPlatformDisplay(t *testing.T) {
+	joinedName := "GeeksforGeeks"
+	row := map[string]interface{}{"platforms" + parameter.FilterParamJoinInfix + "name": joinedName}
+	if got := platformDisplay(types.FieldModel{Row: row}); got != joinedName {
+		t.Fatalf("platformDisplay() = %v, want %q", got, joinedName)
+	}
+	if got := platformDisplay(types.FieldModel{Value: "LeetCode", Row: row}); got != "LeetCode" {
+		t.Fatalf("platformDisplay() = %v, want list value", got)
 	}
 }
