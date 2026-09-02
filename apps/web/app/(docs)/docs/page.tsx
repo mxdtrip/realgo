@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Документация",
+  description:
+    "Как устроен ReAlgo: интервальные повторения и карточки, паттерны и Pattern Atlas, план подготовки к собеседованию, расширение и тарифы Free/Pro.",
+  alternates: { canonical: "/docs" },
 };
 
 const sections = [

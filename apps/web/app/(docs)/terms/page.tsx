@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Пользовательское соглашение",
+  description:
+    "Условия использования ReAlgo: описание сервиса, тарифы, права на контент, обязанности пользователя и применимое право.",
+  alternates: { canonical: "/terms" },
 };
 
 const sections = [
