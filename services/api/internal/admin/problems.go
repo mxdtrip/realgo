@@ -16,6 +16,9 @@ import (
 const (
 	duplicateProblemSlugError = "задача с таким External slug уже существует для выбранной платформы"
 	difficultyRequiredError   = "необходимо выбрать Difficulty"
+	sourceRequiredError       = "необходимо выбрать Source"
+	platformRequiredError     = "необходимо выбрать Platform"
+	externalSlugRequiredError = "external slug must not be empty"
 )
 
 type problemTable struct{ table.Table }
@@ -41,6 +44,8 @@ func problemFormError(err error) error {
 		return errors.New(duplicateProblemSlugError)
 	case "problems_difficulty_check":
 		return errors.New(difficultyRequiredError)
+	case "problems_source_type_check":
+		return errors.New(sourceRequiredError)
 	}
 	return err
 }
@@ -49,7 +54,6 @@ func problemFormError(err error) error {
 func Problems(ctx *context.Context) table.Table {
 	cfg := table.DefaultConfigWithDriver(db.DriverPostgresql).
 		SetPrimaryKey("id", db.Bigint).
-		SetCanAdd(false).
 		SetDeletable(false)
 
 	problems := table.NewDefaultTable(ctx, cfg)
@@ -69,13 +73,19 @@ func Problems(ctx *context.Context) table.Table {
 	info.SetTable("problems").
 		SetTitle("Problems").
 		SetDescription("Problem catalog").
-		HideNewButton().
 		HideDeleteButton()
 
 	edit := problems.GetForm()
 	edit.AddField("ID", "id", db.Bigint, form.Default).
 		FieldDisplayButCanNotEditWhenUpdate().
 		FieldDisableWhenCreate()
+	edit.AddField("Platform", "platform_id", db.Bigint, form.SelectSingle).
+		FieldOptionsFromTable("platforms", "name", "id").
+		FieldOptionsTableProcessFn(func(options types.FieldOptions) types.FieldOptions {
+			return append(types.FieldOptions{{Text: "Select platform", Value: ""}}, options...)
+		}).
+		FieldMust()
+	edit.AddField("External slug", "external_slug", db.Text, form.Text).FieldMust()
 	edit.AddField("Title", "title", db.Text, form.Text).FieldMust()
 	edit.AddField("Difficulty", "difficulty", db.Varchar, form.SelectSingle).
 		FieldOptions(types.FieldOptions{
@@ -85,9 +95,20 @@ func Problems(ctx *context.Context) table.Table {
 			{Text: "Hard", Value: "hard"},
 		}).
 		FieldMust()
+	edit.AddField("Source", "source_type", db.Varchar, form.SelectSingle).
+		FieldOptions(types.FieldOptions{
+			{Text: "Select source", Value: ""},
+			{Text: "Roadmap", Value: "roadmap"},
+			{Text: "Manual", Value: "manual"},
+			{Text: "Extension", Value: "extension"},
+			{Text: "AI", Value: "ai"},
+			{Text: "Dataset", Value: "dataset"},
+		}).
+		FieldMust()
 	edit.AddField("URL", "url", db.Text, form.Text).FieldMust()
 	edit.AddField("Updated", "updated_at", db.Timestamptz, form.Default).
 		FieldHideWhenUpdate().
+		FieldDisableWhenCreate().
 		FieldNowWhenUpdate()
 	edit.SetTable("problems").
 		SetTitle("Problems").
@@ -105,6 +126,15 @@ func validateProblemForm(values formValues.Values) error {
 	}
 	if strings.TrimSpace(values.Get("difficulty")) == "" {
 		return errors.New(difficultyRequiredError)
+	}
+	if strings.TrimSpace(values.Get("source_type")) == "" {
+		return errors.New(sourceRequiredError)
+	}
+	if strings.TrimSpace(values.Get("platform_id")) == "" {
+		return errors.New(platformRequiredError)
+	}
+	if strings.TrimSpace(values.Get("external_slug")) == "" {
+		return errors.New(externalSlugRequiredError)
 	}
 	return nil
 }
