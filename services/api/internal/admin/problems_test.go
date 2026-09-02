@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	formValues "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
 	"github.com/GoAdminGroup/go-admin/template/types"
 	"github.com/lib/pq"
 )
@@ -116,5 +117,16 @@ func TestProblemEditRefreshesUpdatedAt(t *testing.T) {
 	})
 	if got == old {
 		t.Fatal("updated_at was not refreshed")
+	}
+}
+
+func TestProblemPlatformDisplay(t *testing.T) {
+	joinedName := "GeeksforGeeks"
+	row := map[string]interface{}{"platforms" + parameter.FilterParamJoinInfix + "name": joinedName}
+	if got := platformDisplay(types.FieldModel{Row: row}); got != joinedName {
+		t.Fatalf("platformDisplay() = %v, want %q", got, joinedName)
+	}
+	if got := platformDisplay(types.FieldModel{Value: "LeetCode", Row: row}); got != "LeetCode" {
+		t.Fatalf("platformDisplay() = %v, want list value", got)
 	}
 }
