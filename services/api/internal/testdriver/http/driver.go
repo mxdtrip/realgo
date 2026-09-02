@@ -22,6 +22,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,6 +31,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/mailer"
 	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
 	"github.com/mxdtrip/realgo/services/api/internal/server"
 	"github.com/mxdtrip/realgo/services/api/internal/specifications"
@@ -56,6 +59,7 @@ type Driver struct {
 	srv    *httptest.Server
 	client *http.Client
 	pg     *postgres.Storage
+	mailer *mailer.Recorder
 }
 
 // Option configures the driver's server.Deps beyond the test harness defaults.
@@ -103,12 +107,15 @@ func New(t *testing.T, h *testutil.Harness, opts ...Option) *Driver {
 		}
 	})
 
+	recorder := mailer.NewRecorder()
 	authSvc := auth.NewService(db.New(pg.Pool), rd.Client, auth.Config{
-		JWTSecret:  []byte(testJWTSecret),
-		AccessTTL:  15 * time.Minute,
-		RefreshTTL: 30 * 24 * time.Hour,
-		Issuer:     "freeburger",
-	})
+		JWTSecret:            []byte(testJWTSecret),
+		AccessTTL:            15 * time.Minute,
+		RefreshTTL:           30 * 24 * time.Hour,
+		Issuer:               "freeburger",
+		PublicSiteURL:        "https://realgo.test",
+		EmailVerificationTTL: time.Hour,
+	}, recorder)
 
 	deps := server.Deps{
 		Logger:   slog.Default(),
@@ -125,7 +132,7 @@ func New(t *testing.T, h *testutil.Harness, opts ...Option) *Driver {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	return &Driver{t: t, srv: srv, client: srv.Client(), pg: pg}
+	return &Driver{t: t, srv: srv, client: srv.Client(), pg: pg, mailer: recorder}
 }
 
 func (d *Driver) Close() { d.srv.Close() }
@@ -531,11 +538,37 @@ func (d *Driver) CardsUser(user specifications.AuthenticatedUser) specifications
 
 // --- Register / AuthenticatedUser (harness spec) ---
 
+// Register drives the real two-step signup: POST /auth/register (which sends
+// a confirmation link instead of a session), then POST /auth/confirm-email
+// with the id/token captured off that link — the mailer.Recorder stands in
+// for an inbox so this still exercises the actual HTTP flow end to end,
+// without any auth backdoor.
 func (d *Driver) Register(t *testing.T, email, password string) specifications.AuthenticatedUser {
 	t.Helper()
 	resp := d.do(t, http.MethodPost, "/api/v1/auth/register",
 		map[string]string{"email": email, "password": password}, "")
+	d.decode(t, resp, &struct {
+		Data struct {
+			Status string `json:"status"`
+		} `json:"data"`
+	}{})
 
+	normalized := strings.ToLower(strings.TrimSpace(email))
+	confirmURL := d.mailer.LastConfirmURL(normalized)
+	if confirmURL == "" {
+		t.Fatalf("driver: register %s: no verification email captured", email)
+	}
+	parsed, err := url.Parse(confirmURL)
+	if err != nil {
+		t.Fatalf("driver: register %s: parse confirm url %q: %v", email, confirmURL, err)
+	}
+	id, token := parsed.Query().Get("id"), parsed.Query().Get("token")
+	if id == "" || token == "" {
+		t.Fatalf("driver: register %s: confirm url %q missing id/token", email, confirmURL)
+	}
+
+	confirmResp := d.do(t, http.MethodPost, "/api/v1/auth/confirm-email",
+		map[string]string{"id": id, "token": token}, "")
 	var out struct {
 		Data struct {
 			Tokens struct {
@@ -543,9 +576,9 @@ func (d *Driver) Register(t *testing.T, email, password string) specifications.A
 			} `json:"tokens"`
 		} `json:"data"`
 	}
-	d.decode(t, resp, &out)
+	d.decode(t, confirmResp, &out)
 	if out.Data.Tokens.AccessToken == "" {
-		t.Fatalf("driver: register %s: response had no access_token", email)
+		t.Fatalf("driver: confirm-email %s: response had no access_token", email)
 	}
 	return &authenticatedUser{driver: d, token: out.Data.Tokens.AccessToken, email: email}
 }

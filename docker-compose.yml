@@ -210,6 +210,18 @@ services:
         NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-}
         NEXT_PUBLIC_COMMIT_SHA: ${COMMIT_SHA:-}
     restart: unless-stopped
+    environment:
+      # SMTP credentials for the confirm-email send (apps/web/app/api/internal/
+      # send-verification-email). Left empty here = the route logs a warning
+      # and no-ops instead of failing, matching api's own mailer fallback.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-ReAlgo <no-reply@realgo.dev>}
+      # Must match api's MAILER_WEB_INTERNAL_SECRET below — same value,
+      # authenticates the server-to-server call that triggers a send.
+      INTERNAL_MAIL_SECRET: ${MAILER_WEB_INTERNAL_SECRET:-}
     expose:
       - "3000"
 
@@ -435,6 +447,16 @@ services:
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?AUTH_JWT_SECRET must be set}
       AUTH_ACCESS_TTL: ${AUTH_ACCESS_TTL:-15m}
       AUTH_REFRESH_TTL: ${AUTH_REFRESH_TTL:-720h}
+      # Base URL baked into confirm-email links. The prod overlay points this
+      # at the real HTTPS domain; this default matches how the base stack
+      # (no tunnel) is actually reached in local dev.
+      AUTH_PUBLIC_SITE_URL: ${AUTH_PUBLIC_SITE_URL:-http://localhost:${API_PORT:-8080}}
+      # web owns the SMTP credentials and the actual send (see apps/web's
+      # environment below); api only calls its internal endpoint to trigger
+      # one. Empty secret = api logs the confirmation link instead of sending
+      # it, which is enough to develop against without SMTP set up.
+      MAILER_WEB_INTERNAL_URL: http://web:3000
+      MAILER_WEB_INTERNAL_SECRET: ${MAILER_WEB_INTERNAL_SECRET:-}
       GOADMIN_USERNAME: ${GOADMIN_USERNAME:-}
       GOADMIN_PASSWORD: ${GOADMIN_PASSWORD:-}
       # Optional: without a key the api still boots, AI card generation is
