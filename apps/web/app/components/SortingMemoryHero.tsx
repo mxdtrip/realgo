@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -297,6 +298,7 @@ export function SortingMemoryHero() {
   }, [authOpen, authRender]);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [authConsent, setAuthConsent] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authPending, setAuthPending] = useState(false);
   const [order, setOrder] = useState(() => shuffle([0, 1, 2, 3, 4, 5]));
@@ -492,6 +494,7 @@ export function SortingMemoryHero() {
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       if (authPending) return;
+      if (authMode === "signup" && !authConsent) return;
       setAuthPending(true);
       setAuthError("");
       try {
@@ -509,7 +512,7 @@ export function SortingMemoryHero() {
         setAuthPending(false);
       }
     },
-    [auth, authEmail, authMode, authPassword, authPending, copy.auth.error, router],
+    [auth, authConsent, authEmail, authMode, authPassword, authPending, copy.auth.error, router],
   );
 
   useEffect(() => {
@@ -823,13 +826,35 @@ export function SortingMemoryHero() {
                 />
               </label>
 
+              {authMode === "signup" ? (
+                <label className="auth-consent">
+                  <input
+                    checked={authConsent}
+                    disabled={authPending}
+                    onChange={(event) => setAuthConsent(event.target.checked)}
+                    required
+                    type="checkbox"
+                  />
+                  <span>
+                    Принимаю{" "}
+                    <Link href="/terms" target="_blank">
+                      Условия использования
+                    </Link>{" "}
+                    и{" "}
+                    <Link href="/privacy" target="_blank">
+                      Политику конфиденциальности
+                    </Link>
+                  </span>
+                </label>
+              ) : null}
+
               {authError ? (
                 <p className="auth-form__error" role="alert">
                   {authError}
                 </p>
               ) : null}
 
-              <button type="submit" disabled={authPending}>
+              <button type="submit" disabled={authPending || (authMode === "signup" && !authConsent)}>
                 {authPending
                   ? copy.auth.pending
                   : authMode === "login"
