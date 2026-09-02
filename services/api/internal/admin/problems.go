@@ -7,6 +7,7 @@ import (
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	formValues "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 	"github.com/GoAdminGroup/go-admin/template/types"
 	"github.com/GoAdminGroup/go-admin/template/types/form"
@@ -50,6 +51,16 @@ func problemFormError(err error) error {
 	return err
 }
 
+func platformDisplay(value types.FieldModel) interface{} {
+	if value.Value != "" {
+		return value.Value
+	}
+	if name, ok := value.Row["platforms"+parameter.FilterParamJoinInfix+"name"].(string); ok {
+		return name
+	}
+	return ""
+}
+
 // Problems exposes problem metadata without allowing records to be created or deleted.
 func Problems(ctx *context.Context) table.Table {
 	cfg := table.DefaultConfigWithDriver(db.DriverPostgresql).
@@ -64,7 +75,7 @@ func Problems(ctx *context.Context) table.Table {
 		Field:     "platform_id",
 		JoinField: "id",
 		Table:     "platforms",
-	}).FieldFilterable()
+	}).FieldDisplay(platformDisplay).FieldFilterable()
 	info.AddField("External slug", "external_slug", db.Text).FieldFilterable()
 	info.AddField("Difficulty", "difficulty", db.Varchar).FieldFilterable()
 	info.AddField("Source", "source_type", db.Varchar).FieldFilterable()
