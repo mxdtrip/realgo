@@ -61,30 +61,35 @@ func platformDisplay(value types.FieldModel) interface{} {
 	return ""
 }
 
-// Problems exposes problem metadata without allowing records to be created or deleted.
+// Problems exposes the problem catalog with validated editing.
 func Problems(ctx *context.Context) table.Table {
 	cfg := table.DefaultConfigWithDriver(db.DriverPostgresql).
-		SetPrimaryKey("id", db.Bigint).
-		SetDeletable(false)
+		SetPrimaryKey("id", db.Bigint)
 
 	problems := table.NewDefaultTable(ctx, cfg)
 	info := problems.GetInfo()
 	info.AddField("ID", "id", db.Bigint).FieldSortable()
-	info.AddField("Title", "title", db.Text).FieldFilterable()
+	info.AddField("Title", "title", db.Text)
 	info.AddField("Platform", "name", db.Varchar).FieldJoin(types.Join{
 		Field:     "platform_id",
 		JoinField: "id",
 		Table:     "platforms",
-	}).FieldDisplay(platformDisplay).FieldFilterable()
-	info.AddField("External slug", "external_slug", db.Text).FieldFilterable()
-	info.AddField("Difficulty", "difficulty", db.Varchar).FieldFilterable()
-	info.AddField("Source", "source_type", db.Varchar).FieldFilterable()
+	}).FieldDisplay(platformDisplay)
+	info.AddField("External slug", "external_slug", db.Text)
+	info.AddField("Difficulty", "difficulty", db.Varchar)
+	info.AddField("Source", "source_type", db.Varchar)
 	info.AddField("URL", "url", db.Text)
 	info.AddField("Updated", "updated_at", db.Timestamp).FieldSortable()
+	addILikeFilters(info,
+		ilikeFilter{"Title", "problems", "title"},
+		ilikeFilter{"Platform", "platforms", "name"},
+		ilikeFilter{"External slug", "problems", "external_slug"},
+		ilikeFilter{"Difficulty", "problems", "difficulty"},
+		ilikeFilter{"Source", "problems", "source_type"},
+	)
 	info.SetTable("problems").
 		SetTitle("Problems").
-		SetDescription("Problem catalog").
-		HideDeleteButton()
+		SetDescription("Problem catalog")
 
 	edit := problems.GetForm()
 	edit.AddField("ID", "id", db.Bigint, form.Default).
@@ -92,9 +97,7 @@ func Problems(ctx *context.Context) table.Table {
 		FieldDisableWhenCreate()
 	edit.AddField("Platform", "platform_id", db.Bigint, form.SelectSingle).
 		FieldOptionsFromTable("platforms", "name", "id").
-		FieldOptionsTableProcessFn(func(options types.FieldOptions) types.FieldOptions {
-			return append(types.FieldOptions{{Text: "Select platform", Value: ""}}, options...)
-		}).
+		FieldOptionsTableProcessFn(blankOption).
 		FieldMust()
 	edit.AddField("External slug", "external_slug", db.Text, form.Text).FieldMust()
 	edit.AddField("Title", "title", db.Text, form.Text).FieldMust()
@@ -121,9 +124,15 @@ func Problems(ctx *context.Context) table.Table {
 		FieldHideWhenUpdate().
 		FieldDisableWhenCreate().
 		FieldNowWhenUpdate()
+	edit.AddField("Created by user", "created_by_user_id", db.Bigint, form.SelectSingle).
+		FieldOptionsFromTable("users", "email", "id").
+		FieldOptionsTableProcessFn(blankOption).
+		FieldPostFilterFn(nullableValue)
+	edit.AddField("External ID", "external_id", db.Text, form.Text).
+		FieldPostFilterFn(nullableValue)
 	edit.SetTable("problems").
 		SetTitle("Problems").
-		SetDescription("Edit problem metadata").
+		SetDescription("Create and edit problem metadata").
 		SetPostValidator(func(values formValues.Values) error {
 			return validateProblemForm(values)
 		})

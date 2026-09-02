@@ -35,17 +35,17 @@ func ProblemReports(ctx *context.Context) table.Table {
 		Field:     "user_id",
 		JoinField: "id",
 		Table:     "users",
-	}).FieldFilterable()
+	})
 	info.AddField("Description", "description", db.Text)
-	info.AddField("Fingerprint", "fingerprint", db.Char).FieldFilterable()
-	info.AddField("Release", "release_version", db.Varchar).FieldFilterable()
+	info.AddField("Fingerprint", "fingerprint", db.Char)
+	info.AddField("Release", "release_version", db.Varchar)
 	info.AddField("Commit", "commit_sha", db.Varchar)
-	info.AddField("Request ID", "source_request_id", db.Varchar).FieldFilterable()
-	info.AddField("Attachment", "attachment_filename", db.Varchar).FieldFilterable().
+	info.AddField("Request ID", "source_request_id", db.Varchar)
+	info.AddField("Attachment", "attachment_filename", db.Varchar).
 		FieldDisplay(func(value types.FieldModel) interface{} {
 			return attachmentDownloadLink(value.ID, value.Value)
 		})
-	info.AddField("MIME", "attachment_mime", db.Varchar).FieldFilterable()
+	info.AddField("MIME", "attachment_mime", db.Varchar)
 	info.AddField("Size", "attachment_size", db.Int4).FieldDisplay(func(value types.FieldModel) interface{} {
 		return formatAttachmentSize(value.Value)
 	})
@@ -56,6 +56,14 @@ func ProblemReports(ctx *context.Context) table.Table {
 	info.AddField("Attachment expires", "attachment_expires_at", db.Timestamptz).FieldSortable()
 	info.AddField("Created", "created_at", db.Timestamptz).FieldSortable()
 	info.AddField("Expires", "expires_at", db.Timestamptz).FieldSortable()
+	addILikeFilters(info,
+		ilikeFilter{"User", "users", "email"},
+		ilikeFilter{"Fingerprint", "problem_reports", "fingerprint"},
+		ilikeFilter{"Release", "problem_reports", "release_version"},
+		ilikeFilter{"Request ID", "problem_reports", "source_request_id"},
+		ilikeFilter{"Attachment", "problem_reports", "attachment_filename"},
+		ilikeFilter{"MIME", "problem_reports", "attachment_mime"},
+	)
 	info.SetTable("problem_reports").
 		SetTitle("Problem reports").
 		SetDescription("User-submitted bug reports").

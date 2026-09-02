@@ -5,12 +5,17 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/stretchr/testify/require"
 
 	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
 	"github.com/mxdtrip/realgo/services/api/internal/specifications"
 	httpdriver "github.com/mxdtrip/realgo/services/api/internal/testdriver/http"
 	"github.com/mxdtrip/realgo/services/api/internal/testutil"
+	"github.com/mxdtrip/realgo/services/api/migrations"
 )
 
 // harness — общая пара контейнеров testcontainers, которая запускается
@@ -65,6 +70,78 @@ func TestAcceptance_HarnessWalkingSkeleton(t *testing.T) {
 	defer d.Close()
 
 	specifications.HarnessSpecification(t, d)
+}
+
+func TestAcceptance_AdminContentMigration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("acceptance test requires Docker")
+	}
+
+	ctx := context.Background()
+	tx, err := harness.Pool.Begin(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, tx.Rollback(ctx)) })
+	applyMigration(t, ctx, tx, "000032_expand_admin_menu.down.sql")
+	applyMigration(t, ctx, tx, "000032_expand_admin_menu.up.sql")
+	applyMigration(t, ctx, tx, "000031_admin_content_crud.down.sql")
+	applyMigration(t, ctx, tx, "000031_admin_content_crud.up.sql")
+
+	var menuCount, distinctMenuCount, missingRoleMenus int
+	require.NoError(t, tx.QueryRow(ctx, `
+		SELECT COUNT(*), COUNT(DISTINCT uuid)
+		FROM goadmin_menu WHERE uuid LIKE 'realgo-%'
+	`).Scan(&menuCount, &distinctMenuCount))
+	require.Equal(t, 31, menuCount)
+	require.Equal(t, menuCount, distinctMenuCount)
+	require.NoError(t, tx.QueryRow(ctx, `
+		SELECT COUNT(*) FROM goadmin_menu menu
+		WHERE menu.uuid LIKE 'realgo-%'
+		  AND NOT EXISTS (
+			SELECT 1 FROM goadmin_role_menu role_menu
+			WHERE role_menu.role_id = 1 AND role_menu.menu_id = menu.id
+		  )
+	`).Scan(&missingRoleMenus))
+	require.Zero(t, missingRoleMenus)
+
+	var platformID, problemID, relationID int64
+	require.NoError(t, tx.QueryRow(ctx, `
+		INSERT INTO platforms (code, name, base_url)
+		VALUES ('admin-migration-test', 'Admin migration test', 'https://example.test')
+		RETURNING id
+	`).Scan(&platformID))
+	require.NoError(t, tx.QueryRow(ctx, `
+		INSERT INTO problems (platform_id, external_slug, title, url, source_type)
+		VALUES ($1, 'admin-migration-test', 'Admin migration test', 'https://example.test/p', 'manual')
+		RETURNING id
+	`, platformID).Scan(&problemID))
+	require.NoError(t, tx.QueryRow(ctx, `
+		INSERT INTO problem_subpatterns (problem_id, subpattern_id, tier)
+		SELECT $1, id, 'core' FROM patterns WHERE kind = 'subpattern' LIMIT 1
+		RETURNING admin_id
+	`, problemID).Scan(&relationID))
+	require.Positive(t, relationID)
+
+	blocked, err := tx.Begin(ctx)
+	require.NoError(t, err)
+	_, err = blocked.Exec(ctx, `DELETE FROM problems WHERE id = $1`, problemID)
+	require.Error(t, err)
+	require.NoError(t, blocked.Rollback(ctx))
+
+	_, err = tx.Exec(ctx, `DELETE FROM problem_subpatterns WHERE admin_id = $1`, relationID)
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, `DELETE FROM problems WHERE id = $1`, problemID)
+	require.NoError(t, err)
+}
+
+func applyMigration(t *testing.T, ctx context.Context, tx pgx.Tx, name string) {
+	t.Helper()
+	raw, err := migrations.FS.ReadFile(name)
+	require.NoError(t, err)
+	sql := strings.TrimSpace(string(raw))
+	sql = strings.TrimSpace(strings.TrimPrefix(sql, "BEGIN;"))
+	sql = strings.TrimSpace(strings.TrimSuffix(sql, "COMMIT;"))
+	_, err = tx.Exec(ctx, sql)
+	require.NoError(t, err)
 }
 
 // TestAcceptance_Cards — north-star acceptance-тесты для cards-модуля.
