@@ -13,7 +13,7 @@ import (
 	"github.com/lib/pq"
 )
 
-const duplicateProblemSlugError = "Задача с таким External slug уже существует для выбранной платформы."
+const duplicateProblemSlugError = "задача с таким External slug уже существует для выбранной платформы"
 
 type problemTable struct{ table.Table }
 
