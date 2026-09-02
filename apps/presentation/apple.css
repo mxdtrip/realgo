@@ -821,7 +821,29 @@ h2 {
   letter-spacing: normal;
   white-space: nowrap;
   color: transparent;
+}
+
+/* Until deck.js splits the value into fixed-width slots, keep the original
+   text node painted as one gradient. This is also the no-JS fallback. */
+.giant-number:not(.is-slotted) {
   background: var(--stat-number-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Paint every generated slot independently. Clipping one background on the
+   parent across several child layers is unstable after a composited counter
+   transition in Chromium: an individual digit can remain transparent after
+   the animation. Shared size/offset variables preserve one continuous
+   gradient while giving each glyph its own reliable paint layer. */
+.giant-number.is-slotted > .num-slot,
+.giant-number.is-slotted > .num-char {
+  color: transparent;
+  background: var(--stat-number-gradient);
+  background-repeat: no-repeat;
+  background-size: var(--static-gradient-width) 100%;
+  background-position: var(--static-gradient-position) 0;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
