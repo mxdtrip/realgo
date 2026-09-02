@@ -74,6 +74,9 @@ func Problems(ctx *context.Context) table.Table {
 			{Text: "Hard", Value: "hard"},
 		})
 	edit.AddField("URL", "url", db.Text, form.Text).FieldMust()
+	edit.AddField("Updated", "updated_at", db.Timestamptz, form.Default).
+		FieldHideWhenUpdate().
+		FieldNowWhenUpdate()
 	edit.SetTable("problems").
 		SetTitle("Problems").
 		SetDescription("Edit problem metadata").
