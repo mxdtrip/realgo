@@ -13,7 +13,10 @@ import (
 	"github.com/lib/pq"
 )
 
-const duplicateProblemSlugError = "задача с таким External slug уже существует для выбранной платформы"
+const (
+	duplicateProblemSlugError = "задача с таким External slug уже существует для выбранной платформы"
+	difficultyRequiredError   = "необходимо выбрать Difficulty"
+)
 
 type problemTable struct{ table.Table }
 
@@ -29,8 +32,15 @@ func (t problemTable) Copy() table.Table { return problemTable{t.Table.Copy()} }
 
 func problemFormError(err error) error {
 	var pgErr *pq.Error
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.Constraint == "problems_platform_id_external_slug_key" {
+	if !errors.As(err, &pgErr) {
+		return err
+	}
+
+	switch pgErr.Constraint {
+	case "problems_platform_id_external_slug_key":
 		return errors.New(duplicateProblemSlugError)
+	case "problems_difficulty_check":
+		return errors.New(difficultyRequiredError)
 	}
 	return err
 }
@@ -69,10 +79,12 @@ func Problems(ctx *context.Context) table.Table {
 	edit.AddField("Title", "title", db.Text, form.Text).FieldMust()
 	edit.AddField("Difficulty", "difficulty", db.Varchar, form.SelectSingle).
 		FieldOptions(types.FieldOptions{
+			{Text: "Select difficulty", Value: ""},
 			{Text: "Easy", Value: "easy"},
 			{Text: "Medium", Value: "medium"},
 			{Text: "Hard", Value: "hard"},
-		})
+		}).
+		FieldMust()
 	edit.AddField("URL", "url", db.Text, form.Text).FieldMust()
 	edit.AddField("Updated", "updated_at", db.Timestamptz, form.Default).
 		FieldHideWhenUpdate().
@@ -81,11 +93,18 @@ func Problems(ctx *context.Context) table.Table {
 		SetTitle("Problems").
 		SetDescription("Edit problem metadata").
 		SetPostValidator(func(values formValues.Values) error {
-			if strings.TrimSpace(values.Get("title")) == "" || strings.TrimSpace(values.Get("url")) == "" {
-				return errors.New("title and URL must not be empty")
-			}
-			return nil
+			return validateProblemForm(values)
 		})
 
 	return problemTable{problems}
+}
+
+func validateProblemForm(values formValues.Values) error {
+	if strings.TrimSpace(values.Get("title")) == "" || strings.TrimSpace(values.Get("url")) == "" {
+		return errors.New("title and URL must not be empty")
+	}
+	if strings.TrimSpace(values.Get("difficulty")) == "" {
+		return errors.New(difficultyRequiredError)
+	}
+	return nil
 }

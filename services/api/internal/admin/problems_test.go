@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	formValues "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"github.com/GoAdminGroup/go-admin/template/types"
 	"github.com/lib/pq"
 )
@@ -24,6 +25,11 @@ func TestProblemFormError(t *testing.T) {
 			err:  &pq.Error{Code: "23505", Constraint: "users_email_key"},
 			want: "pq: ",
 		},
+		{
+			name: "difficulty constraint",
+			err:  &pq.Error{Code: "23514", Constraint: "problems_difficulty_check"},
+			want: difficultyRequiredError,
+		},
 		{name: "ordinary error", err: errors.New("database unavailable"), want: "database unavailable"},
 	}
 
@@ -34,6 +40,22 @@ func TestProblemFormError(t *testing.T) {
 				t.Fatalf("problemFormError() = %v, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestProblemDifficultyIsRequired(t *testing.T) {
+	difficulty := Problems(nil).GetForm().FieldList.FindByFieldName("difficulty")
+	if difficulty == nil || !difficulty.Must || len(difficulty.Options) == 0 || difficulty.Options[0].Value != "" {
+		t.Fatal("difficulty must be a required select with an empty prompt")
+	}
+
+	values := formValues.Values{"title": {"Two Sum"}, "url": {"https://example.com/two-sum"}}
+	if err := validateProblemForm(values); err == nil || err.Error() != difficultyRequiredError {
+		t.Fatalf("validateProblemForm() error = %v, want %q", err, difficultyRequiredError)
+	}
+	values["difficulty"] = []string{"medium"}
+	if err := validateProblemForm(values); err != nil {
+		t.Fatalf("validateProblemForm() error = %v", err)
 	}
 }
 
