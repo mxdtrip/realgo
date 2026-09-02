@@ -148,6 +148,7 @@ func Run(ctx context.Context) error {
 	eng.HTML(http.MethodGet, "/admin", adminui.Dashboard)
 	eng.Data(http.MethodGet, "/admin/api/problem_reports/:id/attachment", adminui.DownloadProblemReportAttachment(pg.Pool))
 	handler.Handle("/admin", adminRouter)
+	handler.Handle("/admin/", http.RedirectHandler("/admin", http.StatusPermanentRedirect))
 	handler.Handle("/admin/*", adminRouter)
 
 	srv := &http.Server{

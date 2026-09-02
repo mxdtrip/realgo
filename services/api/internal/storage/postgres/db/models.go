@@ -50,6 +50,7 @@ type CompanyProblem struct {
 	EvidenceCount int32
 	LastSeenAt    pgtype.Date
 	SourceType    string
+	AdminID       int64
 }
 
 type ExtensionEvent struct {
@@ -191,6 +192,7 @@ type PatternFamilySubpattern struct {
 	FamilyID     int64
 	SubpatternID int64
 	Position     int32
+	AdminID      int64
 }
 
 type PatternLearningMaterial struct {
@@ -253,6 +255,7 @@ type ProblemSubpattern struct {
 	SubpatternID int64
 	Tier         pgtype.Text
 	Position     pgtype.Int4
+	AdminID      int64
 }
 
 type QuizAnswer struct {
@@ -328,6 +331,7 @@ type RoadmapItem struct {
 	PatternID   int64
 	ProblemID   int64
 	Position    int32
+	AdminID     int64
 }
 
 type SubpatternCompany struct {
@@ -338,11 +342,13 @@ type SubpatternCompany struct {
 	EvidenceCount int32
 	LastSeenAt    pgtype.Date
 	SourceType    string
+	AdminID       int64
 }
 
 type SubpatternPrerequisite struct {
 	SubpatternID int64
 	ToolID       int64
+	AdminID      int64
 }
 
 type TaxonomyVersion struct {
