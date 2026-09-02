@@ -10,7 +10,30 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 	"github.com/GoAdminGroup/go-admin/template/types"
 	"github.com/GoAdminGroup/go-admin/template/types/form"
+	"github.com/lib/pq"
 )
+
+const duplicateProblemSlugError = "Задача с таким External slug уже существует для выбранной платформы."
+
+type problemTable struct{ table.Table }
+
+func (t problemTable) UpdateData(ctx *context.Context, values formValues.Values) error {
+	return problemFormError(t.Table.UpdateData(ctx, values))
+}
+
+func (t problemTable) InsertData(ctx *context.Context, values formValues.Values) error {
+	return problemFormError(t.Table.InsertData(ctx, values))
+}
+
+func (t problemTable) Copy() table.Table { return problemTable{t.Table.Copy()} }
+
+func problemFormError(err error) error {
+	var pgErr *pq.Error
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.Constraint == "problems_platform_id_external_slug_key" {
+		return errors.New(duplicateProblemSlugError)
+	}
+	return err
+}
 
 // Problems exposes problem metadata without allowing records to be created or deleted.
 func Problems(ctx *context.Context) table.Table {
@@ -64,5 +87,5 @@ func Problems(ctx *context.Context) table.Table {
 			return nil
 		})
 
-	return problems
+	return problemTable{problems}
 }
