@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../_api/AuthProvider";
 import { ApiError } from "../_api/types";
+import { AuthOAuthButtons } from "../_auth/AuthOAuthButtons";
 import { ReportProblemLauncher, openReportProblemDialog } from "../(cabinet)/ReportProblemDialog";
 import { getDictionary } from "../_content/i18n";
 import { AccountUserMenu } from "./AccountUserMenu";
@@ -837,6 +838,8 @@ export function SortingMemoryHero() {
                     : copy.auth.createAccount}
               </button>
             </form>
+
+            <AuthOAuthButtons disabled={authPending} />
           </section>
         </div>
       ) : null}

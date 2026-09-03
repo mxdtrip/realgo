@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { useAuth } from "../_api/AuthProvider";
 import { ApiError } from "../_api/types";
+import { AuthOAuthButtons } from "./AuthOAuthButtons";
 
 type Mode = "login" | "register";
 
@@ -125,6 +126,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
           {pending ? copy.pending : copy.submit}
         </button>
       </form>
+
+      <AuthOAuthButtons disabled={pending} />
     </section>
   );
 }

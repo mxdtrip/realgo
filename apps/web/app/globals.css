@@ -848,6 +848,61 @@ h3 {
   text-underline-offset: 2px;
 }
 
+.auth-oauth {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-faint);
+  font-family: var(--font-stack-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.auth-oauth-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-family: var(--font-stack-sans);
+  font-weight: 600;
+  font-size: 13.5px;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.auth-oauth-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-strong);
+}
+
+.auth-oauth-button:disabled {
+  opacity: 0.6;
+}
+
+.auth-oauth-button svg {
+  flex: none;
+}
+
 .auth-consent span a:hover {
   color: var(--accent-bright);
 }

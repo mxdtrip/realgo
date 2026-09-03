@@ -59,7 +59,10 @@ func (s *Service) Register(ctx context.Context, email, password string) (db.User
 		return db.User{}, TokenPair{}, err
 	}
 
-	user, err := s.queries.CreateUser(ctx, db.CreateUserParams{Email: normalized, PasswordHash: hash})
+	user, err := s.queries.CreateUser(ctx, db.CreateUserParams{
+		Email:        normalized,
+		PasswordHash: pgtype.Text{String: hash, Valid: true},
+	})
 	if err != nil {
 		if isUniqueViolation(err) {
 			return db.User{}, TokenPair{}, ErrEmailTaken
@@ -101,7 +104,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (db.User, T
 		}
 		return db.User{}, TokenPair{}, err
 	}
-	if !checkPassword(user.PasswordHash, password) {
+	if !checkPassword(passwordHashOrDummy(user.PasswordHash), password) {
 		return db.User{}, TokenPair{}, ErrInvalidCredentials
 	}
 
@@ -171,7 +174,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 		}
 		return err
 	}
-	if !checkPassword(user.PasswordHash, currentPassword) {
+	if !checkPassword(passwordHashOrDummy(user.PasswordHash), currentPassword) {
 		return ErrInvalidCredentials
 	}
 	if err := validatePassword(newPassword); err != nil {
@@ -181,7 +184,10 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 	if err != nil {
 		return err
 	}
-	rows, err := s.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{ID: userID, PasswordHash: hash})
+	rows, err := s.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+		ID:           userID,
+		PasswordHash: pgtype.Text{String: hash, Valid: true},
+	})
 	if err != nil {
 		return err
 	}
@@ -305,7 +311,7 @@ func (s *Service) DeleteAccount(ctx context.Context, userID int64, password, ref
 		}
 		return err
 	}
-	if !checkPassword(user.PasswordHash, password) {
+	if !checkPassword(passwordHashOrDummy(user.PasswordHash), password) {
 		return ErrInvalidCredentials
 	}
 	if err := s.revokeAllRefreshTokens(ctx, userID); err != nil {
@@ -379,6 +385,18 @@ func normalizeEmail(email string) (string, error) {
 		return "", ErrInvalidEmail
 	}
 	return email, nil
+}
+
+// passwordHashOrDummy returns the stored bcrypt hash, or a precomputed dummy
+// hash when the account has none (an OAuth-only signup). Comparing against a
+// real bcrypt hash either way keeps this path's timing close to the
+// wrong-password case instead of failing near-instantly and leaking that the
+// account has no local password.
+func passwordHashOrDummy(hash pgtype.Text) string {
+	if hash.Valid {
+		return hash.String
+	}
+	return dummyPasswordHash
 }
 
 func isUniqueViolation(err error) bool {
