@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { join } from "node:path";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 // Dev-only escape hatch for the product presentation.
 //
@@ -34,4 +35,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: "realgo-web",
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  telemetry: false,
+  silent: !process.env.CI,
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+  webpack: { treeshake: { removeDebugLogging: true } },
+});

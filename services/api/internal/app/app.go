@@ -16,6 +16,7 @@ import (
 	_ "github.com/GoAdminGroup/go-admin/modules/db/drivers/postgres" // Import the sql driver
 	"github.com/GoAdminGroup/go-admin/modules/language"
 	_ "github.com/GoAdminGroup/themes/adminlte" // Import the theme
+	"github.com/getsentry/sentry-go"
 	chiV4 "github.com/go-chi/chi"
 	"github.com/joho/godotenv"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
 	"github.com/mxdtrip/realgo/services/api/internal/cards"
 	"github.com/mxdtrip/realgo/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/observability"
 	"github.com/mxdtrip/realgo/services/api/internal/reports"
 	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
 	"github.com/mxdtrip/realgo/services/api/internal/server"
@@ -39,6 +41,9 @@ const shutdownTimeout = 10 * time.Second
 func Run(ctx context.Context) error {
 	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("load .env: %w", err)
+	}
+	if err := observability.InitSentry(); err != nil {
+		slog.Warn("sentry disabled: initialization failed", slog.Any("err", err))
 	}
 
 	cfg, err := config.Load()
@@ -61,7 +66,10 @@ func Run(ctx context.Context) error {
 	}
 	defer pg.Close()
 	logger.Info("connected to postgres")
-	go reports.RunRetentionCleanup(ctx, pg.Pool, logger)
+	go func() {
+		defer captureBackgroundPanic()
+		reports.RunRetentionCleanup(ctx, pg.Pool, logger)
+	}()
 	if err := adminui.Bootstrap(ctx, pg.Pool, cfg.Admin.Username, cfg.Admin.Password); err != nil {
 		return fmt.Errorf("bootstrap admin user: %w", err)
 	}
@@ -189,6 +197,14 @@ func Run(ctx context.Context) error {
 
 	logger.Info("api stopped")
 	return nil
+}
+
+func captureBackgroundPanic() {
+	if recovered := recover(); recovered != nil {
+		sentry.CurrentHub().Recover(recovered)
+		sentry.Flush(2 * time.Second)
+		panic(recovered)
+	}
 }
 
 func loadEngine() *engine.Engine {

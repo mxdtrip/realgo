@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 type CabinetErrorProps = {
   error: Error & { digest?: string };
@@ -11,6 +12,7 @@ export default function CabinetError({ error, reset }: CabinetErrorProps) {
   const retryRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    if (!error.digest) Sentry.captureException(error);
     console.error("realgo cabinet route error", error);
   }, [error]);
 

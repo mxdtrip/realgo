@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	goredis "github.com/redis/go-redis/v9"
 )
 
@@ -147,6 +148,13 @@ func (p *Provisioner) ProvisionAsync(problemID int64, platform, slug string) boo
 func startGenerationWorkers() {
 	for range maxConcurrentGenerations {
 		go func() {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					sentry.CurrentHub().Recover(recovered)
+					sentry.Flush(2 * time.Second)
+					panic(recovered)
+				}
+			}()
 			for job := range generationJobs {
 				job.run()
 			}

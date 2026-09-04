@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 import "./globals.css";
 
@@ -13,6 +14,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   const retryRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    if (!error.digest) Sentry.captureException(error);
     console.error("realgo global error", error);
   }, [error]);
 
