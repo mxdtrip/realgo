@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/getsentry/sentry-go"
+	"github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
@@ -74,6 +76,10 @@ func New(deps Deps) *chi.Mux {
 	// let an attacker rotate the rate-limit key by spoofing X-Forwarded-For.
 	r.Use(requestLogger(deps.Logger))
 	r.Use(middleware.Recoverer)
+	if sentry.CurrentHub().Client() != nil {
+		r.Use(sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle)
+		r.Use(sentryErrors)
+	}
 	r.Use(middleware.Timeout(requestTimeout))
 
 	health := &healthHandler{pg: deps.Postgres, redis: deps.Redis}

@@ -23,6 +23,10 @@ jobs:
         env:
           APP_VERSION: staging-${{ github.run_number }}
           COMMIT_SHA: ${{ github.sha }}
+          SENTRY_WEB_DSN: ${{ secrets.SENTRY_WEB_DSN }}
+          SENTRY_API_DSN: ${{ secrets.SENTRY_API_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
           FRP_VPS_HOST: ${{ secrets.FRP_VPS_HOST }}
           FRP_TOKEN: ${{ secrets.FRP_TOKEN }}

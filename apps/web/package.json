@@ -7,16 +7,19 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
+    "test:sentry": "node --test --experimental-strip-types --experimental-default-type=module sentry-options.test.ts",
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.73.0",
     "next": "^16.2.9",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "three": "^0.185.1"
   },
   "overrides": {
-    "postcss": "^8.5.16"
+    "postcss": "^8.5.16",
+    "nanoid": "^3.3.18"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
