@@ -8,4 +8,7 @@ var (
 	ErrValidation = errors.New("extension: invalid event payload")
 	// ErrUnknownPlatform marks an unrecognised source/platform code (→ 422).
 	ErrUnknownPlatform = errors.New("extension: unknown platform source")
+	// ErrReviewConflict фиксирует исчерпание попыток сохранения расписания
+	// при высокой конкуренции параллельных обновлений.
+	ErrReviewConflict = errors.New("extension: review schedule was updated concurrently")
 )
