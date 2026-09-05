@@ -219,102 +219,124 @@ func (r *pgRepository) Ingest(ctx context.Context, in IngestInput) (out IngestOu
 
 const maxScheduleAttempts = 3
 
+// errScheduleConflict — внутренняя sentinel-ошибка, сигнализирующая о конфликте версий
+// или гонке DO NOTHING при выполнении одного шага создания/обновления расписания.
+var errScheduleConflict = errors.New("extension: schedule conflict on step")
+
+// retrySchedule реализует политику повторов: выполняет операцию op до maxAttempts раз,
+// повторяя попытку при получении errScheduleConflict. При исчерпании лимита возвращает
+// ErrReviewConflict. При любой другой ошибке завершается немедленно без ретрая.
+func retrySchedule(maxAttempts int, op func() (int64, time.Time, error)) (int64, time.Time, error) {
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		id, next, err := op()
+		if errors.Is(err, errScheduleConflict) {
+			continue
+		}
+		if err != nil {
+			return 0, time.Time{}, err
+		}
+		return id, next, nil
+	}
+	return 0, time.Time{}, ErrReviewConflict
+}
+
+// createInitialSchedule создаёт расписание для первого решения задачи без prior-state.
+// При параллельной гонке создания (DO NOTHING вернул ErrNoRows) возвращает
+// внутреннюю ошибку errScheduleConflict для повторной попытки.
+func (r *pgRepository) createInitialSchedule(ctx context.Context, q *db.Queries, in IngestInput, problemID int64, rating scheduler.Rating) (int64, time.Time, error) {
+	decision, err := r.sched.Next(rating, in.EventTime)
+	if err != nil {
+		return 0, time.Time{}, fmt.Errorf("extension: schedule decision: %w", err)
+	}
+	row, err := q.CreateProblemReviewSchedule(ctx, db.CreateProblemReviewScheduleParams{
+		UserID:         in.UserID,
+		ProblemID:      toInt8(problemID),
+		NextReviewAt:   toTimestamptz(decision.NextReviewAt),
+		IntervalDays:   decision.IntervalDays,
+		Ease:           decision.Ease,
+		Stability:      decision.Stability,
+		Difficulty:     decision.Difficulty,
+		State:          int16(decision.State),
+		Lapses:         int32(decision.Lapses),
+		RemainingSteps: int32(decision.RemainingSteps),
+		LastReviewAt:   toTimestamptz(in.EventTime),
+		LastRating:     optText(in.Rating),
+		Algorithm:      optText(algorithmFSRS),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, time.Time{}, errScheduleConflict
+	}
+	if err != nil {
+		return 0, time.Time{}, fmt.Errorf("extension: create schedule: %w", err)
+	}
+	return row.ID, row.NextReviewAt.Time, nil
+}
+
+// advanceExistingSchedule продвигает существующее расписание FSRS для повторного решения задачи.
+// Если параллельная транзакция успела обновить review_count раньше нас (несовпадение expected_review_count
+// вернуло ErrNoRows), возвращает внутреннюю ошибку errScheduleConflict для повторной попытки.
+func (r *pgRepository) advanceExistingSchedule(ctx context.Context, q *db.Queries, in IngestInput, existing db.GetProblemReviewScheduleRow, rating scheduler.Rating) (int64, time.Time, error) {
+	prior := scheduler.SchedulerState{
+		Stability:     existing.Stability,
+		Difficulty:    existing.Difficulty,
+		Ease:          existing.Ease,
+		State:         int8(existing.State),
+		ScheduledDays: uint64(math.Max(0, math.Round(existing.IntervalDays))),
+		Reps:          uint64(max(0, existing.ReviewCount.Int32)),
+		Lapses:        uint64(max(0, existing.Lapses)),
+		LastReview:    existing.LastReviewAt.Time,
+		Due:           existing.NextReviewAt.Time,
+	}
+	decision, err := r.sched.NextWithState(prior, rating, in.EventTime)
+	if err != nil {
+		return 0, time.Time{}, fmt.Errorf("extension: schedule decision: %w", err)
+	}
+	row, err := q.AdvanceProblemReviewSchedule(ctx, db.AdvanceProblemReviewScheduleParams{
+		ID:                  existing.ID,
+		NextReviewAt:        toTimestamptz(decision.NextReviewAt),
+		IntervalDays:        decision.IntervalDays,
+		Stability:           decision.Stability,
+		Difficulty:          decision.Difficulty,
+		State:               int16(decision.State),
+		Lapses:              int32(decision.Lapses),
+		RemainingSteps:      int32(decision.RemainingSteps),
+		LastReviewAt:        toTimestamptz(in.EventTime),
+		LastRating:          optText(in.Rating),
+		ExpectedReviewCount: existing.ReviewCount.Int32,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, time.Time{}, errScheduleConflict
+	}
+	if err != nil {
+		return 0, time.Time{}, fmt.Errorf("extension: advance schedule: %w", err)
+	}
+	return row.ID, row.NextReviewAt.Time, nil
+}
+
+// executeScheduleStep выполняет одну попытку расчёта и сохранения расписания:
+// проверяет существование записи и направляет вызов в createInitialSchedule либо advanceExistingSchedule.
+func (r *pgRepository) executeScheduleStep(ctx context.Context, q *db.Queries, in IngestInput, problemID int64, rating scheduler.Rating) (int64, time.Time, error) {
+	existing, err := q.GetProblemReviewSchedule(ctx, db.GetProblemReviewScheduleParams{
+		UserID: in.UserID, ProblemID: toInt8(problemID),
+	})
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return r.createInitialSchedule(ctx, q, in, problemID, rating)
+	case err != nil:
+		return 0, time.Time{}, fmt.Errorf("extension: lookup schedule: %w", err)
+	default:
+		return r.advanceExistingSchedule(ctx, q, in, existing, rating)
+	}
+}
+
 // upsertSchedule создаёт расписание задачи при первом решении либо продвигает
-// существующее с помощью планировщика FSRS. Для новых расписаний используется
-// Next (без prior state), для существующих — NextWithState для сохранения
-// истории FSRS (issue #160).
-//
-// При параллельных вызовах на одну и ту же задачу метод защищён от lost update:
-// если параллельный коммит уже создал запись (CreateProblemReviewSchedule вернул
-// ErrNoRows из-за DO NOTHING) или увеличил review_count (AdvanceProblemReviewSchedule
-// вернул ErrNoRows из-за несовпадения expected_review_count), выполняется повторное
-// чтение актуального состояния из базы и пересчёт FSRS (до maxScheduleAttempts раз).
+// существующее с помощью планировщика FSRS. Координация повторов при конфликтах
+// версий и гонках DO NOTHING делегирована функции retrySchedule.
 func (r *pgRepository) upsertSchedule(ctx context.Context, q *db.Queries, in IngestInput, problemID int64) (int64, time.Time, error) {
 	rating := scheduler.Rating(in.Rating)
-
-	for attempt := 0; attempt < maxScheduleAttempts; attempt++ {
-		existing, err := q.GetProblemReviewSchedule(ctx, db.GetProblemReviewScheduleParams{
-			UserID: in.UserID, ProblemID: toInt8(problemID),
-		})
-		switch {
-		case errors.Is(err, pgx.ErrNoRows):
-			// First solve — use Next (no prior FSRS state).
-			decision, derr := r.sched.Next(rating, in.EventTime)
-			if derr != nil {
-				return 0, time.Time{}, fmt.Errorf("extension: schedule decision: %w", derr)
-			}
-			row, cerr := q.CreateProblemReviewSchedule(ctx, db.CreateProblemReviewScheduleParams{
-				UserID:         in.UserID,
-				ProblemID:      toInt8(problemID),
-				NextReviewAt:   toTimestamptz(decision.NextReviewAt),
-				IntervalDays:   decision.IntervalDays,
-				Ease:           decision.Ease,
-				Stability:      decision.Stability,
-				Difficulty:     decision.Difficulty,
-				State:          int16(decision.State),
-				Lapses:         int32(decision.Lapses),
-				RemainingSteps: int32(decision.RemainingSteps),
-				LastReviewAt:   toTimestamptz(in.EventTime),
-				LastRating:     optText(in.Rating),
-				Algorithm:      optText(algorithmFSRS),
-			})
-			if errors.Is(cerr, pgx.ErrNoRows) {
-				// Параллельная транзакция успела создать запись первой (DO NOTHING).
-				// Повторяем попытку: на следующем шаге цикл прочитает созданную запись
-				// и пойдёт по ветке NextWithState.
-				continue
-			}
-			if cerr != nil {
-				return 0, time.Time{}, fmt.Errorf("extension: create schedule: %w", cerr)
-			}
-			return row.ID, row.NextReviewAt.Time, nil
-
-		case err != nil:
-			return 0, time.Time{}, fmt.Errorf("extension: lookup schedule: %w", err)
-
-		default:
-			// Re-solve — use NextWithState with existing FSRS history.
-			prior := scheduler.SchedulerState{
-				Stability:     existing.Stability,
-				Difficulty:    existing.Difficulty,
-				Ease:          existing.Ease,
-				State:         int8(existing.State),
-				ScheduledDays: uint64(math.Max(0, math.Round(existing.IntervalDays))),
-				Reps:          uint64(max(0, existing.ReviewCount.Int32)),
-				Lapses:        uint64(max(0, existing.Lapses)),
-				LastReview:    existing.LastReviewAt.Time,
-				Due:           existing.NextReviewAt.Time,
-			}
-			decision, derr := r.sched.NextWithState(prior, rating, in.EventTime)
-			if derr != nil {
-				return 0, time.Time{}, fmt.Errorf("extension: schedule decision: %w", derr)
-			}
-			row, uerr := q.AdvanceProblemReviewSchedule(ctx, db.AdvanceProblemReviewScheduleParams{
-				ID:                  existing.ID,
-				NextReviewAt:        toTimestamptz(decision.NextReviewAt),
-				IntervalDays:        decision.IntervalDays,
-				Stability:           decision.Stability,
-				Difficulty:          decision.Difficulty,
-				State:               int16(decision.State),
-				Lapses:              int32(decision.Lapses),
-				RemainingSteps:      int32(decision.RemainingSteps),
-				LastReviewAt:        toTimestamptz(in.EventTime),
-				LastRating:          optText(in.Rating),
-				ExpectedReviewCount: existing.ReviewCount.Int32,
-			})
-			if errors.Is(uerr, pgx.ErrNoRows) {
-				// Параллельная транзакция обновила review_count раньше нас.
-				// Повторяем попытку: перечитываем актуальное состояние и пересчитываем FSRS.
-				continue
-			}
-			if uerr != nil {
-				return 0, time.Time{}, fmt.Errorf("extension: advance schedule: %w", uerr)
-			}
-			return row.ID, row.NextReviewAt.Time, nil
-		}
-	}
-
-	return 0, time.Time{}, ErrReviewConflict
+	return retrySchedule(maxScheduleAttempts, func() (int64, time.Time, error) {
+		return r.executeScheduleStep(ctx, q, in, problemID, rating)
+	})
 }
 
 // --- pgtype helpers ---------------------------------------------------------
