@@ -3,6 +3,7 @@ package specifications
 import (
 	"math"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -88,6 +89,10 @@ type FSRSStateProbe interface {
 	// Второе возвращаемое значение — false, если расписания нет (unrated
 	// карточка без истории). Это валидное состояние: «no row = no history».
 	CardScheduleState(t *testing.T, userID, cardID int64) (FSRSState, bool)
+
+	// ProblemScheduleState возвращает FSRS-состояние расписания задачи по её external_slug.
+	// Второе возвращаемое значение — false, если расписание в БД отсутствует.
+	ProblemScheduleState(t *testing.T, userID int64, slug string) (FSRSState, bool)
 }
 
 // FSRSProvider — контракт драйвера для FSRS-спецификаций. Расширяет Register
@@ -393,5 +398,80 @@ func FSRSReviewedAtClamped(t *testing.T, provider FSRSProvider) {
 
 	if nextA2.Before(nextA) {
 		t.Fatalf("reviewedAt before last_review_at must clamp, not rewind: before=%v, after=%v", nextA, nextA2)
+	}
+}
+
+// FSRSConcurrentExtensionIngests фиксирует контракт: два параллельных
+// события «задача решена» от расширения с разными eventId для одной и той же
+// задачи не приводят к lost update. Сервер должен версионировать расписание
+// (review_count) и при конфликте перечитывать prior-state, давая в итоге review_count=2.
+func FSRSConcurrentExtensionIngests(t *testing.T, provider FSRSProvider, probe FSRSStateProbe) {
+	t.Helper()
+
+	base := uniqueEmail(t)
+	user := provider.Register(t, withTag(base, ".base"), "AcceptanceTest-2026!")
+
+	fu := provider.FSRSUser(user)
+	uid := user.UserID(t)
+	slug := uniqueSlug(t)
+
+	seqSlug := slug + "-seq"
+	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", seqSlug, "normal")
+	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", seqSlug, "easy")
+	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", seqSlug, "normal")
+	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", seqSlug, "hard")
+
+	seqState, ok := probe.ProblemScheduleState(t, uid, seqSlug)
+	if !ok {
+		t.Fatalf("concurrent ingests: expected sequential schedule to exist for %q", seqSlug)
+	}
+
+	slug = uniqueSlug(t)
+	concSlug := slug + "-conc"
+
+	const goroutines = 3
+
+	start := make(chan struct{})
+
+	// Первичное решение: гарантирует, что расписание создано (review_count=1),
+	// и конкурентные запросы пойдут через AdvanceProblemReviewSchedule.
+	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "normal")
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	go func() {
+		defer wg.Done()
+		<-start
+		fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "easy")
+	}()
+
+	go func() {
+		defer wg.Done()
+		<-start
+		fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "normal")
+	}()
+
+	go func() {
+		defer wg.Done()
+		<-start
+		fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "hard")
+	}()
+
+	close(start)
+	wg.Wait()
+
+	concState, ok := probe.ProblemScheduleState(t, uid, concSlug)
+	if !ok {
+		t.Fatalf("concurrent ingests: expected review_schedules row to exist for problem slug %q, but none found", concSlug)
+	}
+	if seqState.ReviewCount != concState.ReviewCount {
+		t.Fatalf("concurrent ingests: expected review_count=%d, got %d", seqState.ReviewCount, concState.ReviewCount)
+	}
+	// Если произошёл lost update, одно или несколько FSRS-обновлений были затёрты,
+	// и итоговая стабильность будет существенно ниже последовательной.
+	minExpectedStability := seqState.Stability * 0.75
+	if concState.Stability < minExpectedStability {
+		t.Fatalf("concurrent ingests: lost update detected! concurrent stability=%.2f is significantly lower than sequential stability=%.2f (min expected=%.2f)", concState.Stability, seqState.Stability, minExpectedStability)
 	}
 }

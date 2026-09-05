@@ -260,4 +260,16 @@ func TestAcceptance_FSRS(t *testing.T) {
 
 		specifications.FSRSReviewedAtClamped(t, d)
 	})
+
+	// extension_concurrent_ingest — (W2):
+	// два параллельных solved-события с разными eventId не должны приводить
+	// к lost update: review_count в итоге равен 2, а не 1.
+	t.Run("extension_concurrent_ingest", func(t *testing.T) {
+		harness.Reset(t)
+
+		d := httpdriver.New(t, harness)
+		defer d.Close()
+
+		specifications.FSRSConcurrentExtensionIngests(t, d, d)
+	})
 }

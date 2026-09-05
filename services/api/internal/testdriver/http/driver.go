@@ -793,3 +793,47 @@ func (d *Driver) decode(t *testing.T, resp *http.Response, dst any) {
 		t.Fatalf("driver: decode response: %v", err)
 	}
 }
+
+// ProblemScheduleState возвращает FSRS-поля строки review_schedules для задачи
+// по её external_slug. Возвращает (state, false), если расписание отсутствует в БД.
+func (d *Driver) ProblemScheduleState(t *testing.T, userID int64, slug string) (specifications.FSRSState, bool) {
+	t.Helper()
+	var (
+		state        int16
+		stability    float64
+		difficulty   float64
+		intervalDays float64
+		reviewCount  int32
+		lapses       int32
+		lastReview   pgtype.Timestamptz
+		nextReview   pgtype.Timestamptz
+	)
+	err := d.pg.Pool.QueryRow(context.Background(),
+		`SELECT rs.state, rs.stability, rs.difficulty, rs.interval_days, rs.review_count, rs.lapses, rs.last_review_at, rs.
+  next_review_at
+             FROM review_schedules rs
+             JOIN problems p ON p.id = rs.problem_id
+             WHERE rs.user_id = $1 AND p.external_slug = $2`,
+		userID, slug,
+	).Scan(&state, &stability, &difficulty, &intervalDays, &reviewCount, &lapses, &lastReview, &nextReview)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return specifications.FSRSState{}, false
+	}
+	if err != nil {
+		t.Fatalf("driver: read problem schedule state (slug=%q): %v", slug, err)
+	}
+	out := specifications.FSRSState{
+		State:        int8(state),
+		Stability:    stability,
+		Difficulty:   difficulty,
+		IntervalDays: intervalDays,
+		ReviewCount:  int(reviewCount),
+		Lapses:       int(lapses),
+		NextReviewAt: nextReview.Time.UTC(),
+	}
+	if lastReview.Valid {
+		last := lastReview.Time.UTC()
+		out.LastReviewAt = &last
+	}
+	return out, true
+}
