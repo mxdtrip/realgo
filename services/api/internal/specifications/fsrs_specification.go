@@ -401,10 +401,18 @@ func FSRSReviewedAtClamped(t *testing.T, provider FSRSProvider) {
 	}
 }
 
-// FSRSConcurrentExtensionIngests фиксирует контракт: два параллельных
-// события «задача решена» от расширения с разными eventId для одной и той же
-// задачи не приводят к lost update. Сервер должен версионировать расписание
-// (review_count) и при конфликте перечитывать prior-state, давая в итоге review_count=2.
+// FSRSConcurrentExtensionIngests проверяет устойчивость к lost update при повторных
+// решениях задачи: параллельные события «задача решена» от расширения с разными eventId
+// для одной и той же задачи не должны затирать расписание и FSRS-состояние.
+//
+// Для обеспечения строгой детерминированности (по паттерну главы Sync из learn-go-with-tests)
+// все конкурентные горутины отправляют одинаковую оценку ("hard"). В FSRS v3 повторные оценки
+// "hard" строго монотонно уменьшают стабильность (c0: 3.17 -> c1: 2.66 -> c2: 2.24 -> c3: 1.88).
+// Любая перестановка порядка горутин даёт математически идентичный результат.
+//
+// Если произойдёт lost update (горутина посчитает решение от устаревшего c0 и перезапишет базу):
+//   - review_count окажется меньше 4, либо
+//   - stability окажется 2.66 (вместо 1.88), что вызовет гарантированное падение теста.
 func FSRSConcurrentExtensionIngests(t *testing.T, provider FSRSProvider, probe FSRSStateProbe) {
 	t.Helper()
 
@@ -415,48 +423,39 @@ func FSRSConcurrentExtensionIngests(t *testing.T, provider FSRSProvider, probe F
 	uid := user.UserID(t)
 	slug := uniqueSlug(t)
 
+	const goroutines = 3
+
+	// --- 1. Эталонный последовательный прогон (Sequential baseline) ---
 	seqSlug := slug + "-seq"
 	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", seqSlug, "normal")
-	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", seqSlug, "easy")
-	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", seqSlug, "normal")
-	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", seqSlug, "hard")
+	for i := 0; i < goroutines; i++ {
+		fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", seqSlug, "hard")
+	}
 
 	seqState, ok := probe.ProblemScheduleState(t, uid, seqSlug)
 	if !ok {
 		t.Fatalf("concurrent ingests: expected sequential schedule to exist for %q", seqSlug)
 	}
 
+	// --- 2. Конкурентный прогон (Concurrent test) ---
 	slug = uniqueSlug(t)
 	concSlug := slug + "-conc"
 
-	const goroutines = 3
-
 	start := make(chan struct{})
 
-	// Первичное решение: гарантирует, что расписание создано (review_count=1),
-	// и конкурентные запросы пойдут через AdvanceProblemReviewSchedule.
+	// Первичное решение создаёт расписание (review_count=1).
 	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "normal")
 
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
-	go func() {
-		defer wg.Done()
-		<-start
-		fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "easy")
-	}()
-
-	go func() {
-		defer wg.Done()
-		<-start
-		fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "normal")
-	}()
-
-	go func() {
-		defer wg.Done()
-		<-start
-		fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "hard")
-	}()
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			<-start
+			fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "hard")
+		}()
+	}
 
 	close(start)
 	wg.Wait()
@@ -465,13 +464,58 @@ func FSRSConcurrentExtensionIngests(t *testing.T, provider FSRSProvider, probe F
 	if !ok {
 		t.Fatalf("concurrent ingests: expected review_schedules row to exist for problem slug %q, but none found", concSlug)
 	}
+
+	// 1. Проверка счётчика: все параллельные решения сохранены.
 	if seqState.ReviewCount != concState.ReviewCount {
 		t.Fatalf("concurrent ingests: expected review_count=%d, got %d", seqState.ReviewCount, concState.ReviewCount)
 	}
-	// Если произошёл lost update, одно или несколько FSRS-обновлений были затёрты,
-	// и итоговая стабильность будет существенно ниже последовательной.
-	minExpectedStability := seqState.Stability * 0.75
-	if concState.Stability < minExpectedStability {
-		t.Fatalf("concurrent ingests: lost update detected! concurrent stability=%.2f is significantly lower than sequential stability=%.2f (min expected=%.2f)", concState.Stability, seqState.Stability, minExpectedStability)
+
+	// 2. Проверка FSRS: цепочка состояний вычислена корректно без перезаписи.
+	if math.Abs(seqState.Stability-concState.Stability) > 0.05 {
+		t.Fatalf("concurrent ingests: lost update detected! concurrent stability=%.2f differs from sequential stability=%.2f", concState.Stability, seqState.Stability)
+	}
+}
+
+// FSRSConcurrentExtensionInitialIngests проверяет гонку двух параллельных «первых решений»
+// одной и той же новой задачи: ни один из запросов не должен завершиться ошибкой, а
+// расписание должно создаться ровно один раз и сразу продвинуться вторым решением.
+//
+// Без защиты ON CONFLICT DO NOTHING + retry второй параллельный INSERT либо падал с ошибкой
+// уникальности, либо перезаписывал расписание решением без prior-state (review_count оставался 1).
+// При корректной работе review_count обязан стать равным 2.
+func FSRSConcurrentExtensionInitialIngests(t *testing.T, provider FSRSProvider, probe FSRSStateProbe) {
+	t.Helper()
+
+	base := uniqueEmail(t)
+	user := provider.Register(t, withTag(base, ".base"), "AcceptanceTest-2026!")
+
+	fu := provider.FSRSUser(user)
+	uid := user.UserID(t)
+	slug := uniqueSlug(t) + "-init-conc"
+
+	const goroutines = 2
+	start := make(chan struct{})
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			<-start
+			fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", slug, "normal")
+		}()
+	}
+
+	close(start)
+	wg.Wait()
+
+	state, ok := probe.ProblemScheduleState(t, uid, slug)
+	if !ok {
+		t.Fatalf("concurrent initial ingests: expected review_schedules row to exist for %q, but none found", slug)
+	}
+
+	if state.ReviewCount != 2 {
+		t.Fatalf("concurrent initial ingests: expected review_count=2, got %d (lost update on initial solve)", state.ReviewCount)
 	}
 }
