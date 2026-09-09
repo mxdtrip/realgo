@@ -65,6 +65,11 @@ type FSRSUser interface {
 	// RateCardAt оценивает карточку с явной меткой времени reviewedAt
 	// (POST /me/cards/{id}/rate). Используется спекой reviewed_at_clamped.
 	RateCardAt(t *testing.T, cardID int64, rating string, reviewedAt time.Time) time.Time
+
+	// TrySubmitExtensionSolved отправляет событие «задача решена» через расширение
+	// (POST /extension/events) и возвращает nextReviewAt либо ошибку, не вызывая t.Fatalf.
+	// Метод предназначен для безопасного выполнения внутри параллельных горутин в тестах конкурентности.
+	TrySubmitExtensionSolved(title, url, slug, rating string) (time.Time, error)
 }
 
 // FSRSState — snapshot FSRS-полей одной строки review_schedules. test-only
@@ -446,6 +451,7 @@ func FSRSConcurrentExtensionIngests(t *testing.T, provider FSRSProvider, probe F
 	// Первичное решение создаёт расписание (review_count=1).
 	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "normal")
 
+	errChan := make(chan error, goroutines)
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
@@ -453,13 +459,19 @@ func FSRSConcurrentExtensionIngests(t *testing.T, provider FSRSProvider, probe F
 		go func() {
 			defer wg.Done()
 			<-start
-			fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "hard")
+			_, err := fu.TrySubmitExtensionSolved("Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "hard")
+			if err != nil {
+				errChan <- err
+			}
 		}()
 	}
 
 	close(start)
 	wg.Wait()
-
+	close(errChan)
+	for err := range errChan {
+		t.Fatalf("concurrent ingests: goroutine failed: %v", err)
+	}
 	concState, ok := probe.ProblemScheduleState(t, uid, concSlug)
 	if !ok {
 		t.Fatalf("concurrent ingests: expected review_schedules row to exist for problem slug %q, but none found", concSlug)
@@ -496,6 +508,7 @@ func FSRSConcurrentExtensionInitialIngests(t *testing.T, provider FSRSProvider, 
 	const goroutines = 2
 	start := make(chan struct{})
 
+	errChan := make(chan error, goroutines)
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
 
@@ -503,12 +516,19 @@ func FSRSConcurrentExtensionInitialIngests(t *testing.T, provider FSRSProvider, 
 		go func() {
 			defer wg.Done()
 			<-start
-			fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", slug, "normal")
+			_, err := fu.TrySubmitExtensionSolved("Two Sum", "https://leetcode.com/problems/two-sum/", slug, "normal")
+			if err != nil {
+				errChan <- err
+			}
 		}()
 	}
 
 	close(start)
 	wg.Wait()
+	close(errChan)
+	for err := range errChan {
+		t.Fatalf("concurrent initial ingests: goroutine failed: %v", err)
+	}
 
 	state, ok := probe.ProblemScheduleState(t, uid, slug)
 	if !ok {
