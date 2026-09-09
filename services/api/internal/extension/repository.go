@@ -223,11 +223,15 @@ const maxScheduleAttempts = 3
 // или гонке DO NOTHING при выполнении одного шага создания/обновления расписания.
 var errScheduleConflict = errors.New("extension: schedule conflict on step")
 
-// retrySchedule реализует политику повторов: выполняет операцию op до maxAttempts раз,
-// повторяя попытку при получении errScheduleConflict. При исчерпании лимита возвращает
-// ErrReviewConflict. При любой другой ошибке завершается немедленно без ретрая.
-func retrySchedule(maxAttempts int, op func() (int64, time.Time, error)) (int64, time.Time, error) {
+// retrySchedule реализует политику повторов с учётом контекста: перед каждой попыткой
+// проверяет ctx.Err(). Выполняет операцию op до maxAttempts раз, повторяя попытку
+// при получении errScheduleConflict. При исчерпании лимита возвращает ErrReviewConflict.
+// При отмене контекста или любой другой ошибке завершается немедленно без ретрая.
+func retrySchedule(ctx context.Context, maxAttempts int, op func() (int64, time.Time, error)) (int64, time.Time, error) {
 	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if ctx.Err() != nil {
+			return 0, time.Time{}, ctx.Err()
+		}
 		id, next, err := op()
 		if errors.Is(err, errScheduleConflict) {
 			continue
@@ -299,7 +303,7 @@ func (r *pgRepository) executeScheduleStep(ctx context.Context, q *db.Queries, i
 // существующее с помощью планировщика FSRS. Координация повторов при конфликтах
 // версий и гонках DO NOTHING делегирована функции retrySchedule.
 func (r *pgRepository) upsertSchedule(ctx context.Context, q *db.Queries, in IngestInput, problemID int64) (int64, time.Time, error) {
-	return retrySchedule(maxScheduleAttempts, func() (int64, time.Time, error) {
+	return retrySchedule(ctx, maxScheduleAttempts, func() (int64, time.Time, error) {
 		return r.executeScheduleStep(ctx, q, in, problemID)
 	})
 }
