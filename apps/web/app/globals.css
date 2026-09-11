@@ -11069,13 +11069,8 @@ a.roadmap-step__practice-card:hover {
   --memory-journey-gap: clamp(48px, 7vw, 104px);
   --memory-copy-bleed: clamp(48px, 7vw, 96px);
   --memory-copy-ribbon-progress: 0;
-  --memory-agent-header-y: 0px;
-  --memory-agent-task-x: 0px;
-  --memory-agent-messages-x: 0px;
-  --memory-agent-actions-y: 0px;
-  --memory-rating-header-y: -62px;
-  --memory-rating-task-x: 430px;
-  --memory-rating-body-y: 390px;
+  --memory-agent-layer-x: 0%;
+  --memory-rating-layer-x: 100%;
   min-height: 205svh;
   padding-block: 0;
 }
@@ -11391,7 +11386,10 @@ a.roadmap-step__practice-card:hover {
 .memory-ext-demo .realgo-popup {
   overflow: hidden;
   border-color: rgba(88, 166, 255, 0.2);
-  background: var(--surface-extension);
+  /* `MemoryExtensionDemo` scopes its own variables and does not define
+     --surface-extension. A literal surface keeps the window opaque throughout
+     the two-layer scroll transition instead of resolving to transparent. */
+  background: #080d15;
 }
 
 .memory-ext-demo .realgo-popup::before,
@@ -11721,20 +11719,24 @@ a.roadmap-step__practice-card:hover {
 }
 
 #memory .landing-cta {
-  width: 100%;
-  justify-items: center;
+  width: auto;
+  justify-items: start;
+  text-align: left;
 }
 
 #memory .landing-cta__button {
-  justify-self: center;
-  margin-inline: auto;
+  justify-self: start;
+  margin: 0;
+  white-space: nowrap;
+  text-wrap: nowrap;
 }
 
-@media (min-width: 641px) {
-  #memory .landing-cta__button {
-    position: relative;
-    left: -30px;
-  }
+#memory .landing-cta__icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  stroke: currentColor;
+  stroke-width: 1.8;
 }
 
 #reviews .landing-cta__button {

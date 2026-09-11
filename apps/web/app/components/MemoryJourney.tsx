@@ -22,6 +22,15 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+// Give visitors a complete first state before the scroll-driven hand-off
+// begins. Without this dead zone, a one-pixel scroll starts pulling the window
+// apart as soon as section 01 becomes sticky.
+function sceneProgress(rawProgress: number) {
+  const start = 0.18;
+  const end = 0.82;
+  return clamp((rawProgress - start) / (end - start), 0, 1);
+}
+
 function renderGradientPhrase(value: string, phrase: string) {
   const text = keepShortWords(value);
   const target = keepShortWords(phrase);
@@ -76,22 +85,17 @@ export function MemoryJourney({ section }: { section: MemorySectionCopy }) {
     };
 
     const applyScene = (rawProgress: number) => {
-      const progress = clamp(rawProgress, 0, 1);
+      const progress = sceneProgress(rawProgress);
       const agentExit = progress;
       const ratingEnter = progress;
 
       // The copy is one vertical ribbon: the first state leaves through the
-      // top while the second state enters from below. Keep this tied directly
-      // to the scene's scroll progress so the extension window and the copy
-      // arrive at their final positions together.
+      // top while the second state enters from below. The extension changes as
+      // two complete, opaque screens so the transition never exposes an empty
+      // or translucent browser window.
       root.style.setProperty("--memory-copy-ribbon-progress", `${progress}`);
-      root.style.setProperty("--memory-agent-header-y", `${-62 * agentExit}px`);
-      root.style.setProperty("--memory-agent-task-x", `${-430 * agentExit}px`);
-      root.style.setProperty("--memory-agent-messages-x", `${430 * agentExit}px`);
-      root.style.setProperty("--memory-agent-actions-y", `${88 * agentExit}px`);
-      root.style.setProperty("--memory-rating-header-y", `${-62 * (1 - ratingEnter)}px`);
-      root.style.setProperty("--memory-rating-task-x", `${430 * (1 - ratingEnter)}px`);
-      root.style.setProperty("--memory-rating-body-y", `${390 * (1 - ratingEnter)}px`);
+      root.style.setProperty("--memory-agent-layer-x", `${-100 * agentExit}%`);
+      root.style.setProperty("--memory-rating-layer-x", `${100 * (1 - ratingEnter)}%`);
       setMode(progress >= 0.5 ? "rating" : "agent");
     };
 

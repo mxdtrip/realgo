@@ -13,53 +13,28 @@ export const MEMORY_AGENT_DEMO_CSS = `
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  background: var(--bg);
   opacity: 1;
   transition: none;
 }
-.realgo-popup .memory-demo-layer--agent { z-index: 2; }
-.realgo-popup .memory-demo-layer--rating { z-index: 1; }
+.realgo-popup--journey .memory-demo-layer--agent {
+  z-index: 2;
+  transform: translate3d(var(--memory-agent-layer-x, 0%), 0, 0);
+}
+.realgo-popup--journey .memory-demo-layer--rating {
+  z-index: 1;
+  transform: translate3d(var(--memory-rating-layer-x, 100%), 0, 0);
+}
 .realgo-popup .memory-demo-layer[data-active="false"] { pointer-events: none; }
 .realgo-popup .memory-demo-layer[data-active="true"] { pointer-events: auto; }
 
-/* The shell stays put while its real UI regions leave and enter independently.
-   No opacity is involved: the fixed popup overflow clips each flying element. */
+/* The shell stays put while complete application screens trade places. */
 .realgo-popup--journey .memory-demo-layer .realgo-task,
 .realgo-popup--journey .memory-demo-layer .realgo-body,
 .realgo-popup--journey .memory-demo-layer .realgo-state {
   animation: none;
 }
-.realgo-popup--journey .memory-demo-layer--agent .realgo-agent-header {
-  transform: translate3d(0, var(--memory-agent-header-y, 0px), 0);
-}
-.realgo-popup--journey .memory-demo-layer--agent .realgo-agent-task {
-  transform: translate3d(var(--memory-agent-task-x, 0px), 0, 0);
-}
-.realgo-popup--journey .memory-demo-layer--agent .realgo-agent-messages,
-.realgo-popup--journey .memory-demo-layer--agent .realgo-agent-demo-collapsed {
-  transform: translate3d(var(--memory-agent-messages-x, 0px), 0, 0);
-}
-.realgo-popup--journey .memory-demo-layer--agent .realgo-agent-actions-wrap {
-  transform: translate3d(0, var(--memory-agent-actions-y, 0px), 0);
-}
-.realgo-popup--journey .memory-demo-layer--rating .realgo-header {
-  transform: translate3d(0, var(--memory-rating-header-y, -62px), 0);
-}
-.realgo-popup--journey .memory-demo-layer--rating .realgo-task {
-  transform: translate3d(var(--memory-rating-task-x, 430px), 0, 0);
-}
-.realgo-popup--journey .memory-demo-layer--rating .realgo-body,
-.realgo-popup--journey .memory-demo-layer--rating .realgo-state {
-  transform: translate3d(0, var(--memory-rating-body-y, 390px), 0);
-}
-.realgo-popup--journey .realgo-agent-header,
-.realgo-popup--journey .realgo-agent-task,
-.realgo-popup--journey .realgo-agent-messages,
-.realgo-popup--journey .realgo-agent-actions-wrap,
-.realgo-popup--journey .realgo-agent-demo-collapsed,
-.realgo-popup--journey .memory-demo-layer--rating .realgo-header,
-.realgo-popup--journey .memory-demo-layer--rating .realgo-task,
-.realgo-popup--journey .memory-demo-layer--rating .realgo-body,
-.realgo-popup--journey .memory-demo-layer--rating .realgo-state {
+.realgo-popup--journey .memory-demo-layer {
   will-change: transform;
 }
 
