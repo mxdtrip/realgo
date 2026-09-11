@@ -2821,6 +2821,16 @@ a.cabinet-panel__meta:hover {
   color: var(--text-faint);
 }
 
+@media (min-width: 1361px) {
+  .heatmap-layout {
+    grid-template-columns: auto minmax(164px, 1fr) 460px;
+  }
+
+  .heatmap-stats span {
+    white-space: nowrap;
+  }
+}
+
 /* ---------- next-up launcher (dashboard activity panel) ---------- */
 
 .next-up {
@@ -2879,6 +2889,7 @@ a.cabinet-panel__meta:hover {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  gap: 7px;
   padding: 14px 16px 12px;
 }
 
