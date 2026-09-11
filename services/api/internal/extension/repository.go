@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"math"
 	"time"
 
@@ -80,140 +79,66 @@ func (r *pgRepository) PlatformIDByCode(ctx context.Context, code string) (int64
 	return platform.ID, nil
 }
 
-// Ingest runs the whole save as one transaction: upsert the catalog problem,
-// record the event idempotently, and (for a solved event that is not a replay)
-// update progress and create/advance the review schedule.
+// Ingest выполняет сохранение события расширения в рамках единой транзакции:
+// 1. Идемпотентно регистрирует задачу и факт события (recordProblemAndEvent).
+// 2. Для дубликатов определяет статус через resolveDuplicateSchedule:
+//   - при найденном расписании возвращает статус без повторного продвижения;
+//   - при отсутствии расписания (self-heal) восстанавливает состояние решённой задачи.
+//
+// 3. Для новых решённых событий обновляет прогресс и расписание (saveSolvedState).
+// 4. Фиксирует транзакцию в единственной точке коммита.
 func (r *pgRepository) Ingest(ctx context.Context, in IngestInput) (out IngestOutput, err error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return IngestOutput{}, fmt.Errorf("extension: begin tx: %w", err)
 	}
-	committed := false
 	defer func() {
-		if committed {
-			return
-		}
-		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil && !errors.Is(rollbackErr, pgx.ErrTxClosed) {
 			err = errors.Join(err, fmt.Errorf("extension: rollback tx: %w", rollbackErr))
 		}
 	}()
 
 	q := r.q.WithTx(tx)
 
-	problemID, err := q.UpsertExtensionProblem(ctx, db.UpsertExtensionProblemParams{
-		PlatformID:      in.PlatformID,
-		ExternalSlug:    in.Slug,
-		Title:           in.Title,
-		Url:             in.URL,
-		Difficulty:      optText(in.Difficulty),
-		CreatedByUserID: toInt8(in.UserID),
-	})
-	if err != nil {
-		return IngestOutput{}, fmt.Errorf("extension: upsert problem: %w", err)
-	}
-	out = IngestOutput{ProblemID: problemID}
-
-	_, err = q.InsertExtensionEvent(ctx, db.InsertExtensionEventParams{
-		UserID:           toInt8(in.UserID),
-		PlatformID:       in.PlatformID,
-		Url:              in.URL,
-		ExternalSlug:     optText(in.Slug),
-		Title:            optText(in.Title),
-		EventType:        in.EventType,
-		Rating:           optText(in.Rating),
-		ExtensionVersion: optText(in.ExtensionVersion),
-		EventTime:        toTimestamptz(in.EventTime),
-		IdempotencyKey:   optText(in.IdempotencyKey),
-		RawPayload:       in.RawPayload,
-	})
-	duplicate := errors.Is(err, pgx.ErrNoRows)
-	if err != nil && !duplicate {
-		return IngestOutput{}, fmt.Errorf("extension: insert event: %w", err)
-	}
-
-	// A replayed event must not advance the schedule; return current state.
-	if duplicate {
-		out.Duplicate = true
-		sched, e := q.GetProblemReviewSchedule(ctx, db.GetProblemReviewScheduleParams{
-			UserID: in.UserID, ProblemID: toInt8(problemID),
-		})
-		switch {
-		case e == nil:
-			// Healthy duplicate: the schedule exists. Return current state
-			// read-only — a replay must never advance the schedule or bump the
-			// review counters.
-			out.Status = "reviewing"
-			out.ReviewID = sched.ID
-			out.NextReviewAt = timePtr(sched.NextReviewAt)
-		case errors.Is(e, pgx.ErrNoRows):
-			// Self-heal (issue #144): the event was recorded earlier but its
-			// review_schedules row is missing — legacy partial state left by an
-			// older ingest path. Re-running the solved-restore brings the
-			// problem back into the review queue instead of returning an empty
-			// status and a null nextReviewAt. upsertSchedule re-queries and,
-			// still finding no row within this transaction, takes its create
-			// branch (Next + CreateProblemReviewSchedule) — it creates, never
-			// advances an existing schedule.
-			if in.Solved {
-				if perr := q.UpsertSolvedProgress(ctx, db.UpsertSolvedProgressParams{
-					UserID:      in.UserID,
-					ProblemID:   problemID,
-					Rating:      optText(in.Rating),
-					FirstSeenAt: toTimestamptz(in.EventTime),
-				}); perr != nil {
-					return IngestOutput{}, fmt.Errorf("extension: heal progress: %w", perr)
-				}
-				reviewID, nextReviewAt, serr := r.upsertSchedule(ctx, q, in, problemID)
-				if serr != nil {
-					return IngestOutput{}, serr
-				}
-				out.Status = "reviewing"
-				out.ReviewID = reviewID
-				out.NextReviewAt = &nextReviewAt
-			} else {
-				out.Status = "saved"
-			}
-		default:
-			slog.Error("extension: lookup review schedule failed", slog.String("layer", "repo"), slog.String("module", "extension"), slog.Any("err", e), slog.Int64("user_id", in.UserID), slog.Int64("problem_id", problemID))
-		}
-		if err := tx.Commit(ctx); err != nil {
-			return IngestOutput{}, fmt.Errorf("extension: commit tx: %w", err)
-		}
-		committed = true
-		return out, nil
-	}
-
-	// Non-solved events are recorded without touching progress/schedule.
-	if !in.Solved {
-		out.Status = "saved"
-		if err := tx.Commit(ctx); err != nil {
-			return IngestOutput{}, fmt.Errorf("extension: commit tx: %w", err)
-		}
-		committed = true
-		return out, nil
-	}
-
-	if err := q.UpsertSolvedProgress(ctx, db.UpsertSolvedProgressParams{
-		UserID:      in.UserID,
-		ProblemID:   problemID,
-		Rating:      optText(in.Rating),
-		FirstSeenAt: toTimestamptz(in.EventTime),
-	}); err != nil {
-		return IngestOutput{}, fmt.Errorf("extension: upsert progress: %w", err)
-	}
-
-	reviewID, nextReviewAt, err := r.upsertSchedule(ctx, q, in, problemID)
+	problemID, duplicate, err := r.recordProblemAndEvent(ctx, q, in)
 	if err != nil {
 		return IngestOutput{}, err
 	}
-	out.Status = "reviewing"
-	out.ReviewID = reviewID
-	out.NextReviewAt = &nextReviewAt
+	out = IngestOutput{ProblemID: problemID, Duplicate: duplicate}
+
+	needsSaveSolved := in.Solved && !duplicate
+	if duplicate {
+		sched, e := q.GetProblemReviewSchedule(ctx, db.GetProblemReviewScheduleParams{
+			UserID: in.UserID, ProblemID: toInt8(problemID),
+		})
+		res, rerr := resolveDuplicateSchedule(sched, e, in.Solved)
+		if rerr != nil {
+			return IngestOutput{}, rerr
+		}
+		if res.needsHealing {
+			needsSaveSolved = true
+		} else {
+			out.Status = res.status
+			out.ReviewID = res.reviewID
+			out.NextReviewAt = res.nextReviewAt
+		}
+	}
+
+	if needsSaveSolved {
+		reviewID, nextReviewAt, serr := r.saveSolvedState(ctx, q, in, problemID)
+		if serr != nil {
+			return IngestOutput{}, serr
+		}
+		out.Status = "reviewing"
+		out.ReviewID = reviewID
+		out.NextReviewAt = &nextReviewAt
+	} else if !duplicate {
+		out.Status = "saved"
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return IngestOutput{}, fmt.Errorf("extension: commit tx: %w", err)
 	}
-	committed = true
 	return out, nil
 }
 
@@ -297,6 +222,57 @@ func (r *pgRepository) executeScheduleStep(ctx context.Context, q *db.Queries, i
 	default:
 		return r.advanceExistingSchedule(ctx, q, in, existing)
 	}
+}
+
+// recordProblemAndEvent регистрирует задачу в каталоге и сохраняет входящее событие расширения.
+// Возвращает ID задачи, признак дубликата (если событие с данным idempotency_key уже зафиксировано)
+// и ошибку при сбое записи в БД.
+func (r *pgRepository) recordProblemAndEvent(ctx context.Context, q *db.Queries, in IngestInput) (int64, bool, error) {
+	problemID, err := q.UpsertExtensionProblem(ctx, db.UpsertExtensionProblemParams{
+		PlatformID:      in.PlatformID,
+		ExternalSlug:    in.Slug,
+		Title:           in.Title,
+		Url:             in.URL,
+		Difficulty:      optText(in.Difficulty),
+		CreatedByUserID: toInt8(in.UserID),
+	})
+	if err != nil {
+		return 0, false, fmt.Errorf("extension: upsert problem: %w", err)
+	}
+
+	_, err = q.InsertExtensionEvent(ctx, db.InsertExtensionEventParams{
+		UserID:           toInt8(in.UserID),
+		PlatformID:       in.PlatformID,
+		Url:              in.URL,
+		ExternalSlug:     optText(in.Slug),
+		Title:            optText(in.Title),
+		EventType:        in.EventType,
+		Rating:           optText(in.Rating),
+		ExtensionVersion: optText(in.ExtensionVersion),
+		EventTime:        toTimestamptz(in.EventTime),
+		IdempotencyKey:   optText(in.IdempotencyKey),
+		RawPayload:       in.RawPayload,
+	})
+	duplicate := errors.Is(err, pgx.ErrNoRows)
+	if err != nil && !duplicate {
+		return 0, false, fmt.Errorf("extension: insert event: %w", err)
+	}
+	return problemID, duplicate, nil
+}
+
+// saveSolvedState сохраняет прогресс решения задачи и рассчитывает/обновляет FSRS-расписание.
+// Метод переиспользуется как при штатном решении задачи, так и в ветке self-healing.
+func (r *pgRepository) saveSolvedState(ctx context.Context, q *db.Queries, in IngestInput, problemID int64) (int64, time.Time, error) {
+	err := q.UpsertSolvedProgress(ctx, db.UpsertSolvedProgressParams{
+		UserID:      in.UserID,
+		ProblemID:   problemID,
+		Rating:      optText(in.Rating),
+		FirstSeenAt: toTimestamptz(in.EventTime),
+	})
+	if err != nil {
+		return 0, time.Time{}, fmt.Errorf("extension: upsert progress: %w", err)
+	}
+	return r.upsertSchedule(ctx, q, in, problemID)
 }
 
 // upsertSchedule создаёт расписание задачи при первом решении либо продвигает
@@ -433,7 +409,7 @@ func resolveDuplicateSchedule(sched db.GetProblemReviewScheduleRow, err error, s
 			nextReviewAt: timePtr(sched.NextReviewAt),
 		}, nil
 	case errors.Is(err, pgx.ErrNoRows):
-		if solved == true {
+		if solved {
 			return duplicateResolution{
 				needsHealing: true,
 			}, nil
