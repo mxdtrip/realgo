@@ -1701,11 +1701,41 @@ h3 {
   flex-wrap: wrap;
 }
 
-/* ============================================================
-   PERSONAL CABINET — terminal-grade product shell
-   Плотный, инструментальный кабинет: компактная типографика,
-   mono-лейблы, живые статусы. Палитра и шрифты — как на лендинге.
-   ============================================================ */
+/* The lower-page actions preserve the staging CTA treatment without touching
+   the production hero action above section 01. */
+.hybrid-lower .landing-cta__button,
+.hybrid-lower .price-cta,
+.hybrid-lower #pricing .price-card > .price-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 22px;
+  background: var(--landing-action-gradient);
+  color: #ffffff;
+  font-family: var(--font-stack-sans);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: none;
+}
+
+.hybrid-lower .landing-cta__button:hover,
+.hybrid-lower .price-cta:hover,
+.hybrid-lower #pricing .price-card:hover > .price-cta,
+.hybrid-lower #pricing .price-card:focus-within > .price-cta {
+  background: var(--landing-action-gradient);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.hybrid-lower #pricing .price-card > .price-cta {
+  width: 100%;
+  white-space: nowrap;
+}
 
 :root {
   /* cabinet-only semantic tones (Primer scale) */
@@ -10895,4 +10925,1861 @@ a.roadmap-step__practice-card:hover {
     transform: none;
     transition: none;
   }
+}
+
+/* Hybrid landing lower sections: production keeps its hero; section 01 and
+   below deliberately use the verified staging design. */
+@font-face {
+  font-family: "Winston";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://fonts.cdnfonts.com/s/87564/WinstonRegular.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Winston";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("https://fonts.cdnfonts.com/s/87564/WinstonMedium.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Winston";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("https://fonts.cdnfonts.com/s/87564/WinstonSemiBold.woff") format("woff");
+}
+
+@font-face {
+  font-family: "Winston";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("https://fonts.cdnfonts.com/s/87564/WinstonExtraBold.woff") format("woff");
+}
+
+.hybrid-lower {
+  --landing-action-gradient: linear-gradient(90deg, rgba(47, 129, 247, 0.9) 0%, rgba(33, 82, 205, 0.9) 100%);
+  --font-sans: "Winston", Arial, sans-serif;
+  --font-stack-sans: "Winston", Arial, sans-serif;
+  --font-stack-display: "Winston", Arial, sans-serif;
+  --font-stack-italic: "Winston", Arial, sans-serif;
+  --font-stack-mono: "Winston", Arial, sans-serif;
+  font-family: var(--font-stack-sans);
+}
+
+.hybrid-lower .landing-section {
+  counter-increment: section;
+  position: relative;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: clamp(72px, 11vw, 140px) var(--pad);
+}
+
+.landing-proof {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: calc(var(--maxw) - var(--pad) * 2);
+  margin: calc(clamp(26px, 5vw, 58px) - 260px) auto 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(22, 27, 34, 0.74);
+  box-shadow: 0 28px 70px -48px rgba(1, 4, 9, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.landing-proof > div {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 23px 18px;
+  text-align: center;
+}
+
+.landing-proof > div + div {
+  border-left: 1px solid var(--border);
+}
+
+.landing-proof strong {
+  color: var(--accent-bright);
+  font-family: var(--font-stack-mono);
+  font-size: clamp(22px, 2.4vw, 31px);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.landing-proof span {
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.landing-gradient-text {
+  background: var(--landing-action-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 34px;
+}
+
+.section-kicker::before {
+  content: counter(section, decimal-leading-zero);
+  color: var(--text-faint);
+}
+
+.section-kicker::after {
+  content: "";
+  width: 46px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent-line), transparent);
+}
+
+.section-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(36px, 6vw, 84px);
+  align-items: center;
+}
+
+.section-grid.reverse .section-copy {
+  order: 2;
+}
+
+/* Section 01 is a scroll-driven two-stage story. The extension window stays
+   fixed on the right; the left copy ribbon moves through one clipped viewport
+   while the popup content keeps its internal animation. */
+.memory-journey {
+  --memory-journey-gap: clamp(48px, 7vw, 104px);
+  --memory-copy-bleed: clamp(48px, 7vw, 96px);
+  --memory-copy-ribbon-progress: 0;
+  --memory-agent-header-y: 0px;
+  --memory-agent-task-x: 0px;
+  --memory-agent-messages-x: 0px;
+  --memory-agent-actions-y: 0px;
+  --memory-rating-header-y: -62px;
+  --memory-rating-task-x: 430px;
+  --memory-rating-body-y: 390px;
+  min-height: 205svh;
+  padding-block: 0;
+}
+
+.memory-journey__sticky {
+  position: sticky;
+  top: 0;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.memory-journey__viewport {
+  position: relative;
+  width: 100%;
+  margin-left: 0;
+  overflow: visible;
+}
+
+.memory-journey__viewport::before,
+.memory-journey__viewport::after {
+  display: none;
+}
+
+.memory-journey__track {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(400px, 1fr);
+  column-gap: var(--memory-journey-gap);
+  align-items: center;
+}
+
+.memory-journey__copy-stack {
+  min-width: 0;
+  height: clamp(360px, 42vw, 440px);
+  margin-right: calc(var(--memory-copy-bleed) * -1);
+  padding-right: var(--memory-copy-bleed);
+  overflow: hidden;
+}
+
+.memory-journey__copy-ribbon {
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  height: 200%;
+  transform: translate3d(0, calc(var(--memory-copy-ribbon-progress) * -50%), 0);
+  will-change: transform;
+}
+
+.memory-journey__copy {
+  min-width: 0;
+  max-width: 520px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.memory-journey__copy[data-active="true"] {
+  pointer-events: auto;
+}
+
+.memory-journey__demo {
+  min-width: 0;
+}
+
+.section-copy h2 {
+  font-family: var(--font-stack-display);
+  font-size: clamp(26px, 3.4vw, 40px);
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-wrap: balance;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+/* Keep section 01's opening statement as a deliberate three-line lockup even
+   with the editorial display font's different glyph widths. */
+.memory-journey__copy--agent h2 {
+  max-width: 410px;
+}
+
+.section-copy h2,
+.roadmap-row strong,
+.review-flip__face h3,
+.faq-question span {
+  word-spacing: normal;
+}
+
+.memory-journey__copy--rating h2 {
+  white-space: pre;
+}
+
+.section-copy p {
+  margin: 20px 0 0;
+  color: var(--text-dim);
+  font-size: 16px;
+  max-width: 46ch;
+  text-wrap: pretty;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+.section-copy.wide {
+  max-width: 720px;
+  margin-bottom: 48px;
+}
+
+.landing-cta {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  margin-top: 28px;
+  text-align: center;
+}
+
+.landing-cta--center {
+  justify-items: center;
+  margin-top: clamp(32px, 5vw, 52px);
+  text-align: center;
+}
+
+/* Текст лендинга не должен разрываться внутри слов. Заголовки балансируем
+   между строками без дефисов, а длинные русские абзацы переносим по правилам
+   языка. Технические названия и CTA оставляем цельными. */
+.landing-section h3,
+.hero-title,
+.review-flip__face h3,
+.faq-question span {
+  text-wrap: balance;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+.landing-proof span,
+.review-flip__face p,
+.faq-answer p,
+.price-features li {
+  text-wrap: pretty;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+.hero-cta a,
+.landing-cta__button,
+.price-cta {
+  white-space: normal;
+  text-wrap: balance;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+/* ============================================================
+   PRODUCT DEMOS (terminal windows)
+   ============================================================ */
+
+@property --roadmap-glow-x {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 82%;
+}
+
+@property --roadmap-glow-y {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 14%;
+}
+
+@property --demo-gradient-shift-x {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --demo-gradient-shift-y {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --demo-gradient-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 128deg;
+}
+
+.product-demo {
+  position: relative;
+  isolation: isolate;
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 32px 74px -42px rgba(1, 4, 9, 0.96);
+  overflow: hidden;
+}
+
+.roadmap-demo,
+.memory-ext-demo .realgo-popup {
+  --roadmap-glow-x: 82%;
+  --roadmap-glow-y: 14%;
+  --demo-gradient-shift-x: 0px;
+  --demo-gradient-shift-y: 0px;
+  --demo-gradient-angle: 128deg;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  position: relative;
+  isolation: isolate;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(118deg, transparent 18%, rgba(47, 129, 247, 0.028) 38%, rgba(88, 166, 255, 0.07) 54%, rgba(105, 77, 164, 0.055) 68%, transparent 88%) padding-box,
+    radial-gradient(86% 112% at 108% -12%, rgba(47, 129, 247, 0.15), transparent 60%) padding-box,
+    radial-gradient(78% 98% at -14% 112%, rgba(92, 67, 151, 0.1), transparent 64%) padding-box,
+    linear-gradient(145deg, rgba(7, 11, 18, 0.99), rgba(15, 21, 31, 0.98) 52%, rgba(8, 12, 19, 0.99)) padding-box,
+    linear-gradient(125deg, rgba(88, 166, 255, 0.38), rgba(88, 166, 255, 0.09) 38%, rgba(119, 91, 179, 0.18) 72%, rgba(88, 166, 255, 0.28)) border-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.065),
+    inset 0 -1px 0 rgba(88, 166, 255, 0.055),
+    0 30px 68px -40px rgba(47, 129, 247, 0.2),
+    0 24px 62px -38px rgba(1, 4, 9, 0.98);
+  transition:
+    --roadmap-glow-x 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    --roadmap-glow-y 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    --demo-gradient-shift-x 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+    --demo-gradient-shift-y 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+    --demo-gradient-angle 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.35s ease;
+}
+
+.roadmap-demo::before,
+.memory-ext-demo .realgo-popup::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      var(--demo-gradient-angle),
+      transparent 27%,
+      rgba(47, 129, 247, 0.04) 37%,
+      rgba(88, 166, 255, 0.14) 49%,
+      rgba(113, 82, 174, 0.1) 58%,
+      transparent 72%
+    ),
+    linear-gradient(
+      calc(var(--demo-gradient-angle) + 74deg),
+      transparent 42%,
+      rgba(47, 129, 247, 0.06) 51%,
+      rgba(88, 166, 255, 0.035) 57%,
+      transparent 66%
+    );
+  opacity: 0.66;
+  mix-blend-mode: screen;
+  filter: blur(17px) saturate(118%);
+  transform: translate3d(var(--demo-gradient-shift-x), var(--demo-gradient-shift-y), 0) scale(1.18);
+  transform-origin: center;
+  transition: opacity 0.3s ease;
+}
+
+.roadmap-demo::after,
+.memory-ext-demo .realgo-popup::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(88, 166, 255, 0.026) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(88, 166, 255, 0.022) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.42;
+  mask-image: linear-gradient(145deg, rgba(0, 0, 0, 0.78), transparent 78%);
+  -webkit-mask-image: linear-gradient(145deg, rgba(0, 0, 0, 0.78), transparent 78%);
+}
+
+.roadmap-demo > *,
+.memory-ext-demo .realgo-popup > :not(style) {
+  position: relative;
+  z-index: 1;
+}
+
+.roadmap-demo:hover,
+.memory-ext-demo .realgo-popup:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.085),
+    inset 0 -1px 0 rgba(88, 166, 255, 0.08),
+    0 34px 78px -40px rgba(47, 129, 247, 0.28),
+    0 26px 66px -38px rgba(1, 4, 9, 1);
+}
+
+.roadmap-demo:hover::before,
+.memory-ext-demo .realgo-popup:hover::before {
+  opacity: 1;
+}
+
+/* Memory section — live extension-popup demo (MemoryExtensionDemo).
+   The popup is a fixed 400x372 card; center it in the grid cell and scale it
+   down on narrow columns so it never overflows the viewport. */
+.memory-ext-demo {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.memory-ext-demo .realgo-popup {
+  overflow: hidden;
+  border-color: rgba(88, 166, 255, 0.2);
+  background: var(--surface-extension);
+}
+
+.memory-ext-demo .realgo-popup::before,
+.memory-ext-demo .realgo-popup::after {
+  display: none;
+}
+
+.memory-ext-demo .realgo-popup > .memory-demo-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.memory-ext-demo .realgo-popup > .memory-demo-layer--agent {
+  z-index: 2;
+}
+
+.memory-ext-demo .realgo-popup > .memory-demo-layer--rating {
+  z-index: 1;
+}
+
+.memory-ext-demo .realgo-popup .realgo-header {
+  border-color: rgba(88, 166, 255, 0.12);
+  background: rgba(3, 7, 13, 0.62);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.memory-ext-demo .realgo-popup .realgo-task {
+  border-color: rgba(88, 166, 255, 0.11);
+  background: linear-gradient(180deg, rgba(8, 13, 21, 0.62), rgba(4, 8, 14, 0.42));
+}
+
+.memory-ext-demo .realgo-popup .realgo-choices {
+  border-color: rgba(88, 166, 255, 0.17);
+  background: rgba(11, 17, 26, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 12px 30px -26px rgba(47, 129, 247, 0.7);
+}
+
+@media (max-width: 920px) {
+  .memory-journey {
+    min-height: auto;
+    padding-block: clamp(72px, 11vw, 140px);
+  }
+
+  .memory-journey__sticky {
+    position: static;
+    min-height: 0;
+  }
+
+  .memory-journey__viewport {
+    width: 100%;
+    margin-left: 0;
+    overflow: visible;
+  }
+
+  .memory-journey__viewport::before,
+  .memory-journey__viewport::after {
+    display: none;
+  }
+
+  .memory-journey__track {
+    width: 100%;
+    margin-inline: 0;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: clamp(42px, 8vw, 68px);
+  }
+
+  .memory-journey__copy-stack {
+    min-height: 0;
+    height: auto;
+    margin-right: 0;
+    padding-right: 0;
+    overflow: visible;
+    display: grid;
+    gap: clamp(42px, 8vw, 68px);
+  }
+
+  .memory-journey__copy-ribbon {
+    height: auto;
+    display: grid;
+    gap: clamp(42px, 8vw, 68px);
+    transform: none;
+    will-change: auto;
+  }
+
+  .memory-journey__copy,
+  .memory-journey__copy--agent,
+  .memory-journey__copy--rating {
+    opacity: 1;
+    filter: none;
+    pointer-events: auto;
+    will-change: auto;
+  }
+
+  .memory-journey__copy h2,
+  .memory-journey__copy p,
+  .memory-journey__copy .landing-cta {
+    transform: none;
+    will-change: auto;
+  }
+
+  .memory-journey__copy--rating h2 {
+    white-space: pre-line;
+  }
+}
+
+@media (max-width: 520px) {
+  .memory-ext-demo {
+    transform: scale(0.82);
+    transform-origin: top center;
+    margin-bottom: -67px; /* reclaim the height freed by the down-scale */
+  }
+}
+
+.demo-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.demo-toolbar strong {
+  color: var(--accent-bright);
+  font-weight: 500;
+}
+
+.rating-row {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rating-row button {
+  flex: 1;
+  font-size: 12px;
+  padding: 9px;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-dim);
+  transition: all 0.16s ease;
+}
+
+.rating-row button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.rating-row button:last-child {
+  color: var(--success-fg);
+  background: rgba(46, 160, 67, 0.18);
+}
+
+.task-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.task-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.9fr 0.9fr;
+  gap: 10px;
+  align-items: center;
+  padding: 14px 16px;
+  font-size: 11.5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.task-row:last-child {
+  border-bottom: 0;
+}
+
+.task-row strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.task-row span {
+  color: var(--text-faint);
+}
+
+.task-row em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.roadmap-row {
+  position: relative;
+  z-index: 1;
+  padding: 18px;
+  border-bottom: 1px solid rgba(88, 166, 255, 0.1);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.018), transparent 76%);
+  transition:
+    background 0.28s ease,
+    box-shadow 0.28s ease;
+}
+
+.roadmap-row:hover {
+  background: linear-gradient(90deg, rgba(47, 129, 247, 0.075), rgba(88, 166, 255, 0.018) 58%, transparent 100%);
+  box-shadow: inset 2px 0 0 rgba(88, 166, 255, 0.42);
+}
+
+.roadmap-row:last-child {
+  border-bottom: 0;
+}
+
+.roadmap-row span {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.roadmap-row strong {
+  display: block;
+  margin: 8px 0 6px;
+  font-family: var(--font-stack-mono);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text);
+}
+
+.roadmap-row p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text-dim);
+}
+
+.roadmap-row__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.roadmap-row__state {
+  font-family: var(--font-stack-mono);
+}
+
+.roadmap-row__state--done {
+  color: var(--success-bright);
+}
+
+.roadmap-row__state--active {
+  color: var(--text-faint);
+}
+
+/* Прогресс недели. Заполнение оживает через ScrollReveal: контейнер
+   .roadmap-demo несёт data-reveal, и когда он получает .is-revealed,
+   полосы по очереди едут к своим --progress (сдвиг задаёт --week-index).
+   Без JS / с reduced-motion (нет .reveal-ready) видно конечное состояние. */
+.roadmap-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.roadmap-progress__track {
+  flex: 1;
+  height: 4px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 2px rgba(1, 4, 9, 0.72);
+  overflow: hidden;
+}
+
+.roadmap-progress__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  width: var(--progress);
+  background: linear-gradient(90deg, rgba(56, 139, 253, 0.75), var(--accent-bright));
+  box-shadow: 0 0 12px rgba(88, 166, 255, 0.34);
+}
+
+.roadmap-progress__value {
+  min-width: 4ch;
+  font-family: var(--font-stack-mono);
+  font-style: normal;
+  font-size: 11px;
+  text-align: right;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.reveal-ready .roadmap-demo:not(.is-revealed) .roadmap-progress__fill {
+  width: 0;
+}
+
+.reveal-ready .roadmap-demo:not(.is-revealed) .roadmap-progress__value {
+  opacity: 0;
+}
+
+/* transition живёт только в revealed-состоянии: скрытие сбрасывает полосы
+   мгновенно, и при возврате секции в кадр заполнение проигрывается заново. */
+.reveal-ready .roadmap-demo.is-revealed .roadmap-progress__fill {
+  transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(var(--week-index, 0) * 0.45s + 0.4s);
+}
+
+.reveal-ready .roadmap-demo.is-revealed .roadmap-progress__value {
+  transition: opacity 0.45s ease;
+  transition-delay: calc(var(--week-index, 0) * 0.45s + 0.65s);
+}
+
+/* ============================================================
+   REVIEW + PRICING CARDS
+   ============================================================ */
+
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.review-card {
+  position: relative;
+}
+
+#memory .landing-cta {
+  width: 100%;
+  justify-items: center;
+}
+
+#memory .landing-cta__button {
+  justify-self: center;
+  margin-inline: auto;
+}
+
+@media (min-width: 641px) {
+  #memory .landing-cta__button {
+    position: relative;
+    left: -30px;
+  }
+}
+
+#reviews .landing-cta__button {
+  width: calc((100% - 36px) / 3);
+}
+
+.price-card {
+  position: relative;
+  border-radius: 14px;
+  padding: 26px;
+  border: 1px solid rgba(88, 166, 255, 0.12);
+  background: var(--surface-extension);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.price-card:hover {
+  background: #0b1220;
+  transform: translateY(-3px);
+}
+
+.price-card span {
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+/* Тот же 3D-переворот, что и в реальном плеере карточек (.focus-card):
+   perspective на внешнем блоке, rotateY на кнопке, backface-visibility
+   hidden на гранях. Уменьшенная версия под размер сетки на лендинге. */
+.review-flip {
+  position: relative;
+  height: 210px;
+  perspective: 1400px;
+  transition:
+    filter 0.22s ease,
+    transform 0.22s cubic-bezier(0.2, 0.72, 0.22, 1);
+  will-change: transform;
+}
+
+.review-card:hover .review-flip,
+.review-card:focus-within .review-flip {
+  filter: drop-shadow(0 22px 34px rgba(1, 4, 9, 0.34));
+  transform: translateY(-8px);
+}
+
+.review-flip__card {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transform-style: preserve-3d;
+  transition: transform 0.68s cubic-bezier(0.2, 0.72, 0.22, 1);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.review-flip__card:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 4px;
+  border-radius: 14px;
+}
+
+.review-flip__card--back {
+  transform: rotateY(180deg);
+}
+
+.review-flip__inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+/* Без overflow:hidden: Firefox игнорирует backface-visibility на элементах,
+   которые сами себя клипают (bugzilla #1201471) — обе грани становятся
+   видны в момент переворота. Та же причина, что и у .focus-card__face. */
+.review-flip__face {
+  --review-card-background-color: rgba(255, 255, 255, 0.015);
+  --review-card-border-color: rgba(255, 255, 255, 0.1);
+  --review-card-hover-border-color: rgba(255, 255, 255, 0.2);
+  --review-card-shine-opacity: 0.1;
+  --review-card-shine-gradient: conic-gradient(
+    from 205deg at 50% 50%,
+    rgba(16, 185, 129, 0) 0deg,
+    #10b981 25deg,
+    rgba(52, 211, 153, 0.18) 295deg,
+    rgba(16, 185, 129, 0) 360deg
+  );
+  --review-card-line-color: #2a2b2c;
+  --review-card-tile-color: rgba(16, 185, 129, 0.12);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-radius: 14px;
+  padding: 26px;
+  background: var(--surface-extension);
+  isolation: isolate;
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.05),
+    0 8px 15px rgba(0, 0, 0, 0.1),
+    inset 0 0 0 1px var(--review-card-border-color);
+  transition:
+    box-shadow 0.28s ease,
+    visibility 0s linear 0.34s;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.review-flip__face::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--review-card-background-color);
+  pointer-events: none;
+}
+
+.review-flip__shine {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s;
+}
+
+.review-flip__shine::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 55%;
+  width: 150%;
+  padding-bottom: 150%;
+  border-radius: 50%;
+  filter: blur(35px);
+  opacity: var(--review-card-shine-opacity);
+  transform: translateX(-50%);
+  background-image: var(--review-card-shine-gradient);
+}
+
+.review-flip__background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(circle at 60% 5%, black 0%, black 15%, transparent 60%);
+  mask-image: radial-gradient(circle at 60% 5%, black 0%, black 15%, transparent 60%);
+}
+
+.review-flip__tiles {
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.review-flip__tile {
+  position: absolute;
+  background: var(--review-card-tile-color);
+  animation-duration: 8s;
+  animation-iteration-count: infinite;
+  opacity: 0;
+}
+
+.review-flip__tile--1 {
+  top: 0;
+  left: 0;
+  width: 22.5%;
+  height: 10%;
+}
+
+.review-flip__tile--2 {
+  top: 0;
+  left: 22.5%;
+  width: 27.5%;
+  height: 10%;
+  animation-delay: -6s;
+}
+
+.review-flip__tile--3 {
+  top: 0;
+  left: 50%;
+  width: 27.5%;
+  height: 10%;
+  animation-delay: -4s;
+}
+
+.review-flip__tile--4 {
+  top: 0;
+  left: 77.5%;
+  width: 22.5%;
+  height: 10%;
+  animation-delay: -2s;
+}
+
+.review-flip__tile--5 {
+  top: 10%;
+  left: 0;
+  width: 22.5%;
+  height: 22.5%;
+  animation-delay: -4s;
+}
+
+.review-flip__tile--6 {
+  top: 10%;
+  left: 22.5%;
+  width: 27.5%;
+  height: 22.5%;
+  animation-delay: -2s;
+}
+
+.review-flip__tile--7 {
+  top: 10%;
+  left: 50%;
+  width: 27.5%;
+  height: 22.5%;
+}
+
+.review-flip__tile--8 {
+  top: 10%;
+  left: 77.5%;
+  width: 22.5%;
+  height: 22.5%;
+  animation-delay: -4s;
+}
+
+.review-flip__tile--9 {
+  top: 32.5%;
+  left: 50%;
+  width: 27.5%;
+  height: 22.5%;
+  animation-delay: -6s;
+}
+
+.review-flip__tile--10 {
+  top: 32.5%;
+  left: 77.5%;
+  width: 22.5%;
+  height: 22.5%;
+  animation-delay: -2s;
+}
+
+@keyframes review-flip-tile {
+  0%,
+  12.5%,
+  100% {
+    opacity: 1;
+  }
+
+  25%,
+  82.5% {
+    opacity: 0;
+  }
+}
+
+.review-flip__line {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+
+.review-flip__line::before,
+.review-flip__line::after {
+  content: "";
+  position: absolute;
+  background: var(--review-card-line-color);
+  transition: transform 0.35s;
+}
+
+.review-flip__line::before {
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+.review-flip__line::after {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: scaleY(0);
+  transform-origin: 50% 0;
+}
+
+.review-flip__line--1::before {
+  top: 10%;
+}
+
+.review-flip__line--1::after {
+  left: 22.5%;
+}
+
+.review-flip__line--1::before,
+.review-flip__line--1::after {
+  transition-delay: 0.3s;
+}
+
+.review-flip__line--2::before {
+  top: 32.5%;
+}
+
+.review-flip__line--2::after {
+  left: 50%;
+}
+
+.review-flip__line--2::before,
+.review-flip__line--2::after {
+  transition-delay: 0.15s;
+}
+
+.review-flip__line--3::before {
+  top: 55%;
+}
+
+.review-flip__line--3::after {
+  right: 22.5%;
+}
+
+.review-flip__face > :not(.review-flip__shine):not(.review-flip__background) {
+  position: relative;
+  z-index: 2;
+}
+
+.review-flip__card:hover .review-flip__face {
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.04),
+    0 15px 25px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px var(--review-card-hover-border-color);
+}
+
+.review-flip__card:hover .review-flip__shine,
+.review-flip__card:focus-visible .review-flip__shine {
+  opacity: 1;
+  transition-duration: 0.5s;
+  transition-delay: 0s;
+}
+
+.review-flip__card:hover .review-flip__tiles,
+.review-flip__card:focus-visible .review-flip__tiles {
+  opacity: 1;
+  transition-delay: 0.25s;
+}
+
+.review-flip__card:hover .review-flip__tile,
+.review-flip__card:focus-visible .review-flip__tile {
+  animation-name: review-flip-tile;
+}
+
+.review-flip__card:hover .review-flip__line,
+.review-flip__card:focus-visible .review-flip__line {
+  opacity: 1;
+  transition-duration: 0.15s;
+}
+
+.review-flip__card:hover .review-flip__line::before,
+.review-flip__card:hover .review-flip__line::after,
+.review-flip__card:focus-visible .review-flip__line::before,
+.review-flip__card:focus-visible .review-flip__line::after {
+  transform: scale(1);
+}
+
+.review-flip__card:hover .review-flip__line--1::before,
+.review-flip__card:hover .review-flip__line--1::after,
+.review-flip__card:focus-visible .review-flip__line--1::before,
+.review-flip__card:focus-visible .review-flip__line--1::after {
+  transition-delay: 0s;
+}
+
+.review-flip__card:hover .review-flip__line--2::before,
+.review-flip__card:hover .review-flip__line--2::after,
+.review-flip__card:focus-visible .review-flip__line--2::before,
+.review-flip__card:focus-visible .review-flip__line--2::after {
+  transition-delay: 0.15s;
+}
+
+.review-flip__card:hover .review-flip__line--3::before,
+.review-flip__card:hover .review-flip__line--3::after,
+.review-flip__card:focus-visible .review-flip__line--3::before,
+.review-flip__card:focus-visible .review-flip__line--3::after {
+  transition-delay: 0.3s;
+}
+
+.review-flip__face[aria-hidden="true"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Контент проступает сквозь переворот вместо резкой смены видимости —
+   тот же приём, что и .focus-card__face > *. */
+.review-flip__face > :not(.review-flip__shine):not(.review-flip__background) {
+  opacity: 1;
+  transition: opacity 0.3s ease 0.34s;
+}
+
+.review-flip__face[aria-hidden="true"] > :not(.review-flip__shine):not(.review-flip__background) {
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.review-flip__face--back {
+  transform: rotateY(180deg);
+  border: 1px solid rgba(63, 185, 80, 0.32);
+  background: rgba(13, 22, 18, 0.94);
+}
+
+.review-flip__face span {
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+.review-flip__face--back span {
+  color: var(--success-fg, var(--accent));
+}
+
+.review-flip__face h3 {
+  font-family: var(--font-stack-display);
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.review-flip__face p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.price-card strong {
+  display: block;
+  font-family: var(--font-stack-display);
+  font-size: 38px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+
+/* Характер платежа под ценой («разовый платёж · доступ навсегда»).
+   Селектор из двух классов намеренно: `.price-card span` выше по файлу
+   оформляет название тарифа — uppercase, акцентный цвет, отступ снизу — и
+   как более общий descendant-селектор перебил бы одноклассовый `.price-period`
+   при равной специфичности. */
+.price-card .price-period {
+  display: block;
+  margin: 6px 0 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.price-card p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.price-features {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 11px;
+}
+
+.price-features li {
+  position: relative;
+  padding-left: 26px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.price-features li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--success-fg);
+  font-weight: 700;
+}
+
+.price-card:last-child {
+  background: var(--surface-extension);
+}
+
+/* Pricing sits lower in the page and the two-card grid is short, so the shared
+   section padding left too much empty space above and below it. Tighten the
+   vertical rhythm for this section only. */
+#pricing {
+  padding-top: clamp(40px, 6vw, 72px);
+  padding-bottom: clamp(40px, 6vw, 72px);
+}
+
+#pricing .section-kicker {
+  margin-bottom: 22px;
+}
+
+/* Pricing is a compact comparison: the offer stays on the left while both
+   plans occupy the otherwise empty right-hand side of the section. */
+#pricing .section-grid {
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.28fr);
+  gap: clamp(36px, 4.5vw, 64px);
+  align-items: start;
+}
+
+#pricing .section-copy {
+  max-width: 370px;
+  padding-top: 6px;
+}
+
+#pricing .section-copy h2 {
+  font-size: clamp(23px, 2.1vw, 30px);
+  line-height: 1.18;
+}
+
+#pricing .section-copy p {
+  max-width: 42ch;
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.58;
+}
+
+#pricing .pricing-grid {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  gap: clamp(14px, 1.5vw, 20px);
+  align-items: stretch;
+}
+
+#pricing .price-card {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  padding: clamp(20px, 1.7vw, 24px);
+  --pricing-reveal-distance: 76px;
+}
+
+/* Pro is the active upgrade path: give it a deeper blue surface and a quiet
+   edge highlight so it attracts attention without becoming a second CTA. */
+#pricing .price-card:last-child {
+  border-color: rgba(88, 166, 255, 0.24);
+  background: #0b1530;
+  box-shadow:
+    inset 0 1px 0 rgba(143, 183, 255, 0.08),
+    0 24px 56px -38px rgba(47, 129, 247, 0.72);
+}
+
+#pricing .price-card:last-child:hover,
+#pricing .price-card:last-child:focus-within {
+  background: #0e1b3b;
+  border-color: rgba(112, 176, 255, 0.34);
+}
+
+#pricing .price-card > span {
+  margin-bottom: 12px;
+  font-size: 10px;
+}
+
+#pricing .price-card > .price-card__name {
+  background: var(--landing-action-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+#pricing .price-card strong {
+  margin-bottom: 10px;
+  font-size: clamp(27px, 2.2vw, 32px);
+}
+
+#pricing .price-card .price-period {
+  margin-top: 4px;
+  font-size: 10.5px;
+}
+
+#pricing .price-features {
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+#pricing .price-features li {
+  padding-left: 21px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.42;
+  color: var(--text-dim);
+}
+
+#pricing .price-card > .price-features {
+  position: relative;
+  z-index: 1;
+  /* The plan details start low and rise together with the CTA on intent. */
+  transform: translateY(calc(var(--pricing-reveal-distance) - 12px));
+  transition: transform 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#pricing .price-card > .price-cta {
+  opacity: 1;
+  pointer-events: none;
+  /* Keep the CTA below the clipped card until the plan is hovered/focused. */
+  transform: translateY(var(--pricing-reveal-distance));
+  transition:
+    transform 1.5s cubic-bezier(0.16, 1, 0.3, 1),
+    --landing-cta-rim-blue-half-span 0.5s ease,
+    --landing-cta-rim-base-color 0.5s ease;
+}
+
+#pricing .price-card:hover > .price-features,
+#pricing .price-card:focus-within > .price-features {
+  transform: translateY(-12px);
+}
+
+#pricing .price-card:hover > .price-cta,
+#pricing .price-card:focus-within > .price-cta {
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+@media (max-width: 1100px) {
+  #pricing .section-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  #pricing .section-copy {
+    max-width: 620px;
+    padding-top: 0;
+  }
+
+  #pricing .pricing-grid {
+    max-width: 820px;
+  }
+}
+
+@media (max-width: 920px) {
+  #pricing .pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+  }
+}
+
+@media (hover: none), (max-width: 920px) {
+  #pricing .price-card > .price-features,
+  #pricing .price-card:hover > .price-features {
+    transform: none;
+  }
+
+  #pricing .price-card > .price-cta {
+    pointer-events: auto;
+    transform: none;
+  }
+}
+
+/* Reviews is a compact interaction block: keep the three cards and CTA in
+   one desktop viewport instead of surrounding them with the full section
+   spacing used by the longer product sections. */
+#reviews {
+  padding-top: clamp(40px, 5vw, 72px);
+  padding-bottom: clamp(40px, 5vw, 72px);
+}
+
+#reviews .section-kicker {
+  margin-bottom: 24px;
+}
+
+#reviews .section-copy.wide {
+  margin-bottom: 32px;
+}
+
+#reviews .landing-cta--center {
+  margin-top: 28px;
+}
+
+.price-card {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(28px, 2.6vw, 40px);
+}
+
+.price-card .price-features {
+  margin-bottom: 24px;
+}
+
+/* Checkout CTA pinned to the bottom of each card. */
+.price-cta {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  align-self: center;
+  padding: 13px 18px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.price-cta:hover {
+  background: var(--accent-bright);
+  transform: translateY(-1px);
+}
+
+.price-card:first-child .price-cta {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.price-card:first-child .price-cta:hover {
+  background: var(--panel-strong);
+  border-color: var(--accent-line);
+}
+
+/* Checkout screen ----------------------------------------------------- */
+.checkout-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.checkout-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(36px, 6vw, 84px);
+  align-items: center;
+  max-width: 920px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.checkout-back {
+  display: inline-block;
+  margin-top: 20px;
+  font-size: 13.5px;
+  color: var(--text-dim);
+  transition: color 0.18s ease;
+}
+
+.checkout-back:hover {
+  color: var(--text);
+}
+
+/* Раньше здесь был инлайновый суффикс «/ мес» сразу за ценой. Теперь это
+   характер платежа («разовый платёж · доступ навсегда»), который в строку за
+   38-пиксельной ценой не помещается — отсюда блок и тот же кегль, что у
+   .price-period на лендинге. */
+.checkout-period {
+  display: block;
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.checkout-pay:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.checkout-note {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.checkout-note a {
+  color: var(--text-dim);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.checkout-note a:hover {
+  color: var(--accent-bright);
+}
+
+.legal-page .pattern-profile__lead a,
+.legal-page .pattern-profile__body a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.legal-page .pattern-profile__lead a:hover,
+.legal-page .pattern-profile__body a:hover {
+  color: var(--accent-bright);
+}
+
+.legal-page__date {
+  margin-top: clamp(20px, 3vw, 28px);
+  font-family: var(--font-stack-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+/* ============================================================
+   DOCS PAGER (prev / home / next, sits below the fixed site-strip)
+   ============================================================ */
+
+.docs-pager {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 82px var(--pad) 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+  font-family: var(--font-stack-mono);
+  font-size: 12.5px;
+}
+
+.docs-pager__prev,
+.docs-pager__next {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-dim);
+  transition: color 0.18s ease;
+}
+
+.docs-pager__prev {
+  justify-self: start;
+}
+
+.docs-pager__next {
+  justify-self: end;
+  text-align: right;
+}
+
+.docs-pager__prev:hover,
+.docs-pager__next:hover {
+  color: var(--accent-bright);
+}
+
+.docs-pager__arrow {
+  color: var(--text-faint);
+}
+
+.docs-pager__home {
+  justify-self: center;
+  white-space: nowrap;
+  color: var(--text-faint);
+  transition: color 0.18s ease;
+}
+
+.docs-pager__home:hover {
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .docs-pager {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    gap: 10px;
+  }
+
+  .docs-pager__prev,
+  .docs-pager__next {
+    justify-self: center;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1199px) {
+  .hero-title {
+    max-width: 600px;
+  }
+}
+
+@media (max-width: 920px) {
+  .checkout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   FOOTER (terminal tree)
+   ============================================================ */
+
+.site-footer {
+  background: var(--bg-2);
+  /* Promote the footer to its own paint layer above the fixed WebGL
+     background (.scroll-card-flow-bg). Without this, on GPU-composited /
+     Retina browsers the footer can fail to repaint at the bottom of the
+     long page and shows as empty space. */
+  position: relative;
+  z-index: 1;
+  transform: translateZ(0);
+}
+
+.site-footer__inner {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: clamp(48px, 7vw, 80px) var(--pad) 32px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)) minmax(180px, 1.15fr);
+  gap: clamp(24px, 3.2vw, 40px);
+}
+
+.site-footer__brand .site-brand {
+  font-size: 18px;
+}
+
+.site-footer__brand p {
+  margin: 16px 0 0;
+  max-width: 26ch;
+  font-family: var(--font-stack-sans);
+  font-size: 13.5px;
+  color: var(--text-faint);
+}
+
+.footer-col h4 {
+  margin: 0 0 16px;
+  font-family: var(--font-stack-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.footer-col h4::after {
+  content: "/";
+  color: var(--accent);
+  margin-left: 2px;
+}
+
+.footer-col a {
+  display: block;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-faint);
+  padding: 5px 0;
+  overflow-wrap: anywhere;
+  transition: color 0.16s ease;
+}
+
+.footer-col a::before {
+  content: "└─ ";
+  color: rgba(255, 255, 255, 0.18);
+}
+
+.footer-col a:hover {
+  color: var(--accent-bright);
+}
+
+.footer-col a[aria-current="page"] {
+  color: var(--text);
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: default;
+}
+
+.site-footer__bar {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 20px var(--pad);
+  font-family: var(--font-stack-mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+
+/* Hybrid landing: test-design actions, scoped below the production hero. */
+.hybrid-lower .landing-cta__button,
+.hybrid-lower .price-cta,
+.hybrid-lower #pricing .price-card > .price-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 22px;
+  background: var(--landing-action-gradient);
+  color: #fff;
+  font-family: var(--font-stack-sans);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: none;
+}
+
+.hybrid-lower .landing-cta__button:hover,
+.hybrid-lower .price-cta:hover,
+.hybrid-lower #pricing .price-card > .price-cta:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.hybrid-lower #pricing .price-card > .price-cta {
+  width: 100%;
+  white-space: nowrap;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { getDictionary } from "../_content/i18n";
+import { getDictionary, keepShortWords } from "../_content/i18n";
 
 export function SiteFooter() {
   const dictionary = getDictionary();
@@ -15,11 +15,11 @@ export function SiteFooter() {
           <a className="site-brand" href="/">
             {dictionary.common.brand}
           </a>
-          <p>{copy.footer.description}</p>
+          <p>{keepShortWords(copy.footer.description)}</p>
         </div>
         {copy.footer.columns.map((column) => (
           <nav className="footer-col" key={column.title}>
-            <h4>{column.title}</h4>
+            <h4>{keepShortWords(column.title)}</h4>
             {column.links.map((link) => {
               const isExternal = link.href.startsWith("http");
               const isCurrent = !isExternal && link.href === pathname;
@@ -30,7 +30,7 @@ export function SiteFooter() {
                   aria-current={isCurrent ? "page" : undefined}
                   {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                 >
-                  {link.label}
+                  {keepShortWords(link.label)}
                 </a>
               );
             })}
@@ -38,8 +38,8 @@ export function SiteFooter() {
         ))}
       </div>
       <div className="site-footer__bar">
-        <span>{copy.footer.copyright}</span>
-        <span>{copy.footer.tagline}</span>
+        <span>{keepShortWords(copy.footer.copyright)}</span>
+        <span>{keepShortWords(copy.footer.tagline)}</span>
       </div>
     </footer>
   );
