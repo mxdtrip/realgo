@@ -2821,9 +2821,12 @@ a.cabinet-panel__meta:hover {
   color: var(--text-faint);
 }
 
-@media (min-width: 1361px) {
+/* The desktop shell consumes 264px for the sidebar and horizontal page
+   padding. Three dashboard columns only fit after that reduced canvas reaches
+   the 1,219px minimum below; before then Practice becomes its own row. */
+@media (min-width: 1600px) {
   .heatmap-layout {
-    grid-template-columns: auto minmax(164px, 1fr) 460px;
+    grid-template-columns: minmax(515px, auto) minmax(164px, 1fr) 460px;
   }
 
   .heatmap-stats span {
@@ -6150,7 +6153,7 @@ a.roadmap-step__practice-card:hover {
    RESPONSIVE
    ============================================================ */
 
-@media (max-width: 1360px) {
+@media (max-width: 1599px) {
   .heatmap-layout {
     grid-template-columns: auto minmax(0, 1fr);
   }
