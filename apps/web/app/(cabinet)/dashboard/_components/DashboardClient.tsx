@@ -182,7 +182,7 @@ export function DashboardClient({ copy }: Readonly<{ copy: DashboardCopy }>) {
   const typeTones = new Map(copy.reviewTypes.map(([key, , tone]) => [key, tone]));
 
   return (
-    <main className="cabinet-page">
+    <main className="cabinet-page cabinet-page--dashboard">
       <section className="cabinet-page-head">
         <div>
           <span className="cabinet-eyebrow">{copy.eyebrow}</span>
@@ -216,7 +216,7 @@ export function DashboardClient({ copy }: Readonly<{ copy: DashboardCopy }>) {
         <>
           <CabinetPanel title={copy.heatmap.title}>
             <div className="heatmap-layout">
-              <div>
+              <div className="heatmap-activity">
                 <ActivityHeatmap
                   weeks={heatmap.weeks}
                   counts={heatmap.counts}

@@ -13,6 +13,7 @@ export type PracticeLauncherCopy = Readonly<{
   metaUnits: Readonly<{ subpatterns: string; cards: string; minutes: string }>;
   emptyTitle: string;
   emptyMeta: string;
+  buildRoadmap: string;
   start: string;
 }>;
 
@@ -63,7 +64,12 @@ export function PracticeLauncher({ copy }: Readonly<{ copy: PracticeLauncherCopy
             {copy.start}
             <CabinetIcon name="arrow" />
           </Link>
-        ) : null}
+        ) : (
+          <Link className="cabinet-cta" href="/roadmap">
+            {copy.buildRoadmap}
+            <CabinetIcon name="arrow" />
+          </Link>
+        )}
       </div>
     </aside>
   );

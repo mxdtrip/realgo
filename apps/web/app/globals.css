@@ -2601,6 +2601,40 @@ a.cabinet-panel__meta:hover {
   margin-bottom: 0;
 }
 
+/* On the dashboard the two final panels are the last visual row. Let them
+   occupy the remaining desktop viewport while keeping the page padding as the
+   bottom breathing room. Other cabinet pages retain their content-driven rows. */
+@media (min-width: 921px) {
+  .cabinet-page--dashboard {
+    min-height: calc(100dvh - 72px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cabinet-page--dashboard .cabinet-grid {
+    flex: 1 0 180px;
+    align-items: stretch;
+    margin-bottom: 0;
+  }
+
+  .cabinet-page--dashboard .cabinet-grid .cabinet-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cabinet-page--dashboard .review-list,
+  .cabinet-page--dashboard .pattern-stack {
+    flex: 1;
+  }
+
+  .cabinet-page--dashboard .data-table__empty {
+    min-height: 100%;
+    display: grid;
+    place-items: center;
+  }
+}
+
 /* Two short panels stacked inside one grid cell, keeping the standard 16px
    rhythm (see the settings page: PWA + privacy vs the tall notifications). */
 .cabinet-grid__stack {
@@ -2749,7 +2783,13 @@ a.cabinet-panel__meta:hover {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) 460px;
   gap: 0 clamp(20px, 3vw, 40px);
-  align-items: center;
+  align-items: stretch;
+}
+
+.heatmap-activity {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 
 .heatmap-stats {
@@ -2835,10 +2875,10 @@ a.cabinet-panel__meta:hover {
 }
 
 .heatmap {
+  --heatmap-cell-size: 28px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 7px;
   padding: 14px 16px 12px;
 }
 
@@ -2850,8 +2890,8 @@ a.cabinet-panel__meta:hover {
 
 .heatmap__cell {
   position: relative;
-  width: 22px;
-  height: 22px;
+  width: var(--heatmap-cell-size);
+  height: var(--heatmap-cell-size);
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.045);
 }
