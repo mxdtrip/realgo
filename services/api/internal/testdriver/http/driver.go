@@ -154,36 +154,15 @@ type fsrsUser struct {
 func (u *fsrsUser) OwnIdentity(t *testing.T) string { return u.user.OwnIdentity(t) }
 func (u *fsrsUser) UserID(t *testing.T) int64       { return u.user.UserID(t) }
 
-// SubmitExtensionSolved posts a "problem solved" extension event and returns
-// nextReviewAt from the server's response. The rating is the user's perceived
-// difficulty (hard/normal/easy), which the extension maps into an FSRS grade.
+// SubmitExtensionSolved отправляет событие «задача решена» через расширение (POST /api/v1/extension/events)
+// и возвращает nextReviewAt из ответа сервера, прерывая тест через t.Fatalf при любой ошибке.
 func (u *fsrsUser) SubmitExtensionSolved(t *testing.T, title, url, slug, rating string) time.Time {
 	t.Helper()
-	body := map[string]any{
-		"eventId":          fmt.Sprintf("evt-%s-%d", slug, time.Now().UnixNano()),
-		"source":           "leetcode",
-		"event":            "problem_solved",
-		"occurredAt":       time.Now().UTC().Format(time.RFC3339),
-		"rating":           rating,
-		"extensionVersion": "0.0.1-acceptance",
-		"problem": map[string]any{
-			"externalId": slug,
-			"title":      title,
-			"url":        url,
-		},
+	due, err := u.TrySubmitExtensionSolved(title, url, slug, rating)
+	if err != nil {
+		t.Fatalf("driver: SubmitExtensionSolved: %v", err)
 	}
-	resp := u.driver.do(t, http.MethodPost, "/api/v1/extension/events", body, u.token())
-
-	var out struct {
-		Data struct {
-			NextReviewAt time.Time `json:"nextReviewAt"`
-		} `json:"data"`
-	}
-	u.driver.decode(t, resp, &out)
-	if out.Data.NextReviewAt.IsZero() {
-		t.Fatalf("driver: extension solve: empty nextReviewAt in response")
-	}
-	return out.Data.NextReviewAt
+	return due
 }
 
 // RateFirstReview creates a card and rates it once with the given rating,
@@ -287,12 +266,47 @@ func (u *fsrsUser) readCardNextReviewAt(t *testing.T, cardID int64, info any) ti
 	return due.Time.UTC()
 }
 
-func (u *fsrsUser) token() string {
-	if au, ok := u.user.(*authenticatedUser); ok {
-		return au.token
+// TrySubmitExtensionSolved отправляет событие «задача решена» через расширение (POST /api/v1/extension/events)
+// и возвращает nextReviewAt либо ошибку, не вызывая t.Fatalf. Метод безопасен для выполнения в параллельных горутинах.
+func (u *fsrsUser) TrySubmitExtensionSolved(title, url, slug, rating string) (time.Time, error) {
+	au, ok := u.user.(*authenticatedUser)
+	if !ok {
+		return time.Time{}, fmt.Errorf("fsrsUser: expected *authenticatedUser, got %T", u.user)
 	}
-	u.t.Fatalf("fsrsUser: expected *authenticatedUser, got %T", u.user)
-	return ""
+
+	body := map[string]any{
+		"eventId":          fmt.Sprintf("evt-%s-%d", slug, time.Now().UnixNano()),
+		"source":           "leetcode",
+		"event":            "problem_solved",
+		"occurredAt":       time.Now().UTC().Format(time.RFC3339),
+		"rating":           rating,
+		"extensionVersion": "0.0.1-acceptance",
+		"problem": map[string]any{
+			"externalId": slug,
+			"title":      title,
+			"url":        url,
+		},
+	}
+
+	resp, err := u.driver.tryDo(http.MethodPost, "/api/v1/extension/events", body, au.token)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	var out struct {
+		Data struct {
+			NextReviewAt time.Time `json:"nextReviewAt"`
+		} `json:"data"`
+	}
+
+	if err := u.driver.tryDecode(resp, &out); err != nil {
+		return time.Time{}, err
+	}
+
+	if out.Data.NextReviewAt.IsZero() {
+		return time.Time{}, errors.New("driver: extension solve: empty nextReviewAt in response")
+	}
+	return out.Data.NextReviewAt, nil
 }
 
 // --- FSRSStateProbe (test-only read) ---
@@ -746,17 +760,27 @@ func (u *authenticatedUser) UserID(t *testing.T) int64 {
 // если он передан, и завершает тест при любой транспортной ошибке.
 func (d *Driver) do(t *testing.T, method, path string, body any, token string) *http.Response {
 	t.Helper()
+	resp, err := d.tryDo(method, path, body, token)
+	if err != nil {
+		t.Fatalf("driver: %v", err)
+	}
+	return resp
+}
+
+// tryDo выполняет HTTP-запрос к тестовому серверу, добавляя Bearer-токен (если передан),
+// и возвращает *http.Response либо ошибку без вызова t.Fatalf.
+func (d *Driver) tryDo(method, path string, body any, token string) (*http.Response, error) {
 	var rdr io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
 		if err != nil {
-			t.Fatalf("driver: marshal body: %v", err)
+			return nil, fmt.Errorf("marshal body: %w", err)
 		}
 		rdr = bytes.NewReader(raw)
 	}
 	req, err := http.NewRequest(method, d.srv.URL+path, rdr)
 	if err != nil {
-		t.Fatalf("driver: build request: %v", err)
+		return nil, fmt.Errorf("build request: %w", err)
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
@@ -766,9 +790,9 @@ func (d *Driver) do(t *testing.T, method, path string, body any, token string) *
 	}
 	resp, err := d.client.Do(req)
 	if err != nil {
-		t.Fatalf("driver: %s %s: %v", method, path, err)
+		return nil, fmt.Errorf("%s %s: %w", method, path, err)
 	}
-	return resp
+	return resp, nil
 }
 
 // decode считывает тело ответа в dst, убеждается, что сервер вернул
@@ -776,22 +800,28 @@ func (d *Driver) do(t *testing.T, method, path string, body any, token string) *
 // чтобы причина сбоя была сразу видна.
 func (d *Driver) decode(t *testing.T, resp *http.Response, dst any) {
 	t.Helper()
+	if err := d.tryDecode(resp, dst); err != nil {
+		t.Fatalf("driver: %v", err)
+	}
+}
+
+// tryDecode считывает тело ответа в dst, убеждается, что сервер вернул
+// успешный статус (2xx), закрывает тело ответа и возвращает ошибку без вызова t.Fatalf.
+func (d *Driver) tryDecode(resp *http.Response, dst any) error {
 	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			t.Fatalf("driver: close response body: %v", err)
-		}
+		_ = resp.Body.Close()
 	}()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		raw, err := io.ReadAll(resp.Body)
 		if err != nil {
-			t.Fatalf("driver: read error response body: %v", err)
+			return fmt.Errorf("%s %s: status %d (read body failed: %w)", resp.Request.Method, resp.Request.URL.Path, resp.StatusCode, err)
 		}
-		t.Fatalf("driver: %s %s: status %d, body %s",
-			resp.Request.Method, resp.Request.URL.Path, resp.StatusCode, string(raw))
+		return fmt.Errorf("%s %s: status %d, body %s", resp.Request.Method, resp.Request.URL.Path, resp.StatusCode, string(raw))
 	}
 	if err := json.NewDecoder(resp.Body).Decode(dst); err != nil {
-		t.Fatalf("driver: decode response: %v", err)
+		return fmt.Errorf("driver: decode response: %w", err)
 	}
+	return nil
 }
 
 // ProblemScheduleState возвращает FSRS-поля строки review_schedules для задачи
