@@ -5,6 +5,10 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
+	"github.com/stretchr/testify/require"
 )
 
 // TestRetrySchedule проверяет алгоритмическую политику повторов независимой от БД:
@@ -133,6 +137,75 @@ func TestRetrySchedule(t *testing.T) {
 			if !gotTime.Equal(tt.wantTime) {
 				t.Fatalf("retrySchedule() gotTime = %v, want %v", gotTime, tt.wantTime)
 			}
+		})
+	}
+}
+
+// TestResolveDuplicateSchedule проверяет чистую логику разрешения дубликатов входящих событий:
+//   - при наличии расписания возвращается статус "reviewing" и текущие параметры расписания;
+//   - при отсутствии расписания для решённой задачи выставляется флаг needsHealing (self-heal);
+//   - при отсутствии расписания для нерешённой задачи выставляется статус "saved";
+//   - при непредвиденной ошибке БД возвращается ошибка.
+func TestResolveDuplicateSchedule(t *testing.T) {
+	now := time.Now()
+	tests := []struct {
+		name             string
+		sched            db.GetProblemReviewScheduleRow
+		dbErr            error
+		solved           bool
+		wantStatus       string
+		wantReviewID     int64
+		wantNeedsHealing bool
+		wantErr          bool
+	}{
+		{
+			name:             "healthy duplicate: расписание найдено",
+			sched:            db.GetProblemReviewScheduleRow{ID: 10, NextReviewAt: toTimestamptz(now)},
+			dbErr:            nil,
+			solved:           true,
+			wantStatus:       "reviewing",
+			wantReviewID:     10,
+			wantNeedsHealing: false,
+			wantErr:          false,
+		},
+		{
+			name:             "self-heal: расписание отсутствует, задача решена",
+			dbErr:            pgx.ErrNoRows,
+			solved:           true,
+			wantNeedsHealing: true,
+			wantErr:          false,
+		},
+		{
+			name:             "duplicate non-solved: расписание отсутствует, задача не решена",
+			dbErr:            pgx.ErrNoRows,
+			solved:           false,
+			wantStatus:       "saved",
+			wantNeedsHealing: false,
+			wantErr:          false,
+		},
+		{
+			name:    "db error: сбой запроса к БД",
+			dbErr:   errors.New("connection failed"),
+			solved:  true,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := resolveDuplicateSchedule(tt.sched, tt.dbErr, tt.solved)
+			if tt.wantErr {
+				require.Error(t, err, "ожидалась ошибка от БД")
+				return
+			}
+			require.NoError(t, err, "не ожидалась ошибка")
+			if tt.wantStatus != "" {
+				require.Equal(t, tt.wantStatus, res.status, "не совпал статус")
+			}
+			if tt.wantReviewID != 0 {
+				require.Equal(t, tt.wantReviewID, res.reviewID, "не совпал reviewID")
+			}
+			require.Equal(t, tt.wantNeedsHealing, res.needsHealing, "не совпал флаг needsHealing")
 		})
 	}
 }

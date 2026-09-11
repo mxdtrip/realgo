@@ -410,3 +410,37 @@ func toAdvanceScheduleParams(existing db.GetProblemReviewScheduleRow, in IngestI
 		ExpectedReviewCount: existing.ReviewCount.Int32,
 	}
 }
+
+// duplicateResolution инкапсулирует результат анализа существующего расписания при дубликате события.
+type duplicateResolution struct {
+	status       string
+	reviewID     int64
+	nextReviewAt *time.Time
+	needsHealing bool
+}
+
+// resolveDuplicateSchedule анализирует результат поиска расписания при повторном событии:
+//   - если расписание существует (err == nil): возвращает статус "reviewing" и параметры расписания;
+//   - если расписание отсутствует (pgx.ErrNoRows): для решённой задачи выставляет needsHealing=true,
+//     а для нерешённой — статус "saved";
+//   - при любой другой ошибке БД возвращает ошибку. Чистая функция без побочных эффектов.
+func resolveDuplicateSchedule(sched db.GetProblemReviewScheduleRow, err error, solved bool) (duplicateResolution, error) {
+	switch {
+	case err == nil:
+		return duplicateResolution{
+			status:       "reviewing",
+			reviewID:     sched.ID,
+			nextReviewAt: timePtr(sched.NextReviewAt),
+		}, nil
+	case errors.Is(err, pgx.ErrNoRows):
+		if solved == true {
+			return duplicateResolution{
+				needsHealing: true,
+			}, nil
+		}
+		return duplicateResolution{status: "saved"}, nil
+	default:
+		return duplicateResolution{}, fmt.Errorf("extension: lookup review schedule failed: %w", err)
+
+	}
+}
