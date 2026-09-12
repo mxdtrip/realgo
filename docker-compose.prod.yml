@@ -12,9 +12,12 @@ services:
       context: ./services/smtp-relay
     restart: unless-stopped
     environment:
-      GMAIL_SMTP_USERNAME: ${GMAIL_SMTP_USERNAME:-freeburger.team@gmail.com}
-      GMAIL_SMTP_PASSWORD: ${MAIL_SMTP_PASSWORD:?MAIL_SMTP_PASSWORD must be set}
-      SENDER_ADDRESS: support@realgo.dev
+      RELAY_SMTP_HOST: ${SMTP2GO_SMTP_HOST:-mail.smtp2go.com}
+      RELAY_SMTP_PORT: ${SMTP2GO_SMTP_PORT:-2525}
+      RELAY_SMTP_TLS_MODE: ${SMTP2GO_SMTP_TLS_MODE:-starttls}
+      RELAY_SMTP_USERNAME: ${SMTP2GO_SMTP_USERNAME:?SMTP2GO_SMTP_USERNAME must be set}
+      RELAY_SMTP_PASSWORD: ${SMTP2GO_SMTP_PASSWORD:?SMTP2GO_SMTP_PASSWORD must be set}
+      SENDER_ADDRESS: noreply@realgo.dev
       SMTP_LISTEN_HOST: 0.0.0.0
       SMTP_LISTEN_PORT: "2526"
     healthcheck:

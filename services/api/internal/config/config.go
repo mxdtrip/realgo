@@ -46,16 +46,17 @@ type Redis struct {
 }
 
 // Mail configures the SMTP relay used for every application email. The visible
-// sender identity is fixed in internal/mail to support@realgo.dev.
+// sender identity is fixed in internal/mail to noreply@realgo.dev, with replies
+// routed to support@realgo.dev.
 type Mail struct {
 	Enabled  bool          `yaml:"enabled" env:"MAIL_ENABLED" env-default:"false"`
-	Host     string        `yaml:"smtp_host" env:"MAIL_SMTP_HOST" env-default:"mail.realgo.dev"`
-	Port     int           `yaml:"smtp_port" env:"MAIL_SMTP_PORT" env-default:"587"`
-	Username string        `yaml:"smtp_username" env:"MAIL_SMTP_USERNAME" env-default:"support@realgo.dev"`
+	Host     string        `yaml:"smtp_host" env:"MAIL_SMTP_HOST" env-default:"mail.smtp2go.com"`
+	Port     int           `yaml:"smtp_port" env:"MAIL_SMTP_PORT" env-default:"2525"`
+	Username string        `yaml:"smtp_username" env:"MAIL_SMTP_USERNAME"`
 	Password string        `yaml:"smtp_password" env:"MAIL_SMTP_PASSWORD"`
 	BaseURL  string        `yaml:"base_url" env:"MAIL_BASE_URL" env-default:"https://realgo.dev"`
 	Timeout  time.Duration `yaml:"smtp_timeout" env:"MAIL_SMTP_TIMEOUT" env-default:"10s"`
-	TLSMode  string        `yaml:"smtp_tls_mode" env:"MAIL_SMTP_TLS_MODE" env-default:"auto"`
+	TLSMode  string        `yaml:"smtp_tls_mode" env:"MAIL_SMTP_TLS_MODE" env-default:"starttls"`
 }
 
 // AI configures the LLM provider (Gemini via its OpenAI-compatible endpoint)

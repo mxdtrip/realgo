@@ -1,7 +1,7 @@
 // Package mail contains the ReAlgo transactional mail transport and templates.
-// The sender identity is intentionally fixed to the domain mailbox. The SMTP
-// account may still differ when a relay such as Gmail is authorized to send as
-// support@realgo.dev.
+// The sender identity is intentionally fixed to the transactional domain
+// mailbox; provider credentials are transport credentials, never user-facing
+// addresses.
 package mail
 
 import (
@@ -22,7 +22,8 @@ import (
 	"time"
 )
 
-const SenderAddress = "support@realgo.dev"
+const SenderAddress = "noreply@realgo.dev"
+const ReplyToAddress = "support@realgo.dev"
 const defaultDisplayName = "ReAlgo"
 
 //go:embed templates/*.html templates/*.txt
@@ -74,10 +75,10 @@ func (c Config) smtpTLSMode() (string, error) {
 		switch c.Port {
 		case 465:
 			return "implicit", nil
-		case 587:
+		case 587, 2525:
 			return "starttls", nil
 		default:
-			return "", errors.New("MAIL_SMTP_TLS_MODE=auto requires MAIL_SMTP_PORT 465 or 587")
+			return "", errors.New("MAIL_SMTP_TLS_MODE=auto requires MAIL_SMTP_PORT 465, 587, or 2525")
 		}
 	}
 	switch mode {
@@ -208,7 +209,7 @@ func formatMessage(to *mail.Address, message Message) string {
 		"Date: " + time.Now().UTC().Format(time.RFC1123Z),
 		"From: " + from,
 		"To: " + toHeader,
-		"Reply-To: " + SenderAddress,
+		"Reply-To: " + ReplyToAddress,
 		"Subject: " + mime.QEncoding.Encode("UTF-8", message.Subject),
 		"MIME-Version: 1.0",
 		"Content-Type: multipart/alternative; boundary=\"" + boundary + "\"",
@@ -246,11 +247,11 @@ type PasswordResetData struct {
 // mandatory plain-text alternative.
 func RenderPasswordReset(data PasswordResetData, baseURL string) (Message, error) {
 	values := map[string]string{
-		"Email": data.Email, "ExpiresIn": data.ExpiresIn, "ResetURL": data.ResetURL,
-		"SettingsURL": strings.TrimRight(baseURL, "/") + "/settings",
-		"SupportURL":  strings.TrimRight(baseURL, "/") + "/support",
+		"ExpiresIn":  data.ExpiresIn,
+		"ResetURL":   data.ResetURL,
+		"SupportURL": strings.TrimRight(baseURL, "/") + "/support",
 	}
-	return renderTemplate("password-reset", "Ссылка для смены пароля ReAlgo", values)
+	return renderTemplate("password-reset", "Сброс пароля ReAlgo", values)
 }
 
 // RenderPasswordChanged renders the prepared ReAlgo security template.

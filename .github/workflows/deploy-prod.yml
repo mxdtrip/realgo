@@ -47,12 +47,15 @@ jobs:
           # Gemini key for AI card generation. Optional: when unset the api
           # boots normally with generation disabled.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # Gmail app password used by the internal mail-relay container. The
-          # API sends to that relay over Docker networking so it can remain
-          # inside vpngw for AI egress.
-          MAIL_ENABLED: ${{ secrets.MAIL_SMTP_PASSWORD != '' }}
-          GMAIL_SMTP_USERNAME: freeburger.team@gmail.com
-          MAIL_SMTP_PASSWORD: ${{ secrets.MAIL_SMTP_PASSWORD }}
+          # The API remains in vpngw for AI egress. It submits only to the
+          # private relay; the relay lives on the normal Docker network and
+          # forwards transactional mail to SMTP2GO over STARTTLS.
+          MAIL_ENABLED: ${{ secrets.SMTP2GO_SMTP_USERNAME != '' && secrets.SMTP2GO_SMTP_PASSWORD != '' }}
+          SMTP2GO_SMTP_HOST: mail.smtp2go.com
+          SMTP2GO_SMTP_PORT: "2525"
+          SMTP2GO_SMTP_TLS_MODE: starttls
+          SMTP2GO_SMTP_USERNAME: ${{ secrets.SMTP2GO_SMTP_USERNAME }}
+          SMTP2GO_SMTP_PASSWORD: ${{ secrets.SMTP2GO_SMTP_PASSWORD }}
           MAIL_BASE_URL: https://realgo.dev
           MAIL_SMTP_TIMEOUT: 10s
           # VLESS subscription for the vpngw gateway (api shares its netns so

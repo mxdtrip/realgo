@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
               <h1>Проверьте почту</h1>
               <p role="status">
                 Если аккаунт с таким адресом существует, мы отправили ссылку для смены пароля
-                с адреса support@realgo.dev.
+                от ReAlgo &lt;noreply@realgo.dev&gt;.
               </p>
               <a href="/login">Вернуться ко входу</a>
             </div>

@@ -34,13 +34,14 @@ WITH revoked AS (
   SET used_at = NOW()
   WHERE user_id = $1::bigint
     AND used_at IS NULL
+  RETURNING id
 )
 INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
-VALUES (
+SELECT
   $1::bigint,
   $2::char(64),
   $3::timestamptz
-)
+FROM (SELECT COUNT(*) FROM revoked) AS revocation_complete
 ON CONFLICT DO NOTHING
 `
 

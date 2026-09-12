@@ -154,19 +154,21 @@ func (h *authHandler) requestPasswordReset(w http.ResponseWriter, r *http.Reques
 	if !decodeJSON(w, r, &req) {
 		return
 	}
+	emailHash := emailLogHash(req.Email)
+	requestID := middleware.GetReqID(r.Context())
+	slog.Info("password_reset_requested", slog.String("email_hash", emailHash), slog.String("request_id", requestID))
 	user, token, found, err := h.svc.IssuePasswordReset(r.Context(), req.Email)
 	if err != nil {
-		slog.Error("auth: request password reset failed", slog.Any("err", err))
+		slog.Error("password_reset_request_failed", slog.String("email_hash", emailHash), slog.String("request_id", requestID), slog.Any("err", err))
 		response.Fail(w, http.StatusInternalServerError, "internal_error", "something went wrong")
 		return
 	}
-	emailHash := emailLogHash(req.Email)
-	requestID := middleware.GetReqID(r.Context())
 	if !found {
-		slog.Info("auth: password reset skipped", slog.String("reason", "unknown_or_invalid_email"), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
+		slog.Info("password_reset_account_not_found", slog.String("email_hash", emailHash), slog.String("request_id", requestID))
 		response.JSON(w, http.StatusAccepted, map[string]string{"status": "reset_requested"})
 		return
 	}
+	slog.Info("password_reset_account_found", slog.Int64("user_id", user.ID), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
 	if found {
 		message, renderErr := mail.RenderPasswordReset(mail.PasswordResetData{
 			Email:     user.Email,
@@ -174,7 +176,7 @@ func (h *authHandler) requestPasswordReset(w http.ResponseWriter, r *http.Reques
 			ResetURL:  h.resetURL(token),
 		}, h.mailBaseURL)
 		if renderErr != nil {
-			slog.Error("auth: render password reset email failed", slog.Int64("user_id", user.ID), slog.String("email_hash", emailHash), slog.String("request_id", requestID), slog.Any("err", renderErr))
+			slog.Error("password_reset_email_failed", slog.Int64("user_id", user.ID), slog.String("email_hash", emailHash), slog.String("request_id", requestID), slog.String("reason", "template_render_failed"), slog.Any("err", renderErr))
 		} else {
 			message.To = user.Email
 			h.deliverMail(r.Context(), message, user.ID, "password_reset", emailHash)
@@ -197,10 +199,17 @@ func (h *authHandler) confirmPasswordReset(w http.ResponseWriter, r *http.Reques
 	}
 	user, err := h.svc.ResetPassword(r.Context(), req.Token, req.NewPassword)
 	if err != nil {
+		if errors.Is(err, auth.ErrInvalidToken) {
+			// Invalid, expired and already consumed links intentionally have one
+			// public error and one log event: distinguishing them would turn logs
+			// into a token-status oracle without improving recovery.
+			slog.Info("password_reset_invalid_token", slog.String("request_id", middleware.GetReqID(r.Context())))
+		}
 		writeAuthError(w, err, "ConfirmPasswordReset")
 		return
 	}
 	h.sendPasswordChanged(r, user)
+	slog.Info("password_reset_completed", slog.Int64("user_id", user.ID), slog.String("request_id", middleware.GetReqID(r.Context())))
 	response.JSON(w, http.StatusOK, map[string]string{"status": "password_reset"})
 }
 
@@ -588,17 +597,19 @@ func (h *authHandler) sendPasswordChanged(r *http.Request, user db.User) {
 
 func (h *authHandler) deliverMail(ctx context.Context, message mail.Message, userID int64, kind string, emailHash string) {
 	requestID := middleware.GetReqID(ctx)
+	failureEvent := kind + "_email_failed"
+	successEvent := kind + "_email_sent"
 	if h.mailer == nil {
-		slog.Warn("auth: email delivery skipped", slog.Int64("user_id", userID), slog.String("kind", kind), slog.String("reason", "mailer_disabled"), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
+		slog.Warn(failureEvent, slog.Int64("user_id", userID), slog.String("reason", "mailer_disabled"), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	if err := h.mailer.Send(ctx, message); err != nil {
-		slog.Error("auth: email delivery failed", slog.Int64("user_id", userID), slog.String("kind", kind), slog.String("email_hash", emailHash), slog.String("request_id", requestID), slog.Any("err", err))
+		slog.Error(failureEvent, slog.Int64("user_id", userID), slog.String("email_hash", emailHash), slog.String("request_id", requestID), slog.Any("err", err))
 		return
 	}
-	slog.Info("auth: email delivered", slog.Int64("user_id", userID), slog.String("kind", kind), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
+	slog.Info(successEvent, slog.Int64("user_id", userID), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
 }
 
 func (h *authHandler) resetURL(token string) string {

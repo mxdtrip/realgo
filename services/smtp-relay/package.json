@@ -1,11 +1,12 @@
 {
-  "name": "realgo-gmail-smtp-relay",
+  "name": "realgo-smtp2go-relay",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "healthcheck": "node healthcheck.mjs"
+    "healthcheck": "node healthcheck.mjs",
+    "test": "node --test"
   },
   "dependencies": {
     "smtp-server": "3.19.3"
