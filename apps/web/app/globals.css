@@ -6996,6 +6996,11 @@ a.roadmap-step__practice-card:hover {
   opacity: 0.78;
 }
 
+.auth-provider:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .auth-provider svg {
   flex: none;
   width: 19px;

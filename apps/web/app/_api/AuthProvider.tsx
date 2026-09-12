@@ -22,6 +22,8 @@ type AuthContextValue = {
   status: AuthStatus;
   login: (email: string, password: string) => Promise<AuthUser>;
   register: (email: string, password: string) => Promise<AuthUser>;
+  loginWithYandex: (code: string, redirectUri: string) => Promise<AuthUser>;
+  loginWithGithub: (code: string, redirectUri: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   /** Re-runs the session check — CabinetGuard's retry action on `status === "error"`. */
   retry: () => void;
@@ -88,6 +90,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return u;
   }, []);
 
+  const loginWithYandex = useCallback(async (code: string, redirectUri: string) => {
+    const u = await authApi.loginWithYandex(code, redirectUri);
+    setUser(u);
+    setStatus("authenticated");
+    return u;
+  }, []);
+
+  const loginWithGithub = useCallback(async (code: string, redirectUri: string) => {
+    const u = await authApi.loginWithGithub(code, redirectUri);
+    setUser(u);
+    setStatus("authenticated");
+    return u;
+  }, []);
+
   const logout = useCallback(async () => {
     await authApi.logout();
     if (hasSession()) {
@@ -103,8 +119,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [sync]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, register, logout, retry }),
-    [user, status, login, register, logout, retry],
+    () => ({ user, status, login, register, loginWithYandex, loginWithGithub, logout, retry }),
+    [user, status, login, register, loginWithYandex, loginWithGithub, logout, retry],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

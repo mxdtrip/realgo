@@ -11,6 +11,41 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createOAuthUser = `-- name: CreateOAuthUser :one
+INSERT INTO users (email, password_hash)
+VALUES ($1, NULL)
+RETURNING id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder
+`
+
+// An OAuth-only signup (e.g. Yandex ID): no local password is set.
+func (q *Queries) CreateOAuthUser(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRow(ctx, createOAuthUser, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Timezone,
+		&i.Plan,
+		&i.InterviewDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PrepGoal,
+		&i.Grade,
+		&i.TargetCompany,
+		&i.TargetPosition,
+		&i.OnboardingCompletedAt,
+		&i.NotifyReviewReminder,
+		&i.NotifyWeeklyDigest,
+		&i.NotifyEmailEnabled,
+		&i.TargetTopics,
+		&i.Platform,
+		&i.IsDemo,
+		&i.NotifyStreakReminder,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, password_hash)
 VALUES ($1, $2)
@@ -19,7 +54,7 @@ RETURNING id, email, password_hash, timezone, plan, interview_date, created_at, 
 
 type CreateUserParams struct {
 	Email        string
-	PasswordHash string
+	PasswordHash pgtype.Text
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -219,7 +254,7 @@ WHERE id = $1
 
 type UpdateUserPasswordParams struct {
 	ID           int64
-	PasswordHash string
+	PasswordHash pgtype.Text
 }
 
 func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (int64, error) {

@@ -24,6 +24,13 @@ jobs:
           APP_VERSION: staging-${{ github.run_number }}
           COMMIT_SHA: ${{ github.sha }}
           AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
+          # OAuth public ids are passed to the web build; the matching secrets
+          # are consumed only by the API container. Empty repository secrets
+          # leave their respective buttons visibly disabled on staging.
+          YANDEX_CLIENT_ID: ${{ secrets.YANDEX_CLIENT_ID }}
+          YANDEX_CLIENT_SECRET: ${{ secrets.YANDEX_CLIENT_SECRET }}
+          GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
           FRP_VPS_HOST: ${{ secrets.FRP_VPS_HOST }}
           FRP_TOKEN: ${{ secrets.FRP_TOKEN }}
           # No SEED_USERS_PASSWORD here on purpose: staging runs on a restored

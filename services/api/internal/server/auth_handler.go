@@ -41,6 +41,14 @@ type refreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// oauthLoginRequest is the body shape shared by every "second leg" OAuth
+// endpoint (/auth/yandex, /auth/github): the callback route forwards the
+// authorization code and the exact redirect_uri it was issued for.
+type oauthLoginRequest struct {
+	Code        string `json:"code"`
+	RedirectURI string `json:"redirect_uri"`
+}
+
 type profileResponse struct {
 	PrepGoal       *string  `json:"prep_goal"`
 	Grade          *string  `json:"grade"`
@@ -145,6 +153,53 @@ func (h *authHandler) handleCredentials(
 		return
 	}
 	response.JSON(w, status, authResponse{User: newUserResponse(user), Tokens: tokens})
+}
+
+// yandexLogin handles POST /auth/yandex — the second leg of "Sign in with
+// Yandex ID": the browser has already redirected through
+// https://oauth.yandex.ru/authorize and landed back on the app's callback
+// route with an authorization code, which it forwards here to be exchanged
+// server-side (client_secret never reaches the browser).
+func (h *authHandler) yandexLogin(w http.ResponseWriter, r *http.Request) {
+	h.handleOAuthLogin(w, r, h.svc.LoginWithYandex, "YandexLogin")
+}
+
+// githubLogin handles POST /auth/github — the second leg of "Sign in with
+// GitHub", mirroring yandexLogin for the GitHub OAuth App authorization code
+// flow (https://docs.github.com/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps).
+func (h *authHandler) githubLogin(w http.ResponseWriter, r *http.Request) {
+	h.handleOAuthLogin(w, r, h.svc.LoginWithGitHub, "GithubLogin")
+}
+
+func (h *authHandler) handleOAuthLogin(
+	w http.ResponseWriter,
+	r *http.Request,
+	fn func(context.Context, string, string) (db.User, auth.TokenPair, error),
+	method string,
+) {
+	if h.unavailable(w) {
+		return
+	}
+	var req oauthLoginRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if req.Code == "" {
+		slog.Warn("auth: "+method+" failed", slog.String("field", "code"))
+		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "code is required", "code")
+		return
+	}
+	if req.RedirectURI == "" {
+		slog.Warn("auth: "+method+" failed", slog.String("field", "redirect_uri"))
+		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "redirect_uri is required", "redirect_uri")
+		return
+	}
+	user, tokens, err := fn(r.Context(), req.Code, req.RedirectURI)
+	if err != nil {
+		writeAuthError(w, err, method)
+		return
+	}
+	response.JSON(w, http.StatusOK, authResponse{User: newUserResponse(user), Tokens: tokens})
 }
 
 func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
@@ -609,6 +664,15 @@ func writeAuthError(w http.ResponseWriter, err error, handler string, extra ...a
 	case errors.Is(err, auth.ErrInvalidToken):
 		slog.Warn("auth: "+handler+" failed", logArgs...)
 		response.Fail(w, http.StatusUnauthorized, "invalid_token", "invalid or expired token")
+	case errors.Is(err, auth.ErrOAuthUnavailable):
+		slog.Error("auth: "+handler+" failed", logArgs...)
+		response.Fail(w, http.StatusServiceUnavailable, "oauth_unavailable", "this sign-in method is not configured")
+	case errors.Is(err, auth.ErrOAuthNoEmail):
+		slog.Warn("auth: "+handler+" failed", logArgs...)
+		response.Fail(w, http.StatusUnprocessableEntity, "oauth_no_email", "the provider account has no email to sign in with")
+	case errors.Is(err, auth.ErrOAuthProviderFailed):
+		slog.Error("auth: "+handler+" failed", logArgs...)
+		response.Fail(w, http.StatusBadGateway, "oauth_provider_failed", "the sign-in provider did not respond as expected")
 	default:
 		slog.Error("auth: "+handler+" failed", logArgs...)
 		response.Fail(w, http.StatusInternalServerError, "internal_error", "something went wrong")
