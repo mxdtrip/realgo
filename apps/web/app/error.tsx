@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 type AppErrorProps = {
   error: Error & { digest?: string };
@@ -11,6 +12,7 @@ export default function AppError({ error, reset }: AppErrorProps) {
   const retryRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    if (!error.digest) Sentry.captureException(error);
     console.error("realgo root route error", error);
   }, [error]);
 

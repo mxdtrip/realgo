@@ -64,10 +64,12 @@ func JSONWithMeta(w http.ResponseWriter, status int, data any, meta Meta) {
 
 // Fail writes a structured error under the "error" field with the given status.
 func Fail(w http.ResponseWriter, status int, code, message string) {
+	reportServerError(w, status, code, message)
 	write(w, status, envelope{Error: &Error{Code: code, Message: message}, Meta: metaFromHeader(w)})
 }
 
 func FailWithDetails(w http.ResponseWriter, status int, code, message, field string) {
+	reportServerError(w, status, code, message)
 	write(w, status, envelope{
 		Error: &Error{
 			Code:    code,
@@ -76,6 +78,14 @@ func FailWithDetails(w http.ResponseWriter, status int, code, message, field str
 		},
 		Meta: metaFromHeader(w),
 	})
+}
+
+func reportServerError(w http.ResponseWriter, status int, code, message string) {
+	if reporter, ok := w.(interface {
+		CaptureServerError(status int, code, message string)
+	}); ok {
+		reporter.CaptureServerError(status, code, message)
+	}
 }
 
 // metaFromHeader builds a *Meta carrying only the request id from the

@@ -25,13 +25,21 @@ COPY . .
 ARG NEXT_PUBLIC_API_BASE_URL=""
 ARG NEXT_PUBLIC_APP_VERSION=""
 ARG NEXT_PUBLIC_COMMIT_SHA=""
+ARG NEXT_PUBLIC_SENTRY_DSN=""
+ARG NEXT_PUBLIC_SENTRY_ENVIRONMENT=""
+ARG SENTRY_ORG=""
+ARG SENTRY_REQUIRE_UPLOAD="false"
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
+ENV NEXT_PUBLIC_SENTRY_ENVIRONMENT=$NEXT_PUBLIC_SENTRY_ENVIRONMENT
+ENV SENTRY_ORG=$SENTRY_ORG
 ENV NEXT_TELEMETRY_DISABLED=1
 # Resolve release metadata inside the build so the ordinary compose command is
 # sufficient. `repository_metadata` is a named BuildKit context limited by the
 # repository-root .dockerignore to HEAD/refs/packed-refs; none of it is copied
 # into an image layer. Explicit CI args still take precedence.
 RUN --mount=from=repository_metadata,target=/repository-metadata,ro \
+    --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN,required=false \
     --mount=type=cache,target=/app/.next/cache \
     set -eu; \
     commit="$NEXT_PUBLIC_COMMIT_SHA"; \
@@ -57,8 +65,16 @@ RUN --mount=from=repository_metadata,target=/repository-metadata,ro \
     fi; \
     release="$NEXT_PUBLIC_APP_VERSION"; \
     if [ -z "$release" ]; then release="git-$(printf '%.12s' "$commit")"; fi; \
+    if [ "$SENTRY_REQUIRE_UPLOAD" = "true" ] && { [ -z "${SENTRY_AUTH_TOKEN:-}" ] || [ -z "$SENTRY_ORG" ] || [ -z "$NEXT_PUBLIC_SENTRY_DSN" ]; }; then \
+      echo 'Sentry source-map upload is required but its build credentials are incomplete' >&2; exit 1; \
+    fi; \
     echo "Building web release $release ($commit)"; \
-    NEXT_PUBLIC_APP_VERSION="$release" NEXT_PUBLIC_COMMIT_SHA="$commit" npm run build
+    SENTRY_DSN="$NEXT_PUBLIC_SENTRY_DSN" \
+    SENTRY_ENVIRONMENT="$NEXT_PUBLIC_SENTRY_ENVIRONMENT" \
+    SENTRY_RELEASE="$release" \
+    NEXT_PUBLIC_APP_VERSION="$release" \
+    NEXT_PUBLIC_COMMIT_SHA="$commit" \
+    npm run build
 # public/ is the only thing the runner copies that carries the build context's
 # file modes verbatim (everything under .next/ is generated here, so it already
 # has sane ones). The runner drops to the unprivileged `nextjs` user, so a

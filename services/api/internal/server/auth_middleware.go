@@ -3,8 +3,10 @@ package server
 import (
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
 	"github.com/mxdtrip/realgo/services/api/internal/server/response"
 )
@@ -30,6 +32,9 @@ func requireAuth(svc *auth.Service) func(http.Handler) http.Handler {
 				slog.Warn("server: requireAuth failed", slog.Any("err", err))
 				response.Fail(w, http.StatusUnauthorized, "INVALID_TOKEN", "invalid or expired token")
 				return
+			}
+			if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+				hub.Scope().SetUser(sentry.User{ID: strconv.FormatInt(userID, 10)})
 			}
 			ctx := auth.ContextWithUserID(r.Context(), userID)
 			next.ServeHTTP(w, r.WithContext(ctx))

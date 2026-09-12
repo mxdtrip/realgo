@@ -5,6 +5,7 @@
 // changes (including from another tab).
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 import * as authApi from "./auth";
 import { authChangedEvent, hasSession } from "./tokens";
@@ -73,6 +74,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("storage", onChange);
     };
   }, [sync]);
+
+  useEffect(() => {
+    Sentry.setUser(user ? { id: String(user.id) } : null);
+  }, [user]);
 
   const login = useCallback(async (email: string, password: string) => {
     const u = await authApi.login(email, password);

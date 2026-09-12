@@ -62,9 +62,26 @@ services:
     network_mode: "service:vpngw"
     environment:
       APP_ENV: production
+      SENTRY_DSN: ${SENTRY_API_DSN:?SENTRY_API_DSN must be set}
+      SENTRY_ENVIRONMENT: production
+      SENTRY_RELEASE: ${APP_VERSION:?APP_VERSION must be set}
     depends_on:
       vpngw:
         condition: service_healthy
+
+  web:
+    build:
+      args:
+        NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_WEB_DSN:?SENTRY_WEB_DSN must be set}
+        NEXT_PUBLIC_SENTRY_ENVIRONMENT: production
+        SENTRY_ORG: ${SENTRY_ORG:?SENTRY_ORG must be set}
+        SENTRY_REQUIRE_UPLOAD: "true"
+      secrets:
+        - sentry_auth_token
+    environment:
+      SENTRY_DSN: ${SENTRY_WEB_DSN:?SENTRY_WEB_DSN must be set}
+      SENTRY_ENVIRONMENT: production
+      SENTRY_RELEASE: ${APP_VERSION:?APP_VERSION must be set}
 
   # The product presentation runs in prod exactly as it does locally — the base
   # service definition already carries everything it needs. It is repeated here
@@ -121,3 +138,7 @@ services:
   caddy:
     volumes:
       - ./Caddyfile.internal.prod:/etc/caddy/Caddyfile:ro
+
+secrets:
+  sentry_auth_token:
+    environment: SENTRY_AUTH_TOKEN
