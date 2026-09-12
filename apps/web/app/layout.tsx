@@ -32,6 +32,17 @@ const jetBrainsMono = JetBrains_Mono({
 const metadataCopy = getDictionary().common.metadata;
 const metadataBase = new URL(process.env.NEXT_PUBLIC_SITE_URL ?? metadataCopy.siteUrl);
 
+// Organization schema for search engines' knowledge panel / sitelinks — kept
+// in the root layout since it describes the brand, not a single page.
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: metadataCopy.applicationName,
+  url: metadataBase.toString(),
+  logo: new URL("/icons/realgo-logo.png", metadataBase).toString(),
+  sameAs: ["https://t.me/realgo_devlog"],
+};
+
 export const metadata: Metadata = {
   metadataBase,
   title: {
@@ -94,6 +105,11 @@ export default function RootLayout({
       lang="ru"
     >
       <body>
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
         <AuthProvider>
           <ToastProvider>
             <PWAProvider />

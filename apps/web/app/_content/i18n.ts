@@ -8,24 +8,26 @@ const ru = {
   common: {
     brand: "ReAlgo",
     metadata: {
-      title: "ReAlgo — Memory layer for interview prep",
+      title: "ReAlgo — подготовка к собеседованиям по алгоритмам",
       description:
-        "ReAlgo помогает не забывать решённые задачи, вовремя возвращает их к повторению и складывает понятный план подготовки к интервью.",
+        "ReAlgo помогает готовиться к техническим собеседованиям: сохраняет решённые задачи с LeetCode и HackerRank, планирует интервальные повторения и собирает roadmap по паттернам.",
       applicationName: "ReAlgo",
       siteUrl: "https://realgo.dev",
-      ogImageAlt: "ReAlgo interview prep memory layer preview",
+      ogImageAlt: "ReAlgo — память для подготовки к техническим собеседованиям",
       ogEyebrow: "/memory /roadmap /reviews",
       ogHeadline: "«Solved» ещё не значит «запомнил»",
-      ogFooter: "LeetCode solved tasks -> spaced repetition -> interview roadmap",
+      ogFooter: "LeetCode → интервальные повторения → roadmap подготовки",
       keywords: [
-        "interview prep",
-        "spaced repetition",
-        "LeetCode",
-        "NeetCode",
-        "algorithm practice",
-        "technical interviews",
         "подготовка к собеседованиям",
-        "алгоритмические задачи",
+        "техническое собеседование программиста",
+        "алгоритмы для собеседований",
+        "интервальные повторения",
+        "spaced repetition",
+        "паттерны алгоритмов",
+        "LeetCode на русском",
+        "тренажер алгоритмов",
+        "план подготовки к интервью",
+        "NeetCode 150",
       ],
     },
   },
@@ -231,7 +233,7 @@ const ru = {
       description: "Память для подготовки к интервью. Решай, отмечай, возвращайся в нужный момент.",
       columns: [
         {
-          title: "product",
+          title: "продукт",
           links: [
             { href: "/#memory", label: "Memory" },
             { href: "/#roadmap", label: "Roadmap" },
@@ -241,39 +243,41 @@ const ru = {
           ],
         },
         {
-          title: "developers",
+          title: "для разработчиков",
           links: [
-            { href: "/docs", label: "Docs" },
-            { href: "/anki-export", label: "Anki export" },
-            { href: "/changelog", label: "Changelog" },
+            { href: "/docs", label: "Документация" },
+            { href: "/anki-export", label: "Экспорт в Anki" },
+            { href: "/changelog", label: "Изменения" },
           ],
         },
         {
-          title: "company",
+          title: "компания",
           links: [
-            { href: "/about", label: "About" },
-            { href: "https://t.me/realgo_devlog", label: "Blog" },
+            { href: "/about", label: "О команде" },
+            { href: "https://t.me/realgo_devlog", label: "Блог" },
             // Served by the `presentation` nginx container, not by Next — Caddy
             // strips the /presentation prefix and proxies there. The link is
             // written without a trailing slash on purpose: Caddy redirects it,
             // so the footer stays readable and the deck's relative asset paths
             // still resolve. The older /pitch-deck.html stays reachable by
-            // direct URL but is no longer linked from here.
-            { href: "/presentation", label: "Presentation" },
+            // direct URL but is no longer linked from here. Both are noindexed
+            // (see robots.ts / their own <meta robots> tags) — this link is for
+            // human visitors, not search engines.
+            { href: "/presentation", label: "Презентация" },
           ],
         },
         {
-          title: "documents",
+          title: "документы",
           links: [
-            { href: "/privacy", label: "Privacy" },
-            { href: "/terms", label: "Terms" },
-            { href: "/offer", label: "Offer" },
-            { href: "/support", label: "Support" },
+            { href: "/privacy", label: "Конфиденциальность" },
+            { href: "/terms", label: "Условия использования" },
+            { href: "/offer", label: "Оферта" },
+            { href: "/support", label: "Поддержка" },
           ],
         },
       ],
-      copyright: "© 2026 ReAlgo. All rights reserved.",
-      tagline: "built by devs who bombed a few interviews first",
+      copyright: "© 2026 ReAlgo. Все права защищены.",
+      tagline: "сделано разработчиками, которые сами не раз заваливали собеседования",
     },
   },
   onboarding: {
