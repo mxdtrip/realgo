@@ -2,10 +2,16 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/mail"
+	"net/url"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -15,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	goredis "github.com/redis/go-redis/v9"
 
+	"github.com/mxdtrip/realgo/services/api/internal/mailer"
 	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 )
 
@@ -31,54 +38,334 @@ type Service struct {
 	queries *db.Queries
 	redis   *goredis.Client
 	cfg     Config
+	mailer  mailer.Sender
 	now     func() time.Time
 }
 
-// NewService wires the auth service over the user store and Redis.
-func NewService(queries *db.Queries, redis *goredis.Client, cfg Config) *Service {
+// NewService wires the auth service over the user store, Redis and the
+// verification-email sender.
+func NewService(queries *db.Queries, redis *goredis.Client, cfg Config, sender mailer.Sender) *Service {
 	return &Service{
 		queries: queries,
 		redis:   redis,
 		cfg:     cfg,
+		mailer:  sender,
 		now:     time.Now,
 	}
 }
 
-// Register validates the input, creates a user and issues a token pair.
-func (s *Service) Register(ctx context.Context, email, password string) (db.User, TokenPair, error) {
+// Register validates the input and creates an unverified user, then sends a
+// confirmation link. It does not issue tokens: the account only becomes
+// usable once ConfirmEmail succeeds. If email belongs to an existing but
+// still-unverified account (an earlier attempt that never got confirmed —
+// e.g. a typo'd address), the password is refreshed and a fresh link is sent
+// to that same account instead of permanently locking the email behind a
+// link nobody can click anymore. Either way the response is identical, so
+// this endpoint never reveals whether the email was already registered.
+func (s *Service) Register(ctx context.Context, email, password string) (db.User, error) {
 	normalized, err := normalizeEmail(email)
 	if err != nil {
-		return db.User{}, TokenPair{}, err
+		return db.User{}, err
 	}
 	if err := validatePassword(password); err != nil {
-		return db.User{}, TokenPair{}, err
+		return db.User{}, err
 	}
 
 	hash, err := hashPassword(password)
 	if err != nil {
-		return db.User{}, TokenPair{}, err
+		return db.User{}, err
 	}
 
 	user, err := s.queries.CreateUser(ctx, db.CreateUserParams{Email: normalized, PasswordHash: hash})
 	if err != nil {
-		if isUniqueViolation(err) {
-			return db.User{}, TokenPair{}, ErrEmailTaken
+		if !isUniqueViolation(err) {
+			return db.User{}, err
+		}
+		existing, getErr := s.queries.GetUserByEmail(ctx, normalized)
+		if getErr != nil {
+			return db.User{}, ErrEmailTaken
+		}
+		if existing.EmailVerifiedAt.Valid {
+			return db.User{}, ErrEmailTaken
+		}
+		rows, updErr := s.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{ID: existing.ID, PasswordHash: hash})
+		if updErr != nil {
+			return db.User{}, updErr
+		}
+		if rows == 0 {
+			return db.User{}, ErrEmailTaken
+		}
+		user = existing
+	}
+
+	if err := s.sendVerificationEmail(ctx, user); err != nil {
+		slog.Error("auth: failed to send verification email",
+			slog.String("layer", "service"),
+			slog.String("module", "auth"),
+			slog.Any("err", err),
+			slog.Int64("user_id", user.ID),
+		)
+	}
+	return user, nil
+}
+
+// ConfirmEmail validates a magic-link id/token pair, marks the account
+// verified and issues a token pair (auto-login). The same generic error
+// covers an unknown id, a wrong token, an already-used link and an expired
+// one, so a guess cannot distinguish those cases.
+func (s *Service) ConfirmEmail(ctx context.Context, id, token string) (db.User, TokenPair, error) {
+	var verificationID pgtype.UUID
+	if err := verificationID.Scan(id); err != nil {
+		return db.User{}, TokenPair{}, ErrVerificationTokenInvalid
+	}
+
+	verification, err := s.queries.GetEmailVerificationByID(ctx, verificationID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.User{}, TokenPair{}, ErrVerificationTokenInvalid
 		}
 		return db.User{}, TokenPair{}, err
 	}
+	if verification.ConsumedAt.Valid || !verification.ExpiresAt.Valid || s.now().After(verification.ExpiresAt.Time) {
+		return db.User{}, TokenPair{}, ErrVerificationTokenInvalid
+	}
+	if subtle.ConstantTimeCompare([]byte(hashMagicLinkToken(token)), []byte(verification.TokenHash)) != 1 {
+		return db.User{}, TokenPair{}, ErrVerificationTokenInvalid
+	}
 
+	rows, err := s.queries.ConsumeEmailVerification(ctx, verificationID)
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	if rows == 0 {
+		// Consumed concurrently (double click, two tabs).
+		return db.User{}, TokenPair{}, ErrVerificationTokenInvalid
+	}
+	if _, err := s.queries.MarkUserEmailVerified(ctx, verification.UserID); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+
+	user, err := s.queries.GetUserByID(ctx, verification.UserID)
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
 	tokens, err := s.issueTokens(ctx, user.ID, s.now())
 	if err != nil {
-		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
-		defer cancel()
-		if cleanupErr := s.queries.DeleteUserByID(cleanupCtx, user.ID); cleanupErr != nil {
-			slog.Error("auth: registration cleanup failed",
-				slog.String("layer", "service"),
-				slog.String("module", "auth"),
-				slog.Any("err", cleanupErr),
-				slog.Int64("user_id", user.ID),
-			)
+		return db.User{}, TokenPair{}, err
+	}
+	return user, tokens, nil
+}
+
+// ResendVerification issues and sends a fresh confirmation link for the
+// account behind an (possibly expired or already-used) verification id — the
+// id a confirm-email page still has after its link stopped working. It
+// always succeeds from the caller's point of view — an unknown id, an
+// already-verified account or a genuine send failure all resolve silently —
+// so the endpoint cannot be used to probe which links or accounts exist.
+func (s *Service) ResendVerification(ctx context.Context, id string) error {
+	var verificationID pgtype.UUID
+	if err := verificationID.Scan(id); err != nil {
+		return nil
+	}
+	verification, err := s.queries.GetEmailVerificationByID(ctx, verificationID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
 		}
+		return err
+	}
+	return s.resendIfUnverified(ctx, verification.UserID)
+}
+
+// ResendVerificationByEmail is the same neutral resend, keyed by the email
+// address a user has on hand after a "confirm your email" login rejection
+// (they never received or kept a verification id at that point). Same
+// anti-enumeration guarantee as ResendVerification.
+func (s *Service) ResendVerificationByEmail(ctx context.Context, email string) error {
+	normalized, err := normalizeEmail(email)
+	if err != nil {
+		return nil
+	}
+	user, err := s.queries.GetUserByEmail(ctx, normalized)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	return s.resendIfUnverified(ctx, user.ID)
+}
+
+func (s *Service) resendIfUnverified(ctx context.Context, userID int64) error {
+	user, err := s.queries.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	if user.EmailVerifiedAt.Valid {
+		return nil
+	}
+	if err := s.sendVerificationEmail(ctx, user); err != nil {
+		slog.Error("auth: failed to resend verification email",
+			slog.String("layer", "service"),
+			slog.String("module", "auth"),
+			slog.Any("err", err),
+			slog.Int64("user_id", user.ID),
+		)
+	}
+	return nil
+}
+
+// sendVerificationEmail invalidates any earlier pending link for user, mints
+// a fresh single-use token and hands the confirm link to the mailer.
+func (s *Service) sendVerificationEmail(ctx context.Context, user db.User) error {
+	token, hash, err := newMagicLinkToken()
+	if err != nil {
+		return fmt.Errorf("generate verification token: %w", err)
+	}
+	if err := s.queries.ExpirePendingEmailVerifications(ctx, user.ID); err != nil {
+		return fmt.Errorf("expire pending verifications: %w", err)
+	}
+	verification, err := s.queries.CreateEmailVerification(ctx, db.CreateEmailVerificationParams{
+		UserID:    user.ID,
+		TokenHash: hash,
+		ExpiresAt: pgtype.Timestamptz{Time: s.now().Add(s.cfg.EmailVerificationTTL), Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("create verification: %w", err)
+	}
+
+	confirmURL := fmt.Sprintf("%s/confirm-email?id=%s&token=%s",
+		s.cfg.PublicSiteURL, verification.ID.String(), url.QueryEscape(token))
+	return s.mailer.SendVerificationEmail(ctx, user.Email, confirmURL, s.cfg.EmailVerificationTTL)
+}
+
+// newMagicLinkToken returns a fresh high-entropy secret and its stored hash,
+// shared by email-confirmation and password-reset links. Only the hash is
+// ever persisted — the plaintext token exists solely in the emailed link, so
+// a database read alone cannot forge one.
+func newMagicLinkToken() (token, hash string, err error) {
+	buf := make([]byte, 32)
+	if _, err = rand.Read(buf); err != nil {
+		return "", "", err
+	}
+	token = base64.RawURLEncoding.EncodeToString(buf)
+	return token, hashMagicLinkToken(token), nil
+}
+
+func hashMagicLinkToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+// RequestPasswordReset sends a password-reset link if email belongs to a
+// known account. It always resolves successfully from the caller's point of
+// view — an unknown email and a genuine send failure both resolve silently —
+// so the endpoint cannot be used to probe which accounts exist.
+func (s *Service) RequestPasswordReset(ctx context.Context, email string) error {
+	normalized, err := normalizeEmail(email)
+	if err != nil {
+		return nil
+	}
+	user, err := s.queries.GetUserByEmail(ctx, normalized)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+
+	token, hash, err := newMagicLinkToken()
+	if err != nil {
+		return fmt.Errorf("generate password reset token: %w", err)
+	}
+	if err := s.queries.ExpirePendingPasswordResets(ctx, user.ID); err != nil {
+		return fmt.Errorf("expire pending password resets: %w", err)
+	}
+	reset, err := s.queries.CreatePasswordReset(ctx, db.CreatePasswordResetParams{
+		UserID:    user.ID,
+		TokenHash: hash,
+		ExpiresAt: pgtype.Timestamptz{Time: s.now().Add(s.cfg.PasswordResetTTL), Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("create password reset: %w", err)
+	}
+
+	resetURL := fmt.Sprintf("%s/reset-password?id=%s&token=%s",
+		s.cfg.PublicSiteURL, reset.ID.String(), url.QueryEscape(token))
+	if err := s.mailer.SendPasswordResetEmail(ctx, user.Email, resetURL, s.cfg.PasswordResetTTL); err != nil {
+		slog.Error("auth: failed to send password reset email",
+			slog.String("layer", "service"),
+			slog.String("module", "auth"),
+			slog.Any("err", err),
+			slog.Int64("user_id", user.ID),
+		)
+	}
+	return nil
+}
+
+// ResetPassword validates a magic-link id/token pair, sets the new password
+// and issues a token pair (auto-login). Every existing session is revoked
+// first: a password reset is as much a "I may have lost control of this
+// account" signal as a convenience feature. Clicking the link also proves
+// mailbox ownership, so an unconfirmed registration is closed out the same
+// way ConfirmEmail does. The same generic error covers an unknown id, a wrong
+// token, an already-used link and an expired one, so a guess cannot
+// distinguish those cases.
+func (s *Service) ResetPassword(ctx context.Context, id, token, newPassword string) (db.User, TokenPair, error) {
+	if err := validatePassword(newPassword); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+
+	var resetID pgtype.UUID
+	if err := resetID.Scan(id); err != nil {
+		return db.User{}, TokenPair{}, ErrPasswordResetInvalid
+	}
+	reset, err := s.queries.GetPasswordResetByID(ctx, resetID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.User{}, TokenPair{}, ErrPasswordResetInvalid
+		}
+		return db.User{}, TokenPair{}, err
+	}
+	if reset.ConsumedAt.Valid || !reset.ExpiresAt.Valid || s.now().After(reset.ExpiresAt.Time) {
+		return db.User{}, TokenPair{}, ErrPasswordResetInvalid
+	}
+	if subtle.ConstantTimeCompare([]byte(hashMagicLinkToken(token)), []byte(reset.TokenHash)) != 1 {
+		return db.User{}, TokenPair{}, ErrPasswordResetInvalid
+	}
+
+	rows, err := s.queries.ConsumePasswordReset(ctx, resetID)
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	if rows == 0 {
+		// Consumed concurrently (double click, two tabs).
+		return db.User{}, TokenPair{}, ErrPasswordResetInvalid
+	}
+
+	hash, err := hashPassword(newPassword)
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	if _, err := s.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{ID: reset.UserID, PasswordHash: hash}); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	if _, err := s.queries.MarkUserEmailVerified(ctx, reset.UserID); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	if err := s.revokeAllRefreshTokens(ctx, reset.UserID); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+
+	user, err := s.queries.GetUserByID(ctx, reset.UserID)
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	tokens, err := s.issueTokens(ctx, user.ID, s.now())
+	if err != nil {
 		return db.User{}, TokenPair{}, err
 	}
 	return user, tokens, nil
@@ -103,6 +390,9 @@ func (s *Service) Login(ctx context.Context, email, password string) (db.User, T
 	}
 	if !checkPassword(user.PasswordHash, password) {
 		return db.User{}, TokenPair{}, ErrInvalidCredentials
+	}
+	if !user.EmailVerifiedAt.Valid {
+		return db.User{}, TokenPair{}, ErrEmailNotVerified
 	}
 
 	tokens, err := s.issueTokens(ctx, user.ID, s.now())

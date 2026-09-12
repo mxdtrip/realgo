@@ -117,12 +117,148 @@ func newUserResponse(u db.User) userResponse {
 	return resp
 }
 
+// registerResponse is deliberately identical whether the email was free or
+// already belonged to an unconfirmed account — Register never reveals which.
+type registerResponse struct {
+	Status string `json:"status"`
+	Email  string `json:"email"`
+}
+
 func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
-	h.handleCredentials(w, r, h.svc.Register, http.StatusCreated, "Register")
+	if h.unavailable(w) {
+		return
+	}
+	req, ok := decodeCredentials(w, r, "Register")
+	if !ok {
+		return
+	}
+	user, err := h.svc.Register(r.Context(), req.Email, req.Password)
+	if err != nil {
+		writeAuthError(w, err, "Register", slog.String("email", req.Email))
+		return
+	}
+	response.JSON(w, http.StatusCreated, registerResponse{Status: "verification_pending", Email: user.Email})
 }
 
 func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 	h.handleCredentials(w, r, h.svc.Login, http.StatusOK, "Login")
+}
+
+type confirmEmailRequest struct {
+	ID    string `json:"id"`
+	Token string `json:"token"`
+}
+
+func (h *authHandler) confirmEmail(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	var req confirmEmailRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if req.ID == "" || req.Token == "" {
+		response.Fail(w, http.StatusBadRequest, "validation_error", "id and token are required")
+		return
+	}
+	user, tokens, err := h.svc.ConfirmEmail(r.Context(), req.ID, req.Token)
+	if err != nil {
+		writeAuthError(w, err, "ConfirmEmail")
+		return
+	}
+	response.JSON(w, http.StatusOK, authResponse{User: newUserResponse(user), Tokens: tokens})
+}
+
+type resendVerificationRequest struct {
+	ID    string `json:"id,omitempty"`
+	Email string `json:"email,omitempty"`
+}
+
+// resendVerification always answers 200 with the same neutral body — the
+// service layer already guarantees an unknown id/email, an already-verified
+// account and a genuine send failure are indistinguishable from the outside.
+func (h *authHandler) resendVerification(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	var req resendVerificationRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if (req.ID == "") == (req.Email == "") {
+		response.Fail(w, http.StatusBadRequest, "validation_error", "exactly one of id or email is required")
+		return
+	}
+
+	var err error
+	if req.ID != "" {
+		err = h.svc.ResendVerification(r.Context(), req.ID)
+	} else {
+		err = h.svc.ResendVerificationByEmail(r.Context(), req.Email)
+	}
+	if err != nil {
+		slog.Error("auth: ResendVerification failed", slog.Any("err", err))
+		response.Fail(w, http.StatusInternalServerError, "internal_error", "something went wrong")
+		return
+	}
+	response.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+type requestPasswordResetRequest struct {
+	Email string `json:"email"`
+}
+
+// requestPasswordReset always answers 200 with the same neutral body — an
+// unknown email and a genuine send failure are indistinguishable from the
+// outside, same guarantee as resendVerification.
+func (h *authHandler) requestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	var req requestPasswordResetRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if req.Email == "" {
+		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "email is required", "email")
+		return
+	}
+	if err := h.svc.RequestPasswordReset(r.Context(), req.Email); err != nil {
+		slog.Error("auth: RequestPasswordReset failed", slog.Any("err", err))
+		response.Fail(w, http.StatusInternalServerError, "internal_error", "something went wrong")
+		return
+	}
+	response.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+type resetPasswordRequest struct {
+	ID       string `json:"id"`
+	Token    string `json:"token"`
+	Password string `json:"password"`
+}
+
+func (h *authHandler) resetPassword(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	var req resetPasswordRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if req.ID == "" || req.Token == "" {
+		response.Fail(w, http.StatusBadRequest, "validation_error", "id and token are required")
+		return
+	}
+	if req.Password == "" {
+		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "password is required", "password")
+		return
+	}
+	user, tokens, err := h.svc.ResetPassword(r.Context(), req.ID, req.Token, req.Password)
+	if err != nil {
+		writeAuthError(w, err, "ResetPassword")
+		return
+	}
+	response.JSON(w, http.StatusOK, authResponse{User: newUserResponse(user), Tokens: tokens})
 }
 
 func (h *authHandler) handleCredentials(
@@ -609,6 +745,15 @@ func writeAuthError(w http.ResponseWriter, err error, handler string, extra ...a
 	case errors.Is(err, auth.ErrInvalidToken):
 		slog.Warn("auth: "+handler+" failed", logArgs...)
 		response.Fail(w, http.StatusUnauthorized, "invalid_token", "invalid or expired token")
+	case errors.Is(err, auth.ErrEmailNotVerified):
+		slog.Warn("auth: "+handler+" failed", logArgs...)
+		response.Fail(w, http.StatusForbidden, "email_not_verified", "confirm your email before signing in")
+	case errors.Is(err, auth.ErrVerificationTokenInvalid):
+		slog.Warn("auth: "+handler+" failed", logArgs...)
+		response.Fail(w, http.StatusBadRequest, "verification_invalid", "this confirmation link is invalid or has expired")
+	case errors.Is(err, auth.ErrPasswordResetInvalid):
+		slog.Warn("auth: "+handler+" failed", logArgs...)
+		response.Fail(w, http.StatusBadRequest, "password_reset_invalid", "this password reset link is invalid or has expired")
 	default:
 		slog.Error("auth: "+handler+" failed", logArgs...)
 		response.Fail(w, http.StatusInternalServerError, "internal_error", "something went wrong")

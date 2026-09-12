@@ -142,6 +142,16 @@ func New(deps Deps) *chi.Mux {
 			// unlike its /auth siblings it had no rate limit at all, despite
 			// hitting Redis/Postgres on every call same as they do.
 			r.With(authRateLimit).Post("/logout", ah.logout)
+			// Generous: a clicked link that fails validation still needs a
+			// same-page retry (double click, prefetch) to not look broken.
+			r.With(rateLimit(deps.Redis, "auth-confirm", 30, time.Minute)).Post("/confirm-email", ah.confirmEmail)
+			// Tighter: this triggers an actual email send.
+			r.With(rateLimit(deps.Redis, "auth-resend", 5, 10*time.Minute)).Post("/resend-verification", ah.resendVerification)
+			// Same shape as confirm-email/resend-verification above: request
+			// triggers a send (tight limit), the link's own submit endpoint is
+			// generous (a failed click still needs a same-page retry).
+			r.With(rateLimit(deps.Redis, "auth-password-reset-request", 5, 10*time.Minute)).Post("/request-password-reset", ah.requestPasswordReset)
+			r.With(rateLimit(deps.Redis, "auth-password-reset", 30, time.Minute)).Post("/reset-password", ah.resetPassword)
 		})
 		r.With(requireAuth(deps.Auth)).Get("/me", ah.me)
 		r.With(requireAuth(deps.Auth)).Patch("/me/profile", ah.patchProfile)

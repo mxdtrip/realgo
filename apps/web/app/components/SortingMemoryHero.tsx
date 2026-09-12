@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { requestPasswordReset, resendVerification } from "../_api/auth";
 import { useAuth } from "../_api/AuthProvider";
 import { ApiError } from "../_api/types";
 import { ReportProblemLauncher, openReportProblemDialog } from "../(cabinet)/ReportProblemDialog";
@@ -11,6 +12,16 @@ import { AccountUserMenu } from "./AccountUserMenu";
 
 const WORD = "realgo";
 const LETTER_COUNT = WORD.length;
+
+const linkButtonStyle: React.CSSProperties = {
+  background: "none",
+  border: 0,
+  padding: 0,
+  color: "var(--text-dim)",
+  textDecoration: "underline",
+  fontSize: 13,
+  cursor: "pointer",
+};
 
 // The animated word uses the same monospaced brand font as the top-bar logo.
 // Keep one identical advance slot per letter so every inter-letter interval is
@@ -299,6 +310,18 @@ export function SortingMemoryHero() {
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [authPending, setAuthPending] = useState(false);
+  // Set once register sends a confirmation link, or login is rejected for an
+  // unconfirmed account — either way the account needs a click in the inbox
+  // before anything else can happen.
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState<string | null>(null);
+  const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  // "Забыли пароль?" sub-view, reachable only from the login form.
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetPending, setResetPending] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetSentTo, setResetSentTo] = useState<string | null>(null);
+  const [resetResendStatus, setResetResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [order, setOrder] = useState(() => shuffle([0, 1, 2, 3, 4, 5]));
   const [poses, setPoses] = useState<Pose[]>([]);
   const [activeKeys, setActiveKeys] = useState<number[]>([]);
@@ -496,21 +519,87 @@ export function SortingMemoryHero() {
       setAuthError("");
       try {
         if (authMode === "signup") {
-          const authUser = await auth.register(authEmail.trim(), authPassword);
-          router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
-        } else {
-          const authUser = await auth.login(authEmail.trim(), authPassword);
-          router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
+          const result = await auth.register(authEmail.trim(), authPassword);
+          setAwaitingConfirmation(result.email);
+          setAuthPending(false);
+          return;
         }
+        const authUser = await auth.login(authEmail.trim(), authPassword);
+        router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
         // Keep the button disabled while the redirect happens; the component
         // unmounts on navigation, so there's no need to reset pending here.
       } catch (e) {
+        if (authMode === "login" && e instanceof ApiError && e.code === "email_not_verified") {
+          setAwaitingConfirmation(authEmail.trim());
+          setAuthPending(false);
+          return;
+        }
         setAuthError(e instanceof ApiError ? e.message : copy.auth.error);
         setAuthPending(false);
       }
     },
     [auth, authEmail, authMode, authPassword, authPending, copy.auth.error, router],
   );
+
+  const handleResend = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!awaitingConfirmation || resendStatus === "sending") return;
+      setResendStatus("sending");
+      try {
+        await resendVerification({ email: awaitingConfirmation });
+        setResendStatus("sent");
+      } catch {
+        setResendStatus("error");
+      }
+    },
+    [awaitingConfirmation, resendStatus],
+  );
+
+  const handleRequestReset = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (resetPending) return;
+      setResetPending(true);
+      setResetError("");
+      try {
+        // The endpoint itself is neutral (200 whether or not the email is
+        // registered — never reveals that). A thrown error here is a genuine
+        // client/network failure, not "email unknown", so it's worth
+        // surfacing rather than lying about a link having been sent.
+        await requestPasswordReset(resetEmail.trim());
+        setResetSentTo(resetEmail.trim());
+      } catch (e) {
+        setResetError(e instanceof ApiError ? e.message : copy.auth.error);
+      } finally {
+        setResetPending(false);
+      }
+    },
+    [copy.auth.error, resetEmail, resetPending],
+  );
+
+  const handleResendReset = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!resetSentTo || resetResendStatus === "sending") return;
+      setResetResendStatus("sending");
+      try {
+        await requestPasswordReset(resetSentTo);
+        setResetResendStatus("sent");
+      } catch {
+        setResetResendStatus("error");
+      }
+    },
+    [resetResendStatus, resetSentTo],
+  );
+
+  const closeForgotPassword = useCallback(() => {
+    setForgotPasswordOpen(false);
+    setResetEmail("");
+    setResetError("");
+    setResetSentTo(null);
+    setResetResendStatus("idle");
+  }, []);
 
   useEffect(() => {
     const element = sceneRef.current;
@@ -652,6 +741,9 @@ export function SortingMemoryHero() {
                 type="button"
                 onClick={() => {
                   setAuthMode("login");
+                  setAwaitingConfirmation(null);
+                  setResendStatus("idle");
+                  closeForgotPassword();
                   setAuthOpen(true);
                 }}
               >
@@ -661,6 +753,9 @@ export function SortingMemoryHero() {
                 type="button"
                 onClick={() => {
                   setAuthMode("signup");
+                  setAwaitingConfirmation(null);
+                  setResendStatus("idle");
+                  closeForgotPassword();
                   setAuthOpen(true);
                 }}
               >
@@ -766,7 +861,13 @@ export function SortingMemoryHero() {
           }}
         >
           <section
-            aria-label={authMode === "login" ? copy.auth.loginAria : copy.auth.signupAria}
+            aria-label={
+              forgotPasswordOpen
+                ? copy.auth.forgotPasswordAria
+                : authMode === "login"
+                  ? copy.auth.loginAria
+                  : copy.auth.signupAria
+            }
             className="auth-panel"
             role="dialog"
             aria-modal="true"
@@ -781,6 +882,9 @@ export function SortingMemoryHero() {
                 onClick={() => {
                   setAuthMode("login");
                   setAuthError("");
+                  setAwaitingConfirmation(null);
+                  setResendStatus("idle");
+                  closeForgotPassword();
                 }}
               >
                 {copy.auth.login}
@@ -791,52 +895,149 @@ export function SortingMemoryHero() {
                 onClick={() => {
                   setAuthMode("signup");
                   setAuthError("");
+                  setAwaitingConfirmation(null);
+                  setResendStatus("idle");
+                  closeForgotPassword();
                 }}
               >
                 {copy.auth.signup}
               </button>
             </div>
-            <form className="auth-form" onSubmit={handleAuthSubmit}>
-              <label>
-                {copy.auth.email}
-                <input
-                  autoComplete="email"
-                  placeholder={copy.auth.emailPlaceholder}
-                  type="email"
-                  required
-                  value={authEmail}
-                  onChange={(event) => setAuthEmail(event.target.value)}
-                  disabled={authPending}
-                />
-              </label>
-              <label>
-                {copy.auth.password}
-                <input
-                  autoComplete={authMode === "login" ? "current-password" : "new-password"}
-                  placeholder={copy.auth.passwordPlaceholder}
-                  type="password"
-                  required
-                  minLength={8}
-                  value={authPassword}
-                  onChange={(event) => setAuthPassword(event.target.value)}
-                  disabled={authPending}
-                />
-              </label>
-
-              {authError ? (
-                <p className="auth-form__error" role="alert">
-                  {authError}
+            {forgotPasswordOpen ? (
+              <>
+                {resetSentTo ? (
+                  <>
+                    <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.5 }}>
+                      {copy.auth.resetSentBefore} <strong>{resetSentTo}</strong> {copy.auth.resetSentAfter}
+                    </p>
+                    <p style={{ margin: "0 0 18px", fontSize: 13, lineHeight: 1.5, color: "var(--text-dim)" }}>
+                      {copy.auth.checkEmailHint}
+                    </p>
+                    <form className="auth-form" onSubmit={handleResendReset}>
+                      {resetResendStatus === "error" ? (
+                        <p className="auth-form__error" role="alert">
+                          {copy.auth.resendError}
+                        </p>
+                      ) : null}
+                      <button disabled={resetResendStatus === "sending"} type="submit">
+                        {resetResendStatus === "sent"
+                          ? copy.auth.resendSent
+                          : resetResendStatus === "sending"
+                            ? copy.auth.resendSending
+                            : copy.auth.resend}
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <form className="auth-form" onSubmit={handleRequestReset}>
+                    <p style={{ margin: "0 0 4px", fontSize: 14, lineHeight: 1.5 }}>{copy.auth.resetPasswordPrompt}</p>
+                    <label>
+                      {copy.auth.email}
+                      <input
+                        autoComplete="email"
+                        placeholder={copy.auth.emailPlaceholder}
+                        type="email"
+                        required
+                        value={resetEmail}
+                        onChange={(event) => setResetEmail(event.target.value)}
+                        disabled={resetPending}
+                      />
+                    </label>
+                    {resetError ? (
+                      <p className="auth-form__error" role="alert">
+                        {resetError}
+                      </p>
+                    ) : null}
+                    <button disabled={resetPending} type="submit">
+                      {resetPending ? copy.auth.resetPasswordSending : copy.auth.resetPasswordSubmit}
+                    </button>
+                  </form>
+                )}
+                <p style={{ marginTop: 16 }}>
+                  <button onClick={closeForgotPassword} style={linkButtonStyle} type="button">
+                    {copy.auth.backToLogin}
+                  </button>
                 </p>
-              ) : null}
+              </>
+            ) : awaitingConfirmation ? (
+              <>
+                <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.5 }}>
+                  {copy.auth.checkEmailBefore} <strong>{awaitingConfirmation}</strong>. {copy.auth.checkEmailAfter}
+                </p>
+                <p style={{ margin: "0 0 18px", fontSize: 13, lineHeight: 1.5, color: "var(--text-dim)" }}>
+                  {copy.auth.checkEmailHint}
+                </p>
+                <form className="auth-form" onSubmit={handleResend}>
+                  {resendStatus === "error" ? (
+                    <p className="auth-form__error" role="alert">
+                      {copy.auth.resendError}
+                    </p>
+                  ) : null}
+                  <button disabled={resendStatus === "sending"} type="submit">
+                    {resendStatus === "sent"
+                      ? copy.auth.resendSent
+                      : resendStatus === "sending"
+                        ? copy.auth.resendSending
+                        : copy.auth.resend}
+                  </button>
+                </form>
+              </>
+            ) : (
+              <form className="auth-form" onSubmit={handleAuthSubmit}>
+                <label>
+                  {copy.auth.email}
+                  <input
+                    autoComplete="email"
+                    placeholder={copy.auth.emailPlaceholder}
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(event) => setAuthEmail(event.target.value)}
+                    disabled={authPending}
+                  />
+                </label>
+                <label>
+                  {copy.auth.password}
+                  <input
+                    autoComplete={authMode === "login" ? "current-password" : "new-password"}
+                    placeholder={copy.auth.passwordPlaceholder}
+                    type="password"
+                    required
+                    minLength={8}
+                    value={authPassword}
+                    onChange={(event) => setAuthPassword(event.target.value)}
+                    disabled={authPending}
+                  />
+                </label>
 
-              <button type="submit" disabled={authPending}>
-                {authPending
-                  ? copy.auth.pending
-                  : authMode === "login"
-                    ? copy.auth.continue
-                    : copy.auth.createAccount}
-              </button>
-            </form>
+                {authError ? (
+                  <p className="auth-form__error" role="alert">
+                    {authError}
+                  </p>
+                ) : null}
+
+                <button type="submit" disabled={authPending}>
+                  {authPending
+                    ? copy.auth.pending
+                    : authMode === "login"
+                      ? copy.auth.continue
+                      : copy.auth.createAccount}
+                </button>
+
+                {authMode === "login" ? (
+                  <button
+                    onClick={() => {
+                      setResetEmail(authEmail);
+                      setForgotPasswordOpen(true);
+                    }}
+                    style={{ ...linkButtonStyle, alignSelf: "center" }}
+                    type="button"
+                  >
+                    {copy.auth.forgotPassword}
+                  </button>
+                ) : null}
+              </form>
+            )}
           </section>
         </div>
       ) : null}

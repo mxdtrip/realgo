@@ -46,11 +46,13 @@ func newAIHarness(t *testing.T) (http.Handler, *postgres.Storage, *redis.Storage
 	require.NoError(t, err)
 
 	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, auth.Config{
-		JWTSecret:  []byte("integration-secret-with-more-than-32-bytes"),
-		AccessTTL:  time.Hour,
-		RefreshTTL: time.Hour,
-		Issuer:     "freeburger",
-	})
+		JWTSecret:            []byte("integration-secret-with-more-than-32-bytes"),
+		AccessTTL:            time.Hour,
+		RefreshTTL:           time.Hour,
+		Issuer:               "freeburger",
+		PublicSiteURL:        "https://realgo.test",
+		EmailVerificationTTL: time.Hour,
+	}, testMailer)
 
 	fake := aitest.New()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))

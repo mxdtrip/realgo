@@ -10,7 +10,9 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +20,7 @@ import (
 
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
 	"github.com/mxdtrip/realgo/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/mailer"
 	"github.com/mxdtrip/realgo/services/api/internal/server"
 	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres"
 	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
@@ -37,11 +40,13 @@ func TestCoreLoopAuthEventsQueueRate(t *testing.T) {
 	require.NoError(t, err)
 
 	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, auth.Config{
-		JWTSecret:  []byte("integration-secret-with-more-than-32-bytes"),
-		AccessTTL:  time.Hour,
-		RefreshTTL: time.Hour,
-		Issuer:     "freeburger",
-	})
+		JWTSecret:            []byte("integration-secret-with-more-than-32-bytes"),
+		AccessTTL:            time.Hour,
+		RefreshTTL:           time.Hour,
+		Issuer:               "freeburger",
+		PublicSiteURL:        "https://realgo.test",
+		EmailVerificationTTL: time.Hour,
+	}, testMailer)
 	h := server.New(server.Deps{
 		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Postgres: pg,
@@ -86,8 +91,27 @@ func TestCoreLoopAuthEventsQueueRate(t *testing.T) {
 	require.Equal(t, "completed", rated["data"].(map[string]any)["status"])
 }
 
+// testMailer stands in for a mailbox: every authSvc built in this package
+// should be wired to it, so register() below can pull the confirm link a
+// real inbox would have received and drive the actual confirm-email HTTP
+// call instead of an auth backdoor.
+var testMailer = mailer.NewRecorder()
+
 func register(t *testing.T, h http.Handler, email string) string {
-	body := postJSON(t, h, "/api/v1/auth/register", "", map[string]any{"email": email, "password": "Password123!"})
+	postJSON(t, h, "/api/v1/auth/register", "", map[string]any{"email": email, "password": "Password123!"})
+	return confirmEmail(t, h, email)
+}
+
+func confirmEmail(t *testing.T, h http.Handler, email string) string {
+	t.Helper()
+	confirmURL := testMailer.LastConfirmURL(strings.ToLower(strings.TrimSpace(email)))
+	require.NotEmpty(t, confirmURL, "no verification email captured for %s", email)
+	parsed, err := url.Parse(confirmURL)
+	require.NoError(t, err)
+	body := postJSON(t, h, "/api/v1/auth/confirm-email", "", map[string]any{
+		"id":    parsed.Query().Get("id"),
+		"token": parsed.Query().Get("token"),
+	})
 	return body["data"].(map[string]any)["tokens"].(map[string]any)["access_token"].(string)
 }
 

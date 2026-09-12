@@ -24,6 +24,7 @@ import (
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
 	"github.com/mxdtrip/realgo/services/api/internal/cards"
 	"github.com/mxdtrip/realgo/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/mailer"
 	"github.com/mxdtrip/realgo/services/api/internal/reports"
 	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
 	"github.com/mxdtrip/realgo/services/api/internal/server"
@@ -55,6 +56,11 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("load auth config: %w", err)
 	}
 
+	mailerCfg := mailer.LoadConfig()
+	if !mailerCfg.Enabled() {
+		logger.Warn("mailer disabled: MAILER_WEB_INTERNAL_SECRET is not set, verification links will only be logged")
+	}
+
 	pg, err := postgres.New(ctx, &cfg.Database)
 	if err != nil {
 		return fmt.Errorf("connect postgres: %w", err)
@@ -80,7 +86,7 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("warm cards seed cache: %w", err)
 	}
 
-	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, authCfg)
+	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, authCfg, mailer.NewSender(mailerCfg))
 
 	// Single FSRS scheduler shared by extension ingest and review/cards/quiz
 	// rate paths (FSRS audit A1). Built once from operator-facing config so

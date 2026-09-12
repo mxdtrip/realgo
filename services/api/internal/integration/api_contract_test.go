@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -524,11 +525,13 @@ func newContractHarness(t *testing.T) *contractHarness {
 	require.NoError(t, err)
 
 	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, auth.Config{
-		JWTSecret:  []byte(contractJWTSecret),
-		AccessTTL:  time.Hour,
-		RefreshTTL: time.Hour,
-		Issuer:     "freeburger",
-	})
+		JWTSecret:            []byte(contractJWTSecret),
+		AccessTTL:            time.Hour,
+		RefreshTTL:           time.Hour,
+		Issuer:               "freeburger",
+		PublicSiteURL:        "https://realgo.test",
+		EmailVerificationTTL: time.Hour,
+	}, testMailer)
 	handler := server.New(server.Deps{
 		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Postgres: pg,
@@ -550,6 +553,9 @@ func newContractHarness(t *testing.T) *contractHarness {
 	return h
 }
 
+// register drives the real two-step signup (register sends a confirmation
+// link instead of a session; testMailer stands in for the inbox) so this
+// harness exercises the actual confirm-email HTTP flow, not a backdoor.
 func (h *contractHarness) register(t *testing.T, email, password string) contractTokens {
 	t.Helper()
 
@@ -557,7 +563,18 @@ func (h *contractHarness) register(t *testing.T, email, password string) contrac
 		"email":    email,
 		"password": password,
 	})
-	data := requireSuccessEnvelope(t, resp, http.StatusCreated)
+	requireSuccessEnvelope(t, resp, http.StatusCreated)
+
+	confirmURL := testMailer.LastConfirmURL(strings.ToLower(strings.TrimSpace(email)))
+	require.NotEmpty(t, confirmURL, "no verification email captured for %s", email)
+	parsed, err := url.Parse(confirmURL)
+	require.NoError(t, err)
+
+	confirmResp := h.request(t, http.MethodPost, "/api/v1/auth/confirm-email", "", map[string]any{
+		"id":    parsed.Query().Get("id"),
+		"token": parsed.Query().Get("token"),
+	})
+	data := requireSuccessEnvelope(t, confirmResp, http.StatusOK)
 	tokens := tokensFromData(t, data)
 	tokens.userID = int64Field(t, objectField(t, data, "user"), "id")
 	return tokens

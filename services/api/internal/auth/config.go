@@ -10,18 +10,24 @@ import (
 // Config holds the token settings. The signing secret comes from the
 // environment so it is never baked into the YAML config shipped in the image.
 type Config struct {
-	JWTSecret  []byte
-	AccessTTL  time.Duration
-	RefreshTTL time.Duration
-	Issuer     string
+	JWTSecret            []byte
+	AccessTTL            time.Duration
+	RefreshTTL           time.Duration
+	Issuer               string
+	PublicSiteURL        string
+	EmailVerificationTTL time.Duration
+	PasswordResetTTL     time.Duration
 }
 
 const (
-	defaultAccessTTL  = 15 * time.Minute
-	defaultRefreshTTL = 30 * 24 * time.Hour
-	minSecretLen      = 32
-	issuer            = "freeburger"
-	placeholderSecret = "replace-with-at-least-32-random-characters"
+	defaultAccessTTL            = 15 * time.Minute
+	defaultRefreshTTL           = 30 * 24 * time.Hour
+	defaultEmailVerificationTTL = time.Hour
+	defaultPasswordResetTTL     = time.Hour
+	defaultPublicSiteURL        = "https://realgo.dev"
+	minSecretLen                = 32
+	issuer                      = "freeburger"
+	placeholderSecret           = "replace-with-at-least-32-random-characters"
 )
 
 // LoadConfig reads the auth configuration from the environment. AUTH_JWT_SECRET
@@ -43,12 +49,28 @@ func LoadConfig() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	verificationTTL, err := positiveDurationEnv("AUTH_EMAIL_VERIFICATION_TTL", defaultEmailVerificationTTL)
+	if err != nil {
+		return Config{}, err
+	}
+	passwordResetTTL, err := positiveDurationEnv("AUTH_PASSWORD_RESET_TTL", defaultPasswordResetTTL)
+	if err != nil {
+		return Config{}, err
+	}
+
+	siteURL := strings.TrimRight(os.Getenv("AUTH_PUBLIC_SITE_URL"), "/")
+	if siteURL == "" {
+		siteURL = defaultPublicSiteURL
+	}
 
 	return Config{
-		JWTSecret:  []byte(secret),
-		AccessTTL:  accessTTL,
-		RefreshTTL: refreshTTL,
-		Issuer:     issuer,
+		JWTSecret:            []byte(secret),
+		AccessTTL:            accessTTL,
+		RefreshTTL:           refreshTTL,
+		Issuer:               issuer,
+		PublicSiteURL:        siteURL,
+		EmailVerificationTTL: verificationTTL,
+		PasswordResetTTL:     passwordResetTTL,
 	}, nil
 }
 
