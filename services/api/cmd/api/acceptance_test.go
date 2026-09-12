@@ -284,4 +284,16 @@ func TestAcceptance_FSRS(t *testing.T) {
 
 		specifications.FSRSConcurrentExtensionInitialIngests(t, d, d)
 	})
+
+	// extension_ingest_records_attempt:
+	// успешное решение задачи через расширение (POST /api/v1/extension/events)
+	// фиксирует попытку в review_attempts с типом "problem" и соответствующим rating.
+	t.Run("extension_ingest_records_attempt", func(t *testing.T) {
+		harness.Reset(t)
+
+		d := httpdriver.New(t, harness)
+		defer d.Close()
+
+		specifications.FSRSExtensionIngestRecordsAttempt(t, d, d)
+	})
 }
