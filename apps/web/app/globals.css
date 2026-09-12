@@ -12839,3 +12839,204 @@ a.roadmap-step__practice-card:hover {
   width: 100%;
   white-space: nowrap;
 }
+
+/* Mobile overrides must follow the imported staging landing rules above: those
+   rules intentionally redefine desktop grids late in this file. */
+@media (max-width: 920px) {
+  .hybrid-lower {
+    --pad: clamp(20px, 5.15vw, 32px);
+  }
+
+  .hybrid-lower .landing-section {
+    padding-block: clamp(64px, 14vw, 88px);
+  }
+
+  .hybrid-lower .section-kicker {
+    margin-bottom: 26px;
+  }
+
+  .hybrid-lower .section-grid,
+  .hybrid-lower #pricing .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(30px, 8vw, 48px);
+  }
+
+  .hybrid-lower #roadmap .section-copy {
+    order: -1;
+  }
+
+  .hybrid-lower .roadmap-row {
+    padding: 16px;
+  }
+
+  .hybrid-lower .roadmap-row strong {
+    font-size: 15px;
+  }
+
+  .hybrid-lower .review-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .hybrid-lower .review-flip {
+    height: 200px;
+  }
+
+  .hybrid-lower .review-flip__face {
+    padding: 22px;
+  }
+
+  .hybrid-lower #reviews .landing-cta__button {
+    width: min(100%, 340px);
+    min-height: 48px;
+  }
+
+  .hybrid-lower .landing-cta__button,
+  .hybrid-lower .price-cta,
+  .hybrid-lower #pricing .price-card > .price-cta {
+    min-height: 48px;
+  }
+
+  .hybrid-lower #pricing .pricing-grid {
+    max-width: 520px;
+  }
+
+  .site-footer__inner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 32px 20px;
+    padding: 52px var(--pad) 28px;
+  }
+
+  .site-footer__brand {
+    grid-column: 1 / -1;
+  }
+
+  .site-footer__brand p {
+    max-width: 34ch;
+  }
+
+  .site-footer__bar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+    padding: 18px var(--pad) calc(24px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 640px) {
+  .minimal-scene {
+    height: 100svh;
+    min-height: 600px;
+  }
+
+  .hero-tagline {
+    bottom: clamp(74px, 13svh, 112px);
+    width: calc(100% - 40px);
+  }
+
+  .hero-tagline .eyebrow {
+    margin-bottom: 10px;
+    font-size: 11px;
+  }
+
+  .hero-tagline p {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .hybrid-lower .section-copy h2 {
+    font-size: clamp(27px, 8vw, 34px);
+  }
+
+  .hybrid-lower .section-copy p {
+    margin-top: 16px;
+    font-size: 15px;
+    line-height: 1.58;
+  }
+
+  .hybrid-lower .memory-journey {
+    padding-block: 64px;
+  }
+
+  .hybrid-lower .memory-journey__track,
+  .hybrid-lower .memory-journey__copy-stack,
+  .hybrid-lower .memory-journey__copy-ribbon {
+    gap: 40px;
+  }
+
+  .hybrid-lower .memory-journey__copy--rating h2 {
+    white-space: normal;
+  }
+
+  .hybrid-lower .roadmap-row__meta {
+    gap: 12px;
+  }
+
+  .hybrid-lower .roadmap-row p {
+    font-size: 13px;
+  }
+
+  .hybrid-lower .price-card {
+    padding: 22px;
+  }
+
+  .hybrid-lower .price-features li {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 420px) {
+  .site-strip {
+    gap: 8px;
+    padding: 12px 14px;
+  }
+
+  .site-brand {
+    gap: 7px;
+    font-size: 16px;
+  }
+
+  .site-brand::before {
+    width: 25px;
+    height: 25px;
+  }
+
+  .site-auth {
+    gap: 8px;
+    margin-left: 0;
+  }
+
+  .site-auth > button,
+  .site-auth > a.site-auth__cta {
+    min-height: 40px;
+    padding: 8px 11px;
+    font-size: 11.5px;
+  }
+
+  .hybrid-lower .landing-section {
+    padding-block: 60px;
+  }
+
+  .hybrid-lower .section-kicker {
+    margin-bottom: 22px;
+    font-size: 11px;
+  }
+
+  .hybrid-lower .section-copy h2 {
+    font-size: 27px;
+  }
+
+  .hybrid-lower .review-flip {
+    height: 192px;
+  }
+
+  .hybrid-lower .review-flip__face {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 359px) {
+  .site-footer__inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
