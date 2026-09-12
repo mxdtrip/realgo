@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
 	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 	"github.com/mxdtrip/realgo/services/api/internal/testutil"
@@ -287,5 +288,130 @@ func TestRepository_ConcurrentInitialIngest_CreateConflict(t *testing.T) {
 
 	if schedRow.ReviewCount.Int32 != 2 {
 		t.Fatalf("expected review_count=2 after two concurrent initial ingests, got %d", schedRow.ReviewCount.Int32)
+	}
+}
+
+// TestRepository_Ingest_RecordsReviewAttempt проверяет контракт репозитория при решении задачи:
+//  1. Первичное успешное решение (Solved: true) создаёт ровно одну запись в review_attempts
+//     с типом "problem", переданным рейтингом и was_correct IS NULL (pgtype.Bool{Valid: false}).
+//  2. Повторный вызов Ingest с тем же IdempotencyKey (дубликат) не создаёт повторной записи.
+func TestRepository_Ingest_RecordsReviewAttempt(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	testHarness.Reset(t)
+	ctx := context.Background()
+
+	email := fmt.Sprintf("ext-init-race-%d@example.test", time.Now().UnixNano())
+	var userID int64
+	err := testHarness.Pool.QueryRow(ctx,
+		`INSERT INTO users (email, password_hash) VALUES ($1, 'hash') RETURNING id`,
+		email,
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("failed to create test user: %v", err)
+	}
+
+	sched := scheduler.NewFSRSAdapter()
+	repo := NewRepository(testHarness.Pool, sched)
+
+	platformID, err := repo.PlatformIDByCode(ctx, "leetcode")
+	if err != nil {
+		t.Fatalf("failed to resolve platform id: %v", err)
+	}
+
+	now := time.Now().UTC().Truncate(time.Second)
+	slug := fmt.Sprintf("repo-init-conc-%d", time.Now().UnixNano())
+	idempotencyKey := fmt.Sprintf("evt-att-1-%s", slug)
+
+	in := IngestInput{
+		UserID:         userID,
+		PlatformID:     platformID,
+		Slug:           slug,
+		Title:          "Two Sum Initial Conc",
+		URL:            "https://leetcode.com/problems/two-sum-initial-conc/",
+		Difficulty:     "easy",
+		EventType:      EventProblemSolved,
+		Rating:         "normal",
+		EventTime:      now,
+		IdempotencyKey: idempotencyKey,
+		Solved:         true,
+	}
+	out, err := repo.Ingest(ctx, in)
+	if err != nil {
+		t.Fatalf("failed to ingest solved event: %v", err)
+	}
+
+	query := `
+SELECT rating, review_type, was_correct
+FROM review_attempts
+WHERE user_id = $1 AND problem_id = $2
+	`
+	rows, err := testHarness.Pool.Query(ctx, query, userID, out.ProblemID)
+	if err != nil {
+		t.Fatalf("failed to query review_attempts: %v", err)
+	}
+	defer rows.Close()
+
+	type attemptRow struct {
+		rating     string
+		reviewType string
+		wasCorrect pgtype.Bool
+	}
+	var attempts []attemptRow
+
+	for rows.Next() {
+		var (
+			rating     string
+			reviewType string
+			wasCorrect pgtype.Bool
+		)
+		if err := rows.Scan(&rating, &reviewType, &wasCorrect); err != nil {
+			t.Fatalf("failed to scan review_attempt: %v", err)
+		}
+		attempts = append(attempts, attemptRow{
+			rating:     rating,
+			reviewType: reviewType,
+			wasCorrect: wasCorrect,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows iteration failed: %v", err)
+	}
+
+	if len(attempts) != 1 {
+		t.Fatalf("expected 1 review attempt after ingest, got %d", len(attempts))
+	}
+	if attempts[0].rating != "normal" {
+		t.Errorf("expected rating %q, got %q", "normal", attempts[0].rating)
+	}
+	if attempts[0].reviewType != "problem" {
+		t.Errorf("expected review_type %q, got %q", "problem", attempts[0].reviewType)
+	}
+	if attempts[0].wasCorrect.Valid {
+		t.Errorf("expected was_correct to be NULL (Valid=false), got %+v", attempts[0].wasCorrect)
+	}
+
+	out2, err := repo.Ingest(ctx, in)
+	if err != nil {
+		t.Fatalf("failed to ingest duplicate event: %v", err)
+	}
+
+	if !out2.Duplicate {
+		t.Errorf("expected out.Duplicate to be true, got false")
+	}
+
+	var count int
+	err = testHarness.Pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM review_attempts WHERE user_id = $1 AND problem_id = $2`,
+		userID, out.ProblemID,
+	).Scan(&count)
+	if err != nil {
+		t.Fatalf("failed to read problem review attempts: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected count=1 after duplicate ingest, got %d", count)
 	}
 }
