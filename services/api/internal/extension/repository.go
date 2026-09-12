@@ -260,7 +260,8 @@ func (r *pgRepository) recordProblemAndEvent(ctx context.Context, q *db.Queries,
 	return problemID, duplicate, nil
 }
 
-// saveSolvedState сохраняет прогресс решения задачи и рассчитывает/обновляет FSRS-расписание.
+// saveSolvedState сохраняет прогресс решения задачи, рассчитывает/обновляет FSRS-расписание
+// и фиксирует запись попытки в review_attempts.
 // Метод переиспользуется как при штатном решении задачи, так и в ветке self-healing.
 func (r *pgRepository) saveSolvedState(ctx context.Context, q *db.Queries, in IngestInput, problemID int64) (int64, time.Time, error) {
 	err := q.UpsertSolvedProgress(ctx, db.UpsertSolvedProgressParams{
@@ -272,7 +273,34 @@ func (r *pgRepository) saveSolvedState(ctx context.Context, q *db.Queries, in In
 	if err != nil {
 		return 0, time.Time{}, fmt.Errorf("extension: upsert progress: %w", err)
 	}
-	return r.upsertSchedule(ctx, q, in, problemID)
+	reviewID, nextReviewAt, err := r.upsertSchedule(ctx, q, in, problemID)
+	if err != nil {
+		return 0, time.Time{}, err
+	}
+
+	if err := r.recordReviewAttempt(ctx, q, in, problemID); err != nil {
+		return 0, time.Time{}, err
+	}
+	return reviewID, nextReviewAt, nil
+}
+
+// recordReviewAttempt фиксирует запись о попытке решения задачи в таблице review_attempts.
+// Вызывается в рамках единой транзакции строго после успешного сохранения расписания.
+func (r *pgRepository) recordReviewAttempt(ctx context.Context, q *db.Queries, in IngestInput, problemID int64) error {
+	_, err := q.CreateReviewAttempt(ctx, db.CreateReviewAttemptParams{
+		UserID:      in.UserID,
+		ProblemID:   toInt8(problemID),
+		PatternID:   pgtype.Int8{},
+		CardID:      pgtype.Int8{},
+		Rating:      in.Rating,
+		ReviewType:  "problem",
+		DurationSec: pgtype.Int4{},
+		WasCorrect:  pgtype.Bool{},
+	})
+	if err != nil {
+		return fmt.Errorf("extension: create review attempt: %w", err)
+	}
+	return nil
 }
 
 // upsertSchedule создаёт расписание задачи при первом решении либо продвигает

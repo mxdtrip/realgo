@@ -86,6 +86,15 @@ type FSRSState struct {
 	NextReviewAt time.Time
 }
 
+// FSRSAttemptState — снимок зафиксированной попытки повторения задачи/карточки из таблицы review_attempts.
+// Используется в test-only проверках сквозных спецификаций для подтверждения записи факта решения.
+type FSRSAttemptState struct {
+	Rating      string
+	ReviewType  string
+	DurationSec *int
+	CreatedAt   time.Time
+}
+
 // FSRSStateProbe — test-only read-helper для FSRS-состояния расписания.
 // Спецификации используют его, чтобы проверить, что записи в БД консистентны
 // с FSRS-инвариантами (B1: unrated → New-state; B3: rate растит review_count).
@@ -98,6 +107,10 @@ type FSRSStateProbe interface {
 	// ProblemScheduleState возвращает FSRS-состояние расписания задачи по её external_slug.
 	// Второе возвращаемое значение — false, если расписание в БД отсутствует.
 	ProblemScheduleState(t *testing.T, userID int64, slug string) (FSRSState, bool)
+
+	// ProblemReviewAttempts возвращает список зафиксированных попыток повторения задачи по её external_slug.
+	// Если попыток в БД нет, возвращает пустой срез.
+	ProblemReviewAttempts(t *testing.T, userID int64, slug string) []FSRSAttemptState
 }
 
 // FSRSProvider — контракт драйвера для FSRS-спецификаций. Расширяет Register
@@ -537,5 +550,34 @@ func FSRSConcurrentExtensionInitialIngests(t *testing.T, provider FSRSProvider, 
 
 	if state.ReviewCount != 2 {
 		t.Fatalf("concurrent initial ingests: expected review_count=2, got %d (lost update on initial solve)", state.ReviewCount)
+	}
+}
+
+// FSRSExtensionIngestRecordsAttempt проверяет, что при успешном решении задачи
+// через расширение (POST /api/v1/extension/events) создаётся соответствующая запись
+// в таблице review_attempts с типом "problem", переданным рейтингом и без признака was_correct (NULL).
+func FSRSExtensionIngestRecordsAttempt(t *testing.T, p FSRSProvider, probe FSRSStateProbe) {
+	t.Helper()
+	user := p.Register(t, uniqueEmail(t), "AcceptanceTest-2026!")
+	fu := p.FSRSUser(user)
+	uid := user.UserID(t)
+	slug := uniqueSlug(t)
+
+	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", slug, "normal")
+	attempts := probe.ProblemReviewAttempts(t, uid, slug)
+	if len(attempts) != 1 {
+		t.Fatalf("expected 1 review attempt, got %d", len(attempts))
+	}
+	if attempts[0].ReviewType != "problem" {
+		t.Errorf("expected review_type %q, got %q", "problem", attempts[0].ReviewType)
+	}
+	if attempts[0].Rating != "normal" {
+		t.Errorf("expected rating %q, got %q", "normal", attempts[0].Rating)
+	}
+	if attempts[0].DurationSec != nil {
+		t.Errorf("expected duration_sec to be nil, got %v", *attempts[0].DurationSec)
+	}
+	if attempts[0].CreatedAt.IsZero() {
+		t.Error("expected non-zero created_at")
 	}
 }

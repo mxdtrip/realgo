@@ -867,3 +867,50 @@ func (d *Driver) ProblemScheduleState(t *testing.T, userID int64, slug string) (
 	}
 	return out, true
 }
+
+// ProblemReviewAttempts возвращает список зафиксированных попыток повторения задачи по её external_slug.
+// Выполняет прямое чтение из таблицы review_attempts через пул соединений d.pg.Pool,
+// упорядочивая попытки по возрастанию ID (хронологически).
+func (d *Driver) ProblemReviewAttempts(t *testing.T, userID int64, slug string) []specifications.FSRSAttemptState {
+	t.Helper()
+	query := `
+SELECT ra.rating, ra.review_type, ra.duration_sec, ra.created_at
+FROM review_attempts ra
+JOIN problems p ON p.id = ra.problem_id
+WHERE ra.user_id = $1 AND p.external_slug = $2
+ORDER BY ra.id ASC
+	`
+	rows, err := d.pg.Pool.Query(context.Background(), query, userID, slug)
+	if err != nil {
+		t.Fatalf("driver: read problem review attempts (slug=%q): %v", slug, err)
+	}
+	defer rows.Close()
+
+	attempts := []specifications.FSRSAttemptState{}
+	for rows.Next() {
+		var (
+			rating      string
+			reviewType  string
+			durationSec pgtype.Int4
+			createdAt   pgtype.Timestamptz
+		)
+		if err := rows.Scan(&rating, &reviewType, &durationSec, &createdAt); err != nil {
+			t.Fatalf("driver: scan problem review attempt (slug=%q): %v", slug, err)
+		}
+		var dur *int
+		if durationSec.Valid {
+			v := int(durationSec.Int32)
+			dur = &v
+		}
+		attempts = append(attempts, specifications.FSRSAttemptState{
+			Rating:      rating,
+			ReviewType:  reviewType,
+			DurationSec: dur,
+			CreatedAt:   createdAt.Time.UTC(),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("driver: iterate problem review attempts (slug=%q): %v", slug, err)
+	}
+	return attempts
+}
