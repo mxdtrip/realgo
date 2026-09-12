@@ -14,8 +14,8 @@ export function AuthPageShell({ children }: { children: ReactNode }) {
             aria-hidden="true"
             className="auth-page__brand-mark"
             height={32}
-            src="/icons/realgo-mark.svg"
-            width={32}
+            src="/icons/realgo-logo.png"
+            width={28}
           />
           <span>{dictionary.common.brand}</span>
         </a>

@@ -7225,21 +7225,22 @@ a.roadmap-step__practice-card:hover {
 }
 
 .auth-page__brand {
-  gap: 10px;
+  gap: 9px;
   color: #f6f8fa;
-  font-family: var(--font-stack-sans);
-  font-size: 23px;
+  font-family: var(--font-stack-mono);
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: 0.02em;
 }
 
 .auth-page__brand-mark {
   display: block;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 0;
   background: none;
   box-shadow: none;
+  filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.2));
   object-fit: contain;
 }
 
@@ -7262,7 +7263,7 @@ a.roadmap-step__practice-card:hover {
   color: #f6f8fa;
   font-family: var(--font-stack-display);
   font-size: clamp(19px, 1.75vw, 27px);
-  font-weight: 500;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.025em;
 }
@@ -7378,6 +7379,7 @@ a.roadmap-step__practice-card:hover {
 }
 
 .auth-layer--page .auth-form .auth-input input {
+  flex: 1;
   min-width: 0;
   min-height: 0;
   padding: 11px 12px;
@@ -7592,12 +7594,12 @@ a.roadmap-step__practice-card:hover {
 
 @media (max-width: 520px) {
   .auth-page__brand {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .auth-page__brand-mark {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
   }
 
   .auth-page__story blockquote {
