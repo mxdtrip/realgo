@@ -6743,10 +6743,9 @@ a.roadmap-step__practice-card:hover {
   padding: clamp(28px, 4vw, 54px);
   border-right: 1px solid rgba(88, 166, 255, 0.18);
   background:
-    linear-gradient(140deg, rgba(47, 129, 247, 0.14), transparent 43%),
-    radial-gradient(circle at 23% 76%, rgba(35, 134, 54, 0.24), transparent 30%),
-    radial-gradient(circle at 80% 18%, rgba(88, 166, 255, 0.16), transparent 38%),
-    #0b121b;
+    linear-gradient(90deg, rgba(5, 11, 17, 0.82) 0%, rgba(7, 16, 24, 0.57) 52%, rgba(5, 11, 17, 0.26) 100%),
+    linear-gradient(180deg, rgba(4, 10, 16, 0.02), rgba(4, 10, 16, 0.54)),
+    url("/auth-cows-at-work.png") center / cover no-repeat;
 }
 
 .auth-page__story::before,
@@ -7100,16 +7099,16 @@ a.roadmap-step__practice-card:hover {
 .auth-layer--page .auth-form button[type="submit"] {
   min-height: 50px;
   margin-top: 5px;
-  border: 1px solid rgba(63, 185, 80, 0.3);
+  border: 1px solid rgba(88, 166, 255, 0.28);
   border-radius: 9px;
-  background: linear-gradient(180deg, #2ea043, #238636);
-  box-shadow: 0 10px 24px rgba(35, 134, 54, 0.2);
+  background: linear-gradient(135deg, #388bfd 0%, #1f6feb 78%);
+  box-shadow: 0 10px 24px rgba(31, 111, 235, 0.26);
   font-family: var(--font-stack-sans);
   font-size: 14px;
 }
 
 .auth-layer--page .auth-form button[type="submit"]:hover:not(:disabled) {
-  background: linear-gradient(180deg, #3fb950, #2ea043);
+  background: linear-gradient(135deg, #58a6ff 0%, #2f81f7 78%);
 }
 
 .auth-layer--page .auth-consent {
