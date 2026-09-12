@@ -24,7 +24,6 @@ export function YandexAuthButton({ disabled }: { disabled?: boolean }) {
   if (!isYandexAuthConfigured()) {
     return (
       <button
-        aria-describedby="oauth-note"
         className="auth-provider auth-provider--yandex"
         disabled
         title="Яндекс ID подключается"

@@ -24,7 +24,6 @@ export function GithubAuthButton({ disabled }: { disabled?: boolean }) {
   if (!isGithubAuthConfigured()) {
     return (
       <button
-        aria-describedby="oauth-note"
         className="auth-provider auth-provider--github"
         disabled
         title="GitHub подключается"

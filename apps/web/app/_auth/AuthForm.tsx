@@ -85,29 +85,35 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
       <form className="auth-form" onSubmit={handleSubmit}>
         <label>
-          Email
-          <input
-            autoComplete="email"
-            placeholder="you@example.com"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={pending}
-          />
+          <span>Email</span>
+          <span className="auth-input">
+            <MailIcon />
+            <input
+              autoComplete="email"
+              placeholder="you@example.com"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={pending}
+            />
+          </span>
         </label>
         <label>
-          Пароль
-          <input
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
-            placeholder={mode === "register" ? "минимум 8 символов" : "••••••••"}
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={pending}
-          />
+          <span>Пароль</span>
+          <span className="auth-input">
+            <LockIcon />
+            <input
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              placeholder={mode === "register" ? "минимум 8 символов" : "••••••••"}
+              type="password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={pending}
+            />
+          </span>
         </label>
 
         {mode === "register" ? (
@@ -139,7 +145,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
         ) : null}
 
         <button disabled={pending || (mode === "register" && !consent)} type="submit">
-          {pending ? copy.pending : copy.submit}
+          <span>{pending ? copy.pending : copy.submit}</span>
+          {!pending ? <span aria-hidden="true" className="auth-submit__arrow">→</span> : null}
         </button>
       </form>
 
@@ -150,5 +157,23 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </Link>
       </p>
     </section>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 20 20">
+      <rect height="13" rx="2" width="16" x="2" y="3.5" />
+      <path d="m3 5 7 5 7-5" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 20 20">
+      <rect height="9" rx="2" width="12" x="4" y="8" />
+      <path d="M6.5 8V6a3.5 3.5 0 0 1 7 0v2" />
+    </svg>
   );
 }

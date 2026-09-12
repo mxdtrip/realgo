@@ -7204,6 +7204,254 @@ a.roadmap-step__practice-card:hover {
   }
 }
 
+/* Auth page composition: a quiet photo field and one compact sign-in form.
+   Keep this scoped to the standalone pages so the landing's auth modal keeps
+   its own compact treatment. */
+.auth-page {
+  grid-template-columns: minmax(0, 54.6fr) minmax(460px, 45.4fr);
+}
+
+.auth-page__story {
+  padding: clamp(34px, 4vw, 52px);
+  border-right: 0;
+  background:
+    linear-gradient(180deg, rgba(5, 11, 17, 0.04) 34%, rgba(5, 11, 17, 0.15) 55%, rgba(5, 11, 17, 0.88) 100%),
+    url("/auth-cows-at-work.png") center / cover no-repeat;
+}
+
+.auth-page__story::before,
+.auth-page__story::after {
+  display: none;
+}
+
+.auth-page__brand {
+  gap: 10px;
+  color: #f6f8fa;
+  font-family: var(--font-stack-sans);
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.auth-page__brand-mark {
+  display: block;
+  width: 34px;
+  height: 34px;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  object-fit: contain;
+}
+
+.auth-page__story-content {
+  width: min(640px, 100%);
+  margin: auto 0 18px;
+}
+
+.auth-page__quote-line {
+  display: block;
+  width: 27px;
+  height: 2px;
+  margin-bottom: 15px;
+  background: var(--accent-bright);
+}
+
+.auth-page__story blockquote {
+  max-width: 38ch;
+  margin: 0;
+  color: #f6f8fa;
+  font-family: var(--font-stack-display);
+  font-size: clamp(19px, 1.75vw, 27px);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.auth-page__story-content > p {
+  margin-top: 14px;
+  color: rgba(230, 237, 243, 0.66);
+  font-family: var(--font-stack-display);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.auth-page__main {
+  background: #0d1117;
+}
+
+.auth-layer--page {
+  padding: clamp(40px, 8vw, 96px) 40px;
+}
+
+.auth-layer--page .auth-panel {
+  width: min(405px, 100%);
+}
+
+.auth-panel__intro {
+  margin-bottom: 27px;
+}
+
+.auth-panel__intro h1 {
+  margin: 9px 0 5px;
+  font-family: var(--font-stack-display);
+  font-size: clamp(30px, 3vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.auth-panel__intro p {
+  font-size: 15px;
+}
+
+.auth-providers {
+  gap: 14px;
+}
+
+.auth-provider {
+  min-height: 46px;
+  gap: 8px;
+  padding: 9px 10px;
+  border-color: #30363d;
+  border-radius: 8px;
+  background: #161b22;
+  font-size: 12px;
+}
+
+.auth-provider small {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(125, 133, 144, 0.13);
+  font-size: 8px;
+}
+
+.auth-divider {
+  gap: 12px;
+  margin: 26px 0 23px;
+  font-size: 10px;
+}
+
+.auth-layer--page .auth-tabs {
+  margin-bottom: 22px;
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.auth-layer--page .auth-tabs a {
+  padding: 9px;
+  font-size: 12px;
+}
+
+.auth-layer--page .auth-form {
+  gap: 18px;
+}
+
+.auth-layer--page .auth-form label {
+  gap: 7px;
+  font-size: 10px;
+}
+
+.auth-input {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  background: #161b22;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.auth-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.16);
+}
+
+.auth-input svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin-left: 13px;
+  stroke: #7d8590;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.auth-layer--page .auth-form .auth-input input {
+  min-width: 0;
+  min-height: 0;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.auth-layer--page .auth-form .auth-input input:focus {
+  background: transparent;
+  box-shadow: none;
+}
+
+.auth-layer--page .auth-form button[type="submit"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  min-height: 49px;
+  margin-top: 7px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.auth-submit__arrow {
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 0;
+}
+
+.auth-panel__switch {
+  margin-top: 24px;
+}
+
+@media (max-width: 920px) {
+  .auth-page {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-page__story {
+    min-height: min(50vh, 450px);
+    padding: 28px 24px;
+    background-position: center;
+  }
+
+  .auth-page__story-content {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .auth-page__brand {
+    font-size: 20px;
+  }
+
+  .auth-page__brand-mark {
+    width: 30px;
+    height: 30px;
+  }
+
+  .auth-page__story blockquote {
+    font-size: 18px;
+  }
+
+  .auth-layer--page {
+    padding: 38px 20px 48px;
+  }
+
+  .auth-providers {
+    gap: 9px;
+  }
+}
+
 /* Logout button styled like the topbar link but with a button reset. */
 .cabinet-logout {
   border: 0;
