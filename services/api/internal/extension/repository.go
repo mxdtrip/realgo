@@ -277,7 +277,17 @@ func (r *pgRepository) saveSolvedState(ctx context.Context, q *db.Queries, in In
 	if err != nil {
 		return 0, time.Time{}, err
 	}
-	_, err = q.CreateReviewAttempt(ctx, db.CreateReviewAttemptParams{
+
+	if err := r.recordReviewAttempt(ctx, q, in, problemID); err != nil {
+		return 0, time.Time{}, err
+	}
+	return reviewID, nextReviewAt, nil
+}
+
+// recordReviewAttempt фиксирует запись о попытке решения задачи в таблице review_attempts.
+// Вызывается в рамках единой транзакции строго после успешного сохранения расписания.
+func (r *pgRepository) recordReviewAttempt(ctx context.Context, q *db.Queries, in IngestInput, problemID int64) error {
+	_, err := q.CreateReviewAttempt(ctx, db.CreateReviewAttemptParams{
 		UserID:      in.UserID,
 		ProblemID:   toInt8(problemID),
 		PatternID:   pgtype.Int8{},
@@ -288,9 +298,9 @@ func (r *pgRepository) saveSolvedState(ctx context.Context, q *db.Queries, in In
 		WasCorrect:  pgtype.Bool{},
 	})
 	if err != nil {
-		return 0, time.Time{}, fmt.Errorf("extension: create review attempt: %w", err)
+		return fmt.Errorf("extension: create review attempt: %w", err)
 	}
-	return reviewID, nextReviewAt, nil
+	return nil
 }
 
 // upsertSchedule создаёт расписание задачи при первом решении либо продвигает
