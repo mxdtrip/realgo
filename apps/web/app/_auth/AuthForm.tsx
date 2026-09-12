@@ -32,6 +32,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState("");
+  const [nicknameFocused, setNicknameFocused] = useState(false);
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -109,10 +110,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
                 required
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
+                onBlur={() => setNicknameFocused(false)}
+                onFocus={() => setNicknameFocused(true)}
                 disabled={pending}
               />
             </span>
-            <span className="auth-field-hint">3–32 символа: буквы, цифры, _ или -</span>
+            {nicknameFocused ? <span className="auth-field-hint">3–32 символа: буквы, цифры, _ или -</span> : null}
           </label>
         ) : null}
         <label>
@@ -149,21 +152,20 @@ export function AuthForm({ mode }: { mode: Mode }) {
               className="auth-password-toggle"
               disabled={pending}
               onClick={() => setShowPassword((current) => !current)}
+              aria-pressed={showPassword}
               type="button"
             >
-              {showPassword ? "Скрыть" : "Показать"}
+              {showPassword ? <EyeIcon /> : <EyeOffIcon />}
             </button>
           </span>
-          {mode === "register" ? (
+          {mode === "register" && password.length > 0 ? (
             <span
               aria-live="polite"
-              className={password.length > 0 && password.length < 8 ? "auth-field-hint is-invalid" : "auth-field-hint"}
+              className={password.length < 8 ? "auth-field-hint is-invalid" : "auth-field-hint"}
             >
-              {password.length === 0
-                ? "Минимум 8 символов"
-                : password.length < 8
-                  ? `Ещё ${8 - password.length} ${password.length === 7 ? "символ" : "символа"}`
-                  : "Пароль подходит"}
+              {password.length < 8
+                ? `Ещё ${8 - password.length} ${password.length === 7 ? "символ" : "символа"}`
+                : "Пароль подходит"}
             </span>
           ) : null}
         </label>
@@ -188,9 +190,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
                 className="auth-password-toggle"
                 disabled={pending}
                 onClick={() => setShowPasswordConfirmation((current) => !current)}
+                aria-pressed={showPasswordConfirmation}
                 type="button"
               >
-                {showPasswordConfirmation ? "Скрыть" : "Показать"}
+                {showPasswordConfirmation ? <EyeIcon /> : <EyeOffIcon />}
               </button>
             </span>
             {passwordConfirmation.length > 0 && passwordConfirmation !== password ? (
@@ -272,6 +275,25 @@ function NicknameIcon() {
     <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 20 20">
       <circle cx="10" cy="6.25" r="3" />
       <path d="M3.5 17c.6-3.1 2.75-4.65 6.5-4.65S15.9 13.9 16.5 17" />
+    </svg>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 20 20">
+      <path d="M2.25 10s2.75-4.25 7.75-4.25S17.75 10 17.75 10 15 14.25 10 14.25 2.25 10 2.25 10Z" />
+      <circle cx="10" cy="10" r="2.25" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 20 20">
+      <path d="M7.3 5.95A9.97 9.97 0 0 1 10 5.55c5 0 7.75 4.45 7.75 4.45a12.2 12.2 0 0 1-2.4 2.7" />
+      <path d="M5.05 7.2A12.15 12.15 0 0 0 2.25 10s2.75 4.45 7.75 4.45c.95 0 1.8-.16 2.56-.42" />
+      <path d="m3 3 14 14" />
     </svg>
   );
 }

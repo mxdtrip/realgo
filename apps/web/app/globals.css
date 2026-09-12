@@ -7366,7 +7366,7 @@ a.roadmap-step__practice-card:hover {
   box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.16);
 }
 
-.auth-input svg {
+.auth-input > svg {
   flex: none;
   width: 17px;
   height: 17px;
@@ -7393,18 +7393,35 @@ a.roadmap-step__practice-card:hover {
 }
 
 .auth-password-toggle {
+  display: grid;
   flex: none;
-  margin-right: 10px;
+  width: 38px;
+  height: 38px;
+  margin-right: 4px;
+  place-items: center;
   border: 0;
+  border-radius: 6px;
   background: transparent;
-  color: var(--accent-bright);
-  font-family: var(--font-stack-sans);
-  font-size: 11px;
-  font-weight: 600;
+  color: var(--text-faint);
 }
 
 .auth-password-toggle:hover:not(:disabled) {
-  color: #dbeafe;
+  background: rgba(88, 166, 255, 0.1);
+  color: var(--accent-bright);
+}
+
+.auth-password-toggle:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: -2px;
+}
+
+.auth-password-toggle svg {
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
 }
 
 .auth-field-hint {
@@ -7440,6 +7457,55 @@ a.roadmap-step__practice-card:hover {
 
 .auth-panel__switch {
   margin-top: 24px;
+}
+
+/* One type scale for all secondary UI. Only the small technical kicker keeps
+   the mono face; labels, controls and helper text use the product sans. */
+.auth-layer--page .auth-divider,
+.auth-layer--page .auth-tabs a,
+.auth-layer--page .auth-form label {
+  font-family: var(--font-stack-sans);
+}
+
+.auth-layer--page .auth-divider {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.auth-layer--page .auth-tabs a {
+  font-size: 13px;
+}
+
+.auth-layer--page .auth-form label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.auth-layer--page .auth-consent {
+  gap: 9px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.auth-layer--page .auth-consent input {
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 5px;
+}
+
+.auth-layer--page .auth-consent span {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.45;
+  text-transform: none;
+}
+
+.auth-layer--page .auth-consent span a {
+  color: var(--text);
+  font-weight: 500;
 }
 
 /* Registration has two additional fields. On a common 900–1050px tall
