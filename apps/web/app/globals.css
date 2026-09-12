@@ -739,6 +739,38 @@ h3 {
   color-scheme: dark;
 }
 
+.auth-form__password-field {
+  position: relative;
+  display: flex;
+}
+
+.auth-form__password-field input {
+  flex: 1;
+  padding-right: 40px;
+}
+
+.auth-form__password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+}
+
+.auth-form__password-toggle:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .auth-form textarea {
   font-family: var(--font-stack-sans);
   font-size: 14px;

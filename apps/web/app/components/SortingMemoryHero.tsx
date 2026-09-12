@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../_api/AuthProvider";
 import { ApiError } from "../_api/types";
 import { ReportProblemLauncher, openReportProblemDialog } from "../(cabinet)/ReportProblemDialog";
+import { CabinetIcon } from "../(cabinet)/_icons";
 import { getDictionary } from "../_content/i18n";
 import { AccountUserMenu } from "./AccountUserMenu";
 
@@ -297,6 +298,8 @@ export function SortingMemoryHero() {
   }, [authOpen, authRender]);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authPending, setAuthPending] = useState(false);
   const [order, setOrder] = useState(() => shuffle([0, 1, 2, 3, 4, 5]));
@@ -492,6 +495,10 @@ export function SortingMemoryHero() {
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       if (authPending) return;
+      if (authMode === "signup" && authPassword !== authPasswordConfirm) {
+        setAuthError(copy.auth.passwordMismatch);
+        return;
+      }
       setAuthPending(true);
       setAuthError("");
       try {
@@ -509,7 +516,17 @@ export function SortingMemoryHero() {
         setAuthPending(false);
       }
     },
-    [auth, authEmail, authMode, authPassword, authPending, copy.auth.error, router],
+    [
+      auth,
+      authEmail,
+      authMode,
+      authPassword,
+      authPasswordConfirm,
+      authPending,
+      copy.auth.error,
+      copy.auth.passwordMismatch,
+      router,
+    ],
   );
 
   useEffect(() => {
@@ -811,17 +828,44 @@ export function SortingMemoryHero() {
               </label>
               <label>
                 {copy.auth.password}
-                <input
-                  autoComplete={authMode === "login" ? "current-password" : "new-password"}
-                  placeholder={copy.auth.passwordPlaceholder}
-                  type="password"
-                  required
-                  minLength={8}
-                  value={authPassword}
-                  onChange={(event) => setAuthPassword(event.target.value)}
-                  disabled={authPending}
-                />
+                <div className="auth-form__password-field">
+                  <input
+                    autoComplete={authMode === "login" ? "current-password" : "new-password"}
+                    placeholder={copy.auth.passwordPlaceholder}
+                    type={showAuthPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    value={authPassword}
+                    onChange={(event) => setAuthPassword(event.target.value)}
+                    disabled={authPending}
+                  />
+                  <button
+                    aria-label={showAuthPassword ? copy.auth.hidePassword : copy.auth.showPassword}
+                    className="auth-form__password-toggle"
+                    onClick={() => setShowAuthPassword((value) => !value)}
+                    type="button"
+                  >
+                    <CabinetIcon name={showAuthPassword ? "eyeOff" : "eye"} />
+                  </button>
+                </div>
               </label>
+
+              {authMode === "signup" ? (
+                <label>
+                  {copy.auth.passwordConfirm}
+                  <input
+                    autoComplete="new-password"
+                    placeholder={copy.auth.passwordConfirmPlaceholder}
+                    type="password"
+                    required
+                    minLength={8}
+                    value={authPasswordConfirm}
+                    onChange={(event) => setAuthPasswordConfirm(event.target.value)}
+                    onPaste={(event) => event.preventDefault()}
+                    disabled={authPending}
+                  />
+                </label>
+              ) : null}
 
               {authError ? (
                 <p className="auth-form__error" role="alert">
