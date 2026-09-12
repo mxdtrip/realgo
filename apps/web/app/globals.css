@@ -7442,6 +7442,72 @@ a.roadmap-step__practice-card:hover {
   margin-top: 24px;
 }
 
+/* Registration has two additional fields. On a common 900–1050px tall
+   desktop viewport, use denser spacing so centering never lifts its heading
+   above the visible area. */
+@media (min-width: 921px) and (max-height: 1050px) {
+  .auth-layer--page {
+    padding-top: 28px;
+    padding-bottom: 28px;
+  }
+
+  .auth-panel--register .auth-panel__intro {
+    margin-bottom: 18px;
+  }
+
+  .auth-panel--register .auth-providers {
+    gap: 10px;
+  }
+
+  .auth-panel--register .auth-provider {
+    min-height: 42px;
+  }
+
+  .auth-panel--register .auth-divider {
+    margin: 18px 0 16px;
+  }
+
+  .auth-layer--page .auth-panel--register .auth-tabs {
+    margin-bottom: 14px;
+  }
+
+  .auth-layer--page .auth-panel--register .auth-form {
+    gap: 10px;
+  }
+
+  .auth-layer--page .auth-panel--register .auth-form label {
+    gap: 4px;
+  }
+
+  .auth-panel--register .auth-input {
+    min-height: 42px;
+  }
+
+  .auth-layer--page .auth-panel--register .auth-form .auth-input input {
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
+
+  .auth-panel--register .auth-field-hint {
+    font-size: 10px;
+  }
+
+  .auth-layer--page .auth-panel--register .auth-form button[type="submit"] {
+    min-height: 44px;
+    margin-top: 3px;
+  }
+
+  .auth-panel--register .auth-panel__switch {
+    margin-top: 16px;
+  }
+}
+
+@media (min-width: 921px) and (max-height: 880px) {
+  .auth-layer--page {
+    align-items: start;
+  }
+}
+
 @media (max-width: 920px) {
   .auth-page {
     grid-template-columns: 1fr;

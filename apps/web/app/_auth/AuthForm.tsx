@@ -69,7 +69,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   }
 
   return (
-    <section aria-label={copy.aria} className="auth-panel">
+    <section aria-label={copy.aria} className={`auth-panel auth-panel--${mode}`}>
       <div className="auth-panel__intro">
         <span className="auth-panel__kicker">// account</span>
         <h1>{mode === "login" ? "С возвращением" : "Начнём путь"}</h1>
