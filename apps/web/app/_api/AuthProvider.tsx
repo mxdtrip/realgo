@@ -21,7 +21,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   status: AuthStatus;
   login: (email: string, password: string) => Promise<AuthUser>;
-  register: (email: string, password: string) => Promise<AuthUser>;
+  register: (email: string, password: string, nickname: string) => Promise<AuthUser>;
   loginWithYandex: (code: string, redirectUri: string) => Promise<AuthUser>;
   loginWithGithub: (code: string, redirectUri: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
@@ -83,8 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return u;
   }, []);
 
-  const register = useCallback(async (email: string, password: string) => {
-    const u = await authApi.register(email, password);
+  const register = useCallback(async (email: string, password: string, nickname: string) => {
+    const u = await authApi.register(email, password, nickname);
     setUser(u);
     setStatus("authenticated");
     return u;

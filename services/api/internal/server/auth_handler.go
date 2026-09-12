@@ -37,6 +37,12 @@ type credentialsRequest struct {
 	Timezone string `json:"timezone,omitempty"`
 }
 
+type registrationRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Nickname string `json:"nickname"`
+}
+
 type refreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
@@ -68,6 +74,7 @@ type notificationSettingsResponse struct {
 type userResponse struct {
 	ID                   int64                        `json:"id"`
 	Email                string                       `json:"email"`
+	Nickname             *string                      `json:"nickname"`
 	Timezone             string                       `json:"timezone"`
 	Plan                 string                       `json:"plan"`
 	InterviewDate        *string                      `json:"interview_date"`
@@ -99,6 +106,9 @@ func newUserResponse(u db.User) userResponse {
 	if u.CreatedAt.Valid {
 		resp.CreatedAt = u.CreatedAt.Time.UTC().Format(time.RFC3339)
 	}
+	if u.Nickname.Valid {
+		resp.Nickname = &u.Nickname.String
+	}
 	if u.InterviewDate.Valid {
 		d := u.InterviewDate.Time.UTC().Format(time.RFC3339)
 		resp.InterviewDate = &d
@@ -126,7 +136,30 @@ func newUserResponse(u db.User) userResponse {
 }
 
 func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
-	h.handleCredentials(w, r, h.svc.Register, http.StatusCreated, "Register")
+	if h.unavailable(w) {
+		return
+	}
+	var req registrationRequest
+	if !decodeJSON(w, r, &req) || !validateCredentials(w, req.Email, req.Password, "Register") {
+		return
+	}
+	var (
+		user   db.User
+		tokens auth.TokenPair
+		err    error
+	)
+	if strings.TrimSpace(req.Nickname) == "" {
+		// Keep the public API backward compatible for older clients while the
+		// web registration form makes a nickname mandatory at the UI level.
+		user, tokens, err = h.svc.Register(r.Context(), req.Email, req.Password)
+	} else {
+		user, tokens, err = h.svc.RegisterWithNickname(r.Context(), req.Email, req.Password, req.Nickname)
+	}
+	if err != nil {
+		writeAuthError(w, err, "Register", slog.String("email", req.Email))
+		return
+	}
+	response.JSON(w, http.StatusCreated, authResponse{User: newUserResponse(user), Tokens: tokens})
 }
 
 func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
@@ -296,17 +329,24 @@ func decodeCredentials(w http.ResponseWriter, r *http.Request, method string) (c
 	if !decodeJSON(w, r, &req) {
 		return req, false
 	}
-	if req.Email == "" {
-		slog.Warn("auth: "+method+" failed", slog.String("field", "email"))
-		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "email is required", "email")
-		return req, false
-	}
-	if req.Password == "" {
-		slog.Warn("auth: "+method+" failed", slog.String("field", "password"))
-		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "password is required", "password")
+	if !validateCredentials(w, req.Email, req.Password, method) {
 		return req, false
 	}
 	return req, true
+}
+
+func validateCredentials(w http.ResponseWriter, email, password, method string) bool {
+	if email == "" {
+		slog.Warn("auth: "+method+" failed", slog.String("field", "email"))
+		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "email is required", "email")
+		return false
+	}
+	if password == "" {
+		slog.Warn("auth: "+method+" failed", slog.String("field", "password"))
+		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "password is required", "password")
+		return false
+	}
+	return true
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
@@ -655,6 +695,9 @@ func writeAuthError(w http.ResponseWriter, err error, handler string, extra ...a
 	case errors.Is(err, auth.ErrPasswordTooLong):
 		slog.Warn("auth: "+handler+" failed", logArgs...)
 		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "password must be at most 72 bytes", "password")
+	case errors.Is(err, auth.ErrInvalidNickname):
+		slog.Warn("auth: "+handler+" failed", logArgs...)
+		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "nickname must be 3–32 letters, digits, _ or -", "nickname")
 	case errors.Is(err, auth.ErrEmailTaken):
 		slog.Warn("auth: "+handler+" failed", logArgs...)
 		response.FailWithDetails(w, http.StatusConflict, "email_taken", "email is already registered", "email")

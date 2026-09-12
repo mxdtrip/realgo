@@ -31,7 +31,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const copy = COPY[mode];
 
   const [email, setEmail] = useState("");
+  const [nickname, setNickname] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -40,6 +44,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
     event.preventDefault();
     if (pending) return;
     if (mode === "register" && !consent) return;
+    if (mode === "register" && password.length < 8) {
+      setError("Пароль должен содержать минимум 8 символов.");
+      return;
+    }
+    if (mode === "register" && password !== passwordConfirmation) {
+      setError("Пароли не совпадают.");
+      return;
+    }
     setPending(true);
     setError("");
     try {
@@ -47,7 +59,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         const authUser = await auth.login(email.trim(), password);
         router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
       } else {
-        const authUser = await auth.register(email.trim(), password);
+        const authUser = await auth.register(email.trim(), password, nickname.trim());
         router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
       }
     } catch (e) {
@@ -64,7 +76,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         <p>
           {mode === "login"
             ? "Продолжайте там, где остановились."
-            : "Создайте аккаунт и превратите практику в привычку."}
+            : "Создайте аккаунт, чтобы сохранять задачи и интервальные повторения."}
         </p>
       </div>
 
@@ -84,6 +96,25 @@ export function AuthForm({ mode }: { mode: Mode }) {
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
+        {mode === "register" ? (
+          <label>
+            <span>Никнейм</span>
+            <span className="auth-input">
+              <NicknameIcon />
+              <input
+                autoComplete="nickname"
+                maxLength={32}
+                minLength={3}
+                placeholder="например, madtrip"
+                required
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                disabled={pending}
+              />
+            </span>
+            <span className="auth-field-hint">3–32 символа: буквы, цифры, _ или -</span>
+          </label>
+        ) : null}
         <label>
           <span>Email</span>
           <span className="auth-input">
@@ -106,15 +137,67 @@ export function AuthForm({ mode }: { mode: Mode }) {
             <input
               autoComplete={mode === "login" ? "current-password" : "new-password"}
               placeholder={mode === "register" ? "минимум 8 символов" : "••••••••"}
-              type="password"
+              type={showPassword ? "text" : "password"}
               required
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={pending}
             />
+            <button
+              aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+              className="auth-password-toggle"
+              disabled={pending}
+              onClick={() => setShowPassword((current) => !current)}
+              type="button"
+            >
+              {showPassword ? "Скрыть" : "Показать"}
+            </button>
           </span>
+          {mode === "register" ? (
+            <span
+              aria-live="polite"
+              className={password.length > 0 && password.length < 8 ? "auth-field-hint is-invalid" : "auth-field-hint"}
+            >
+              {password.length === 0
+                ? "Минимум 8 символов"
+                : password.length < 8
+                  ? `Ещё ${8 - password.length} ${password.length === 7 ? "символ" : "символа"}`
+                  : "Пароль подходит"}
+            </span>
+          ) : null}
         </label>
+
+        {mode === "register" ? (
+          <label>
+            <span>Повторите пароль</span>
+            <span className="auth-input">
+              <LockIcon />
+              <input
+                autoComplete="new-password"
+                placeholder="••••••••"
+                type={showPasswordConfirmation ? "text" : "password"}
+                required
+                minLength={8}
+                value={passwordConfirmation}
+                onChange={(e) => setPasswordConfirmation(e.target.value)}
+                disabled={pending}
+              />
+              <button
+                aria-label={showPasswordConfirmation ? "Скрыть пароль" : "Показать пароль"}
+                className="auth-password-toggle"
+                disabled={pending}
+                onClick={() => setShowPasswordConfirmation((current) => !current)}
+                type="button"
+              >
+                {showPasswordConfirmation ? "Скрыть" : "Показать"}
+              </button>
+            </span>
+            {passwordConfirmation.length > 0 && passwordConfirmation !== password ? (
+              <span aria-live="polite" className="auth-field-hint is-invalid">Пароли не совпадают</span>
+            ) : null}
+          </label>
+        ) : null}
 
         {mode === "register" ? (
           <label className="auth-consent">
@@ -144,7 +227,13 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </p>
         ) : null}
 
-        <button disabled={pending || (mode === "register" && !consent)} type="submit">
+        <button
+          disabled={
+            pending ||
+            (mode === "register" && (!consent || !nickname.trim() || password.length < 8 || password !== passwordConfirmation))
+          }
+          type="submit"
+        >
           <span>{pending ? copy.pending : copy.submit}</span>
           {!pending ? <span aria-hidden="true" className="auth-submit__arrow">→</span> : null}
         </button>
@@ -174,6 +263,15 @@ function LockIcon() {
     <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 20 20">
       <rect height="9" rx="2" width="12" x="4" y="8" />
       <path d="M6.5 8V6a3.5 3.5 0 0 1 7 0v2" />
+    </svg>
+  );
+}
+
+function NicknameIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 20 20">
+      <circle cx="10" cy="6.25" r="3" />
+      <path d="M3.5 17c.6-3.1 2.75-4.65 6.5-4.65S15.9 13.9 16.5 17" />
     </svg>
   );
 }

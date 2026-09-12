@@ -387,6 +387,7 @@ type User struct {
 	Platform              pgtype.Text
 	IsDemo                bool
 	NotifyStreakReminder  bool
+	Nickname              pgtype.Text
 }
 
 type UserPracticePattern struct {

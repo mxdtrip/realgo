@@ -497,8 +497,8 @@ export function SortingMemoryHero() {
       setAuthError("");
       try {
         if (authMode === "signup") {
-          const authUser = await auth.register(authEmail.trim(), authPassword);
-          router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
+          router.push("/register");
+          return;
         } else {
           const authUser = await auth.login(authEmail.trim(), authPassword);
           router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
@@ -661,8 +661,7 @@ export function SortingMemoryHero() {
               <button
                 type="button"
                 onClick={() => {
-                  setAuthMode("signup");
-                  setAuthOpen(true);
+                  router.push("/register");
                 }}
               >
                 {copy.auth.signup}
@@ -790,8 +789,7 @@ export function SortingMemoryHero() {
                 className={authMode === "signup" ? "active" : ""}
                 type="button"
                 onClick={() => {
-                  setAuthMode("signup");
-                  setAuthError("");
+                  router.push("/register");
                 }}
               >
                 {copy.auth.signup}

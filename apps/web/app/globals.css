@@ -7392,6 +7392,35 @@ a.roadmap-step__practice-card:hover {
   box-shadow: none;
 }
 
+.auth-password-toggle {
+  flex: none;
+  margin-right: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-bright);
+  font-family: var(--font-stack-sans);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.auth-password-toggle:hover:not(:disabled) {
+  color: #dbeafe;
+}
+
+.auth-field-hint {
+  color: var(--text-faint);
+  font-family: var(--font-stack-sans);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.25;
+  text-transform: none;
+}
+
+.auth-field-hint.is-invalid {
+  color: var(--danger, #ff7b72);
+}
+
 .auth-layer--page .auth-form button[type="submit"] {
   display: inline-flex;
   align-items: center;

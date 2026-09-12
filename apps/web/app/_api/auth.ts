@@ -10,11 +10,11 @@ import type { AuthTokens, AuthUser } from "./types";
 type AuthResponse = { user: AuthUser; tokens: AuthTokens };
 
 /** POST /auth/register → creates the account and starts a session. */
-export async function register(email: string, password: string): Promise<AuthUser> {
+export async function register(email: string, password: string, nickname: string): Promise<AuthUser> {
   const data = await apiFetch<AuthResponse>("/auth/register", {
     method: "POST",
     auth: false,
-    body: { email, password },
+    body: { email, password, nickname },
   });
   setTokens(data.tokens);
   return data.user;

@@ -8,6 +8,7 @@ var (
 	ErrInvalidEmail       = errors.New("invalid email")
 	ErrWeakPassword       = errors.New("password too short")
 	ErrPasswordTooLong    = errors.New("password too long")
+	ErrInvalidNickname    = errors.New("invalid nickname")
 	ErrEmailTaken         = errors.New("email already registered")
 	ErrInvalidCredentials = errors.New("invalid email or password")
 	ErrInvalidToken       = errors.New("invalid or expired token")

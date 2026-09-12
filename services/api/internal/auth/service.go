@@ -8,6 +8,7 @@ import (
 	"net/mail"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
@@ -20,6 +21,8 @@ import (
 
 const minPasswordLen = 8
 const maxPasswordBytes = 72
+const minNicknameRunes = 3
+const maxNicknameRunes = 32
 
 // A valid pre-computed bcrypt hash keeps the unknown-account login path close
 // in cost to the wrong-password path. Its plaintext is irrelevant and is never
@@ -46,6 +49,21 @@ func NewService(queries *db.Queries, redis *goredis.Client, cfg Config) *Service
 
 // Register validates the input, creates a user and issues a token pair.
 func (s *Service) Register(ctx context.Context, email, password string) (db.User, TokenPair, error) {
+	return s.register(ctx, email, password, pgtype.Text{})
+}
+
+// RegisterWithNickname creates an email/password account with the display
+// nickname chosen in the registration form. OAuth and existing internal
+// callers may still create accounts without it during the migration period.
+func (s *Service) RegisterWithNickname(ctx context.Context, email, password, nickname string) (db.User, TokenPair, error) {
+	normalizedNickname, err := normalizeNickname(nickname)
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	return s.register(ctx, email, password, pgtype.Text{String: normalizedNickname, Valid: true})
+}
+
+func (s *Service) register(ctx context.Context, email, password string, nickname pgtype.Text) (db.User, TokenPair, error) {
 	normalized, err := normalizeEmail(email)
 	if err != nil {
 		return db.User{}, TokenPair{}, err
@@ -62,6 +80,7 @@ func (s *Service) Register(ctx context.Context, email, password string) (db.User
 	user, err := s.queries.CreateUser(ctx, db.CreateUserParams{
 		Email:        normalized,
 		PasswordHash: pgtype.Text{String: hash, Valid: true},
+		Nickname:     nickname,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -85,6 +104,21 @@ func (s *Service) Register(ctx context.Context, email, password string) (db.User
 		return db.User{}, TokenPair{}, err
 	}
 	return user, tokens, nil
+}
+
+func normalizeNickname(value string) (string, error) {
+	nickname := strings.TrimSpace(value)
+	length := utf8.RuneCountInString(nickname)
+	if length < minNicknameRunes || length > maxNicknameRunes {
+		return "", ErrInvalidNickname
+	}
+	for _, char := range nickname {
+		if unicode.IsLetter(char) || unicode.IsDigit(char) || char == '_' || char == '-' {
+			continue
+		}
+		return "", ErrInvalidNickname
+	}
+	return nickname, nil
 }
 
 // Login verifies credentials and issues a token pair. It returns

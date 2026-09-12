@@ -33,6 +33,7 @@ export type AuthTokens = {
 export type AuthUser = {
   id: number;
   email: string;
+  nickname: string | null;
   timezone: string;
   plan: string;
   interview_date: string | null;

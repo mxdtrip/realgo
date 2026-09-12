@@ -40,3 +40,18 @@ func TestValidatePasswordCountsCharactersNotUTF8Bytes(t *testing.T) {
 		t.Fatalf("validatePassword(8 Cyrillic characters) = %v, want nil", err)
 	}
 }
+
+func TestNormalizeNicknameAcceptsCyrillicAndRejectsUnsafeCharacters(t *testing.T) {
+	for _, nickname := range []string{"madtrip", "Алго_кот", "dev-42"} {
+		got, err := normalizeNickname(nickname)
+		if err != nil || got != nickname {
+			t.Fatalf("normalizeNickname(%q) = %q, %v", nickname, got, err)
+		}
+	}
+
+	for _, nickname := range []string{"ab", "hello world", "<script>", strings.Repeat("a", maxNicknameRunes+1)} {
+		if _, err := normalizeNickname(nickname); !errors.Is(err, ErrInvalidNickname) {
+			t.Fatalf("normalizeNickname(%q) error = %v, want %v", nickname, err, ErrInvalidNickname)
+		}
+	}
+}
