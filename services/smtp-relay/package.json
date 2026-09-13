@@ -1,0 +1,6 @@
+{
+  "name": "realgo-smtp2go-relay",
+  "private": true,
+  "type": "module",
+  "dependencies": { "smtp-server": "3.19.3" }
+}

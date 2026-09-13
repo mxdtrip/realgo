@@ -53,6 +53,15 @@ type CompanyProblem struct {
 	AdminID       int64
 }
 
+type EmailVerificationCode struct {
+	ID        int64
+	UserID    int64
+	CodeHash  string
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
 type ExtensionEvent struct {
 	ID               int64
 	UserID           pgtype.Int8
@@ -178,6 +187,15 @@ type OauthAccount struct {
 	ProviderUserID string
 	Email          pgtype.Text
 	CreatedAt      pgtype.Timestamptz
+}
+
+type PasswordResetToken struct {
+	ID        int64
+	UserID    int64
+	TokenHash string
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
 }
 
 type Pattern struct {
@@ -388,6 +406,7 @@ type User struct {
 	IsDemo                bool
 	NotifyStreakReminder  bool
 	Nickname              pgtype.Text
+	EmailVerifiedAt       pgtype.Timestamptz
 }
 
 type UserPracticePattern struct {

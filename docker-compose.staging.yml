@@ -18,6 +18,29 @@
 name: realgo-staging
 
 services:
+  mail-relay:
+    build:
+      context: ./services/smtp-relay
+    restart: unless-stopped
+    environment:
+      RELAY_SMTP_HOST: ${SMTP2GO_SMTP_HOST:-mail.smtp2go.com}
+      RELAY_SMTP_PORT: ${SMTP2GO_SMTP_PORT:-2525}
+      RELAY_SMTP_USERNAME: ${SMTP2GO_SMTP_USERNAME:?SMTP2GO_SMTP_USERNAME must be set}
+      RELAY_SMTP_PASSWORD: ${SMTP2GO_SMTP_PASSWORD:?SMTP2GO_SMTP_PASSWORD must be set}
+      SENDER_ADDRESS: noreply@realgo.dev
+
+  api:
+    depends_on:
+      mail-relay:
+        condition: service_started
+    environment:
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      MAIL_SMTP_HOST: mail-relay
+      MAIL_SMTP_PORT: "2526"
+      MAIL_SMTP_TLS_MODE: none
+      MAIL_BASE_URL: ${MAIL_BASE_URL:-https://test.realgo.dev}
+      MAIL_SMTP_TIMEOUT: ${MAIL_SMTP_TIMEOUT:-10s}
+
   # Staging's content comes from a restored prod DB snapshot, not from the
   # seed fixtures — so every seed job is parked behind a profile the deploy
   # workflow never enables. Without this they would re-run on EVERY deploy on

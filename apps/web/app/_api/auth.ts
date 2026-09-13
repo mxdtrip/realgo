@@ -31,6 +31,22 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return data.user;
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  await apiFetch<{ status: string }>("/auth/password-reset/request", { method: "POST", auth: false, body: { email } });
+}
+
+export async function confirmPasswordReset(token: string, newPassword: string): Promise<void> {
+  await apiFetch<{ status: string }>("/auth/password-reset/confirm", { method: "POST", auth: false, body: { token, new_password: newPassword } });
+}
+
+export async function requestEmailVerification(): Promise<void> {
+  await apiFetch<{ status: string }>("/me/email-verification/request", { method: "POST", body: {} });
+}
+
+export async function confirmEmailVerification(code: string): Promise<void> {
+  await apiFetch<{ status: string }>("/me/email-verification/confirm", { method: "POST", body: { code } });
+}
+
 /** POST /auth/yandex → exchanges a Yandex ID authorization code and starts a session. */
 export async function loginWithYandex(code: string, redirectUri: string): Promise<AuthUser> {
   const data = await apiFetch<AuthResponse>("/auth/yandex", {

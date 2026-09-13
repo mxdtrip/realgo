@@ -24,6 +24,13 @@ jobs:
           APP_VERSION: staging-${{ github.run_number }}
           COMMIT_SHA: ${{ github.sha }}
           AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
+          MAIL_ENABLED: ${{ secrets.SMTP2GO_SMTP_USERNAME != '' && secrets.SMTP2GO_SMTP_PASSWORD != '' }}
+          SMTP2GO_SMTP_HOST: mail.smtp2go.com
+          SMTP2GO_SMTP_PORT: "2525"
+          SMTP2GO_SMTP_USERNAME: ${{ secrets.SMTP2GO_SMTP_USERNAME }}
+          SMTP2GO_SMTP_PASSWORD: ${{ secrets.SMTP2GO_SMTP_PASSWORD }}
+          MAIL_BASE_URL: https://test.realgo.dev
+          MAIL_SMTP_TIMEOUT: 10s
           # OAuth public ids are passed to the web build; the matching secrets
           # are consumed only by the API container. Empty repository secrets
           # leave their respective buttons visibly disabled on staging.

@@ -14,6 +14,7 @@ type Config struct {
 	HTTPServer `yaml:"http_server"`
 	Database   `yaml:"database"`
 	Redis      `yaml:"redis"`
+	Mail       Mail  `yaml:"mail"`
 	Admin      Admin `yaml:"admin"`
 	AI         `yaml:"ai"`
 	FSRS       `yaml:"fsrs"`
@@ -43,6 +44,19 @@ type Redis struct {
 	Port     string `yaml:"port" env:"REDIS_PORT" env-default:"6379"`
 	Password string `yaml:"password" env:"REDIS_PASSWORD"`
 	DB       int    `yaml:"db" env:"REDIS_DB" env-default:"0"`
+}
+
+// Mail is the internal relay connection; production credentials stay in the
+// relay container, while staging uses the same boundary for a faithful test.
+type Mail struct {
+	Enabled  bool          `yaml:"enabled" env:"MAIL_ENABLED" env-default:"false"`
+	Host     string        `yaml:"smtp_host" env:"MAIL_SMTP_HOST" env-default:"mail-relay"`
+	Port     int           `yaml:"smtp_port" env:"MAIL_SMTP_PORT" env-default:"2526"`
+	Username string        `yaml:"smtp_username" env:"MAIL_SMTP_USERNAME"`
+	Password string        `yaml:"smtp_password" env:"MAIL_SMTP_PASSWORD"`
+	BaseURL  string        `yaml:"base_url" env:"MAIL_BASE_URL" env-default:"https://test.realgo.dev"`
+	Timeout  time.Duration `yaml:"smtp_timeout" env:"MAIL_SMTP_TIMEOUT" env-default:"10s"`
+	TLSMode  string        `yaml:"smtp_tls_mode" env:"MAIL_SMTP_TLS_MODE" env-default:"none"`
 }
 
 type Admin struct {

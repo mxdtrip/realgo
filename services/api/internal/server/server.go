@@ -14,6 +14,7 @@ import (
 	v1 "github.com/mxdtrip/realgo/services/api/internal/controller/v1"
 	"github.com/mxdtrip/realgo/services/api/internal/dashboard"
 	"github.com/mxdtrip/realgo/services/api/internal/extension"
+	"github.com/mxdtrip/realgo/services/api/internal/mail"
 	"github.com/mxdtrip/realgo/services/api/internal/patterns"
 	"github.com/mxdtrip/realgo/services/api/internal/practice"
 	"github.com/mxdtrip/realgo/services/api/internal/problemcards"
@@ -36,10 +37,12 @@ const requestTimeout = 60 * time.Second
 
 // Deps are the dependencies required to build the HTTP handler.
 type Deps struct {
-	Logger   *slog.Logger
-	Postgres *postgres.Storage
-	Redis    *redis.Storage
-	Auth     *auth.Service
+	Logger      *slog.Logger
+	Postgres    *postgres.Storage
+	Redis       *redis.Storage
+	Auth        *auth.Service
+	Mailer      mail.Sender
+	MailBaseURL string
 	// Scheduler is the single FSRS scheduler shared by every code path that
 	// plans a review (extension ingest, manual review-rate, card-rate,
 	// quiz-rate). Created once in app.Run from config.FSRS so that one set of
@@ -129,11 +132,13 @@ func New(deps Deps) *chi.Mux {
 	extensionStatusHandler := extension.NewStatusHandler(extension.NewStatusService(extension.NewStatusRepository(deps.Postgres.Pool)))
 
 	r.Route("/api/v1", func(r chi.Router) {
-		ah := &authHandler{svc: deps.Auth}
+		ah := &authHandler{svc: deps.Auth, mailer: deps.Mailer, mailBaseURL: deps.MailBaseURL}
 		authRateLimit := rateLimit(deps.Redis, "auth", 20, time.Minute)
 		r.Route("/auth", func(r chi.Router) {
 			r.With(authRateLimit).Post("/register", ah.register)
 			r.With(authRateLimit).Post("/login", ah.login)
+			r.With(rateLimit(deps.Redis, "password-reset-request", 5, time.Hour)).Post("/password-reset/request", ah.requestPasswordReset)
+			r.With(rateLimit(deps.Redis, "password-reset-confirm", 10, time.Hour)).Post("/password-reset/confirm", ah.confirmPasswordReset)
 			r.With(authRateLimit).Post("/yandex", ah.yandexLogin)
 			r.With(authRateLimit).Post("/github", ah.githubLogin)
 			r.With(authRateLimit).Post("/refresh", ah.refresh)
@@ -149,6 +154,8 @@ func New(deps Deps) *chi.Mux {
 		r.With(requireAuth(deps.Auth)).Patch("/me/profile", ah.patchProfile)
 		r.With(requireAuth(deps.Auth)).Patch("/me/notification-settings", ah.patchNotificationSettings)
 		r.With(requireAuth(deps.Auth)).Post("/me/password", ah.changePassword)
+		r.With(requireAuth(deps.Auth), rateLimit(deps.Redis, "email-verification-request", 5, time.Hour)).Post("/me/email-verification/request", ah.requestEmailVerification)
+		r.With(requireAuth(deps.Auth), rateLimit(deps.Redis, "email-verification-confirm", 10, time.Hour)).Post("/me/email-verification/confirm", ah.confirmEmailVerification)
 		r.With(requireAuth(deps.Auth)).Post("/me/sessions/revoke", ah.revokeAllSessions)
 		r.With(requireAuth(deps.Auth)).Post("/me/export", ah.postExport)
 		r.With(

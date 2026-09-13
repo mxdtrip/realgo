@@ -62,8 +62,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
         const authUser = await auth.login(email.trim(), password);
         router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
       } else {
-        const authUser = await auth.register(email.trim(), password, nickname.trim());
-        router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
+        await auth.register(email.trim(), password, nickname.trim());
+        router.push("/verify-email");
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Что-то пошло не так. Попробуйте ещё раз.");
@@ -253,6 +253,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           {mode === "login" ? "Создайте аккаунт" : "Войдите"}
         </Link>
       </p>
+      {mode === "login" ? <p className="auth-panel__switch"><Link href="/forgot-password">Не помню пароль</Link></p> : null}
     </section>
   );
 }

@@ -2,23 +2,31 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/go-chi/chi/v5/middleware"
+
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/mail"
 	"github.com/mxdtrip/realgo/services/api/internal/server/response"
 	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 )
 
 // authHandler exposes the authentication endpoints over the auth service.
 type authHandler struct {
-	svc *auth.Service
+	svc         *auth.Service
+	mailer      mail.Sender
+	mailBaseURL string
 }
 
 const maxJSONBodyBytes = 1 << 20
@@ -159,11 +167,149 @@ func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 		writeAuthError(w, err, "Register", slog.String("email", req.Email))
 		return
 	}
+	h.issueVerificationMail(r, user)
 	response.JSON(w, http.StatusCreated, authResponse{User: newUserResponse(user), Tokens: tokens})
 }
 
 func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 	h.handleCredentials(w, r, h.svc.Login, http.StatusOK, "Login")
+}
+
+type passwordResetRequest struct {
+	Email string `json:"email"`
+}
+type passwordResetConfirmRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+type emailVerificationConfirmRequest struct {
+	Code string `json:"code"`
+}
+
+// requestPasswordReset is deliberately indistinguishable for known and
+// unknown accounts. Logs use an irreversible short hash rather than email.
+func (h *authHandler) requestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	var req passwordResetRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	emailHash, requestID := emailLogHash(req.Email), middleware.GetReqID(r.Context())
+	slog.Info("password_reset_requested", slog.String("email_hash", emailHash), slog.String("request_id", requestID))
+	user, token, found, err := h.svc.IssuePasswordReset(r.Context(), req.Email)
+	if err != nil {
+		slog.Error("password_reset_request_failed", slog.String("email_hash", emailHash), slog.String("request_id", requestID), slog.Any("err", err))
+		response.Fail(w, http.StatusInternalServerError, "internal_error", "something went wrong")
+		return
+	}
+	if !found {
+		slog.Info("password_reset_account_not_found", slog.String("email_hash", emailHash), slog.String("request_id", requestID))
+		response.JSON(w, http.StatusAccepted, map[string]string{"status": "reset_requested"})
+		return
+	}
+	slog.Info("password_reset_account_found", slog.Int64("user_id", user.ID), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
+	message := mail.PasswordReset(h.resetURL(token), int(auth.PasswordResetTTL/time.Minute))
+	message.To = user.Email
+	h.deliverMail(r.Context(), message, user.ID, "password_reset", emailHash)
+	response.JSON(w, http.StatusAccepted, map[string]string{"status": "reset_requested"})
+}
+
+func (h *authHandler) confirmPasswordReset(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	var req passwordResetConfirmRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if strings.TrimSpace(req.Token) == "" || req.NewPassword == "" {
+		response.Fail(w, http.StatusBadRequest, "validation_error", "token and new_password are required")
+		return
+	}
+	if _, err := h.svc.ResetPassword(r.Context(), req.Token, req.NewPassword); err != nil {
+		if errors.Is(err, auth.ErrInvalidToken) {
+			slog.Info("password_reset_invalid_token", slog.String("request_id", middleware.GetReqID(r.Context())))
+		}
+		writeAuthError(w, err, "ConfirmPasswordReset")
+		return
+	}
+	slog.Info("password_reset_completed", slog.String("request_id", middleware.GetReqID(r.Context())))
+	response.JSON(w, http.StatusOK, map[string]string{"status": "password_reset"})
+}
+
+func (h *authHandler) requestEmailVerification(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	userID, ok := auth.UserIDFromContext(r.Context())
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		return
+	}
+	h.issueVerificationMail(r, db.User{ID: userID})
+	response.JSON(w, http.StatusAccepted, map[string]string{"status": "verification_requested"})
+}
+
+func (h *authHandler) confirmEmailVerification(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	userID, ok := auth.UserIDFromContext(r.Context())
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		return
+	}
+	var req emailVerificationConfirmRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if err := h.svc.VerifyEmailCode(r.Context(), userID, strings.TrimSpace(req.Code)); err != nil {
+		slog.Info("email_verification_invalid_code", slog.Int64("user_id", userID), slog.String("request_id", middleware.GetReqID(r.Context())))
+		response.Fail(w, http.StatusBadRequest, "invalid_code", "invalid or expired verification code")
+		return
+	}
+	slog.Info("email_verification_completed", slog.Int64("user_id", userID), slog.String("request_id", middleware.GetReqID(r.Context())))
+	response.JSON(w, http.StatusOK, map[string]string{"status": "email_verified"})
+}
+
+func (h *authHandler) issueVerificationMail(r *http.Request, user db.User) {
+	if h.mailer == nil {
+		slog.Warn("email_verification_email_failed", slog.Int64("user_id", user.ID), slog.String("reason", "mailer_disabled"))
+		return
+	}
+	loaded, code, err := h.svc.IssueEmailVerificationCode(r.Context(), user.ID)
+	if err != nil {
+		slog.Error("email_verification_email_failed", slog.Int64("user_id", user.ID), slog.String("reason", "code_issue_failed"), slog.Any("err", err))
+		return
+	}
+	message := mail.EmailVerification(code, int(auth.EmailVerificationTTL/time.Minute))
+	message.To = loaded.Email
+	h.deliverMail(r.Context(), message, user.ID, "email_verification", emailLogHash(loaded.Email))
+}
+
+func (h *authHandler) deliverMail(ctx context.Context, message mail.Message, userID int64, kind, emailHash string) {
+	requestID := middleware.GetReqID(ctx)
+	if h.mailer == nil {
+		slog.Warn(kind+"_email_failed", slog.Int64("user_id", userID), slog.String("reason", "mailer_disabled"), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
+		return
+	}
+	mailCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := h.mailer.Send(mailCtx, message); err != nil {
+		slog.Error(kind+"_email_failed", slog.Int64("user_id", userID), slog.String("email_hash", emailHash), slog.String("request_id", requestID), slog.Any("err", err))
+		return
+	}
+	slog.Info(kind+"_email_sent", slog.Int64("user_id", userID), slog.String("email_hash", emailHash), slog.String("request_id", requestID))
+}
+
+func (h *authHandler) resetURL(token string) string {
+	return strings.TrimRight(h.mailBaseURL, "/") + "/reset-password?token=" + url.QueryEscape(token)
+}
+func emailLogHash(email string) string {
+	sum := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(email))))
+	return fmt.Sprintf("%x", sum[:])[:16]
 }
 
 func (h *authHandler) handleCredentials(
