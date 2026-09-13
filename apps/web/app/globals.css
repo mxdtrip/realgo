@@ -7525,7 +7525,7 @@ a.roadmap-step__practice-card:hover {
 
 .auth-panel__switch {
   margin: 23px 0 0;
-  font-size: 12px;
+  font-size: 14px;
   text-align: center;
 }
 
@@ -7567,7 +7567,7 @@ a.roadmap-step__practice-card:hover {
 
 .auth-layer--page .auth-consent span {
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   letter-spacing: 0;
   line-height: 1.45;
