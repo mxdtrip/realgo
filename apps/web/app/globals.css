@@ -7307,7 +7307,7 @@ a.roadmap-step__practice-card:hover {
   width: calc(var(--letter-count) * 1ch);
   height: 1.05em;
   margin: 0;
-  transform: translateY(-44px);
+  transform: translateY(-64px);
   color: #f0f6fc;
   font-family: var(--font-stack-mono);
   font-size: clamp(27px, 3.22vw, 38px);
