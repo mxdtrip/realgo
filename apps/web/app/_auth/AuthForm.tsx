@@ -80,14 +80,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
       <form className="auth-form" onSubmit={handleSubmit}>
         {mode === "register" ? (
           <label>
-            <span>Никнейм</span>
+            <span className="auth-field-label">Никнейм</span>
             <span className="auth-input">
               <NicknameIcon />
               <input
                 autoComplete="nickname"
                 maxLength={32}
                 minLength={3}
-                placeholder="например, madtrip"
+                placeholder="Никнейм"
                 required
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
@@ -100,12 +100,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </label>
         ) : null}
         <label>
-          <span>Email</span>
+          <span className="auth-field-label">Email</span>
           <span className="auth-input">
             <MailIcon />
             <input
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder="Email"
               type="email"
               required
               value={email}
@@ -115,12 +115,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </span>
         </label>
         <label>
-          <span>Пароль</span>
+          <span className="auth-field-label">Пароль</span>
           <span className="auth-input">
             <LockIcon />
             <input
               autoComplete={mode === "login" ? "current-password" : "new-password"}
-              placeholder={mode === "register" ? "минимум 8 символов" : "••••••••"}
+              placeholder="Пароль"
               type={showPassword ? "text" : "password"}
               required
               minLength={8}
@@ -153,12 +153,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
         {mode === "register" ? (
           <label>
-            <span>Повторите пароль</span>
+            <span className="auth-field-label">Повторите пароль</span>
             <span className="auth-input">
               <LockIcon />
               <input
                 autoComplete="new-password"
-                placeholder="••••••••"
+                placeholder="Повторите пароль"
                 type={showPasswordConfirmation ? "text" : "password"}
                 required
                 minLength={8}

@@ -7393,6 +7393,18 @@ a.roadmap-step__practice-card:hover {
   font-size: 10px;
 }
 
+/* Field names live in the controls on the auth pages; retain a real label for
+   assistive technology without reserving a second visual line above each field. */
+.auth-layer--page .auth-field-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .auth-input {
   display: flex;
   align-items: center;
