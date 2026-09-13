@@ -237,6 +237,17 @@ type PatternLearningMaterial struct {
 	MiniExample     string
 }
 
+type PendingRegistration struct {
+	ID           int64
+	Email        string
+	PasswordHash string
+	Nickname     pgtype.Text
+	CodeHash     string
+	ExpiresAt    pgtype.Timestamptz
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
 type Platform struct {
 	ID      int64
 	Code    string

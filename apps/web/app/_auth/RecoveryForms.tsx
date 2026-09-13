@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import * as auth from "../_api/auth";
+import { useAuth } from "../_api/AuthProvider";
 import { ApiError } from "../_api/types";
 
 function errorMessage(error: unknown) { return error instanceof ApiError ? error.message : "Не удалось выполнить запрос. Попробуйте ещё раз."; }
@@ -22,8 +23,9 @@ export function ResetPasswordForm() {
 }
 
 export function VerifyEmailForm() {
-  const router = useRouter(); const [code, setCode] = useState(""); const [notice, setNotice] = useState("Введите шестизначный код из письма."); const [error, setError] = useState(""); const [pending, setPending] = useState(false);
-  async function verify(event: React.FormEvent) { event.preventDefault(); setPending(true); setError(""); try { await auth.confirmEmailVerification(code); router.replace("/onboarding/profile"); } catch (e) { setError(errorMessage(e)); setPending(false); } }
-  async function resend() { setPending(true); setError(""); try { await auth.requestEmailVerification(); setNotice("Новый код отправлен. Проверьте входящие и папку «Спам»."); } catch (e) { setError(errorMessage(e)); } finally { setPending(false); } }
-  return <section className="auth-panel"><div className="auth-panel__heading"><h1>Подтверди email</h1><p>{notice}</p></div><form className="auth-form" onSubmit={verify}><label><span className="auth-field-label">Код из 6 цифр</span><input autoComplete="one-time-code" inputMode="numeric" maxLength={6} pattern="[0-9]{6}" required value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} /></label>{error ? <p className="auth-form__error" role="alert">{error}</p> : null}<button disabled={pending || code.length !== 6} type="submit">Подтвердить email</button></form><p className="auth-panel__switch"><button className="auth-text-button" disabled={pending} onClick={resend} type="button">Отправить код ещё раз</button></p></section>;
+	const router = useRouter(); const authContext = useAuth(); const [email, setEmail] = useState(""); const [code, setCode] = useState(""); const [notice, setNotice] = useState("Введите email и шестизначный код из письма."); const [error, setError] = useState(""); const [pending, setPending] = useState(false);
+	useEffect(() => { setEmail(window.sessionStorage.getItem("realgo:pending-verification-email") || ""); }, []);
+	async function verify(event: React.FormEvent) { event.preventDefault(); setPending(true); setError(""); try { await authContext.completeEmailVerification(email.trim(), code); window.sessionStorage.removeItem("realgo:pending-verification-email"); router.replace("/onboarding/profile"); } catch (e) { setError(errorMessage(e)); setPending(false); } }
+	async function resend() { if (!email.trim()) { setError("Сначала укажи email."); return; } setPending(true); setError(""); try { await auth.requestEmailVerification(email.trim()); setNotice("Новый код отправлен. Проверьте входящие и папку «Спам»."); } catch (e) { setError(errorMessage(e)); } finally { setPending(false); } }
+	return <section className="auth-panel"><div className="auth-panel__heading"><h1>Подтверди email</h1><p>{notice}</p></div><form className="auth-form" onSubmit={verify}><label><span className="auth-field-label">Email</span><input autoComplete="email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label><label><span className="auth-field-label">Код из 6 цифр</span><input autoComplete="one-time-code" inputMode="numeric" maxLength={6} pattern="[0-9]{6}" required value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} /></label>{error ? <p className="auth-form__error" role="alert">{error}</p> : null}<button disabled={pending || code.length !== 6 || !email.trim()} type="submit">Подтвердить email</button></form><p className="auth-panel__switch"><button className="auth-text-button" disabled={pending} onClick={resend} type="button">Отправить код ещё раз</button></p></section>;
 }

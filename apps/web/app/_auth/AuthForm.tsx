@@ -62,8 +62,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
         const authUser = await auth.login(email.trim(), password);
         router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
       } else {
-        await auth.register(email.trim(), password, nickname.trim());
-        router.push("/verify-email");
+		await auth.register(email.trim(), password, nickname.trim());
+		window.sessionStorage.setItem("realgo:pending-verification-email", email.trim());
+		router.push("/verify-email");
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Что-то пошло не так. Попробуйте ещё раз.");

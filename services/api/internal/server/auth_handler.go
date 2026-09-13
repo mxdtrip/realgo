@@ -151,24 +151,13 @@ func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &req) || !validateCredentials(w, req.Email, req.Password, "Register") {
 		return
 	}
-	var (
-		user   db.User
-		tokens auth.TokenPair
-		err    error
-	)
-	if strings.TrimSpace(req.Nickname) == "" {
-		// Keep the public API backward compatible for older clients while the
-		// web registration form makes a nickname mandatory at the UI level.
-		user, tokens, err = h.svc.Register(r.Context(), req.Email, req.Password)
-	} else {
-		user, tokens, err = h.svc.RegisterWithNickname(r.Context(), req.Email, req.Password, req.Nickname)
-	}
+	code, err := h.svc.StartRegistration(r.Context(), req.Email, req.Password, req.Nickname)
 	if err != nil {
-		writeAuthError(w, err, "Register", slog.String("email", req.Email))
+		writeAuthError(w, err, "Register", slog.String("email_hash", emailLogHash(req.Email)))
 		return
 	}
-	h.issueVerificationMail(r, user)
-	response.JSON(w, http.StatusCreated, authResponse{User: newUserResponse(user), Tokens: tokens})
+	h.sendRegistrationVerificationEmail(r.Context(), req.Email, code)
+	response.JSON(w, http.StatusAccepted, map[string]string{"status": "verification_requested"})
 }
 
 func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
@@ -182,8 +171,12 @@ type passwordResetConfirmRequest struct {
 	Token       string `json:"token"`
 	NewPassword string `json:"new_password"`
 }
+type emailVerificationRequest struct {
+	Email string `json:"email"`
+}
 type emailVerificationConfirmRequest struct {
-	Code string `json:"code"`
+	Email string `json:"email"`
+	Code  string `json:"code"`
 }
 
 // requestPasswordReset is deliberately indistinguishable for known and
@@ -243,12 +236,22 @@ func (h *authHandler) requestEmailVerification(w http.ResponseWriter, r *http.Re
 	if h.unavailable(w) {
 		return
 	}
-	userID, ok := auth.UserIDFromContext(r.Context())
-	if !ok {
-		response.Fail(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+	var req emailVerificationRequest
+	if !decodeJSON(w, r, &req) {
 		return
 	}
-	h.issueVerificationMail(r, db.User{ID: userID})
+	emailHash := emailLogHash(req.Email)
+	code, found, err := h.svc.ResendRegistrationCode(r.Context(), req.Email)
+	if err != nil {
+		slog.Error("email_verification_request_failed", slog.String("email_hash", emailHash), slog.Any("err", err))
+		response.Fail(w, http.StatusInternalServerError, "internal_error", "something went wrong")
+		return
+	}
+	if found {
+		h.sendRegistrationVerificationEmail(r.Context(), req.Email, code)
+	} else {
+		slog.Info("email_verification_registration_not_found", slog.String("email_hash", emailHash), slog.String("request_id", middleware.GetReqID(r.Context())))
+	}
 	response.JSON(w, http.StatusAccepted, map[string]string{"status": "verification_requested"})
 }
 
@@ -256,37 +259,33 @@ func (h *authHandler) confirmEmailVerification(w http.ResponseWriter, r *http.Re
 	if h.unavailable(w) {
 		return
 	}
-	userID, ok := auth.UserIDFromContext(r.Context())
-	if !ok {
-		response.Fail(w, http.StatusUnauthorized, "unauthorized", "authentication required")
-		return
-	}
 	var req emailVerificationConfirmRequest
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	if err := h.svc.VerifyEmailCode(r.Context(), userID, strings.TrimSpace(req.Code)); err != nil {
-		slog.Info("email_verification_invalid_code", slog.Int64("user_id", userID), slog.String("request_id", middleware.GetReqID(r.Context())))
-		response.Fail(w, http.StatusBadRequest, "invalid_code", "invalid or expired verification code")
+	user, tokens, err := h.svc.CompleteRegistration(r.Context(), req.Email, strings.TrimSpace(req.Code))
+	if err != nil {
+		if errors.Is(err, auth.ErrInvalidToken) || errors.Is(err, auth.ErrEmailTaken) {
+			slog.Info("email_verification_invalid_code", slog.String("email_hash", emailLogHash(req.Email)), slog.String("request_id", middleware.GetReqID(r.Context())))
+			response.Fail(w, http.StatusBadRequest, "invalid_code", "invalid or expired verification code")
+			return
+		}
+		slog.Error("email_verification_confirm_failed", slog.String("email_hash", emailLogHash(req.Email)), slog.String("request_id", middleware.GetReqID(r.Context())), slog.Any("err", err))
+		response.Fail(w, http.StatusInternalServerError, "internal_error", "something went wrong")
 		return
 	}
-	slog.Info("email_verification_completed", slog.Int64("user_id", userID), slog.String("request_id", middleware.GetReqID(r.Context())))
-	response.JSON(w, http.StatusOK, map[string]string{"status": "email_verified"})
+	slog.Info("email_verification_completed", slog.Int64("user_id", user.ID), slog.String("request_id", middleware.GetReqID(r.Context())))
+	response.JSON(w, http.StatusCreated, authResponse{User: newUserResponse(user), Tokens: tokens})
 }
 
-func (h *authHandler) issueVerificationMail(r *http.Request, user db.User) {
+func (h *authHandler) sendRegistrationVerificationEmail(ctx context.Context, email, code string) {
 	if h.mailer == nil {
-		slog.Warn("email_verification_email_failed", slog.Int64("user_id", user.ID), slog.String("reason", "mailer_disabled"))
-		return
-	}
-	loaded, code, err := h.svc.IssueEmailVerificationCode(r.Context(), user.ID)
-	if err != nil {
-		slog.Error("email_verification_email_failed", slog.Int64("user_id", user.ID), slog.String("reason", "code_issue_failed"), slog.Any("err", err))
+		slog.Warn("email_verification_email_failed", slog.String("email_hash", emailLogHash(email)), slog.String("reason", "mailer_disabled"))
 		return
 	}
 	message := mail.EmailVerification(code, int(auth.EmailVerificationTTL/time.Minute))
-	message.To = loaded.Email
-	h.deliverMail(r.Context(), message, user.ID, "email_verification", emailLogHash(loaded.Email))
+	message.To = email
+	h.deliverMail(ctx, message, 0, "email_verification", emailLogHash(email))
 }
 
 func (h *authHandler) deliverMail(ctx context.Context, message mail.Message, userID int64, kind, emailHash string) {

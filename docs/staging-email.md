@@ -11,8 +11,9 @@ and replies go to `support@realgo.dev`.
 Two flows are available on staging:
 
 - `/forgot-password` sends a one-time, 30-minute reset link.
-- New email/password registrations receive a six-digit code and continue at
-  `/verify-email`; the code expires after 10 minutes and is one-time.
+- New email/password registrations are held outside `users` until their
+  six-digit code is entered at `/verify-email`; only then are the account and
+  session created. The code expires after 10 minutes and is one-time.
 
 For a safe external smoke test, register a fresh staging account using an
 inbox you control, enter the received code, then use `/forgot-password` for

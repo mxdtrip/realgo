@@ -116,6 +116,124 @@ func (s *Service) register(ctx context.Context, email, password string, nickname
 	return user, tokens, nil
 }
 
+// StartRegistration persists only a short-lived pending registration. It
+// deliberately does not create a user or issue a session: possession of the
+// mailbox must be proven before an account can exist.
+func (s *Service) StartRegistration(ctx context.Context, email, password, nickname string) (string, error) {
+	normalized, err := normalizeEmail(email)
+	if err != nil {
+		return "", err
+	}
+	if err := validatePassword(password); err != nil {
+		return "", err
+	}
+	var nicknameValue pgtype.Text
+	if strings.TrimSpace(nickname) != "" {
+		normalizedNickname, err := normalizeNickname(nickname)
+		if err != nil {
+			return "", err
+		}
+		nicknameValue = pgtype.Text{String: normalizedNickname, Valid: true}
+	}
+	if _, err := s.queries.GetUserByEmail(ctx, normalized); err == nil {
+		return "", ErrEmailTaken
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return "", err
+	}
+	passwordHash, err := hashPassword(password)
+	if err != nil {
+		return "", err
+	}
+	code, err := generateVerificationCode()
+	if err != nil {
+		return "", err
+	}
+	codeHash := sha256.Sum256([]byte(code))
+	if err := s.queries.CreatePendingRegistration(ctx, db.CreatePendingRegistrationParams{
+		Email: normalized, PasswordHash: passwordHash, Nickname: nicknameValue,
+		CodeHash:  fmt.Sprintf("%x", codeHash[:]),
+		ExpiresAt: pgtype.Timestamptz{Time: s.now().Add(EmailVerificationTTL), Valid: true},
+	}); err != nil {
+		return "", err
+	}
+	return code, nil
+}
+
+// ResendRegistrationCode issues a new code only for an already pending email.
+// Its boolean intentionally avoids an enumeration signal at the HTTP layer.
+func (s *Service) ResendRegistrationCode(ctx context.Context, email string) (string, bool, error) {
+	normalized, err := normalizeEmail(email)
+	if err != nil {
+		return "", false, nil
+	}
+	code, err := generateVerificationCode()
+	if err != nil {
+		return "", false, err
+	}
+	codeHash := sha256.Sum256([]byte(code))
+	_, err = s.queries.RefreshPendingRegistrationCode(ctx, db.RefreshPendingRegistrationCodeParams{
+		Email: normalized, CodeHash: fmt.Sprintf("%x", codeHash[:]),
+		ExpiresAt: pgtype.Timestamptz{Time: s.now().Add(EmailVerificationTTL), Valid: true},
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return code, true, nil
+}
+
+// CompleteRegistration atomically consumes the pending code and creates the
+// account. No code, no row in users, no access or refresh token.
+func (s *Service) CompleteRegistration(ctx context.Context, email, code string) (db.User, TokenPair, error) {
+	normalized, err := normalizeEmail(email)
+	if err != nil || len(code) != 6 {
+		return db.User{}, TokenPair{}, ErrInvalidToken
+	}
+	codeHash := sha256.Sum256([]byte(code))
+	tx, err := s.queries.BeginTx(ctx)
+	if err != nil {
+		return db.User{}, TokenPair{}, fmt.Errorf("begin registration confirmation: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+	q := s.queries.WithTx(tx)
+	pending, err := q.ConsumePendingRegistration(ctx, db.ConsumePendingRegistrationParams{Email: normalized, CodeHash: fmt.Sprintf("%x", codeHash[:])})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.User{}, TokenPair{}, ErrInvalidToken
+	}
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	user, err := q.CreateUser(ctx, db.CreateUserParams{Email: pending.Email, PasswordHash: pgtype.Text{String: pending.PasswordHash, Valid: true}, Nickname: pending.Nickname})
+	if isUniqueViolation(err) {
+		return db.User{}, TokenPair{}, ErrEmailTaken
+	}
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	if err := q.MarkUserEmailVerified(ctx, user.ID); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	committed = true
+	tokens, err := s.issueTokens(ctx, user.ID, s.now())
+	if err != nil {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+		defer cancel()
+		_ = s.queries.DeleteUserByID(cleanupCtx, user.ID)
+		return db.User{}, TokenPair{}, err
+	}
+	return user, tokens, nil
+}
+
 func normalizeNickname(value string) (string, error) {
 	nickname := strings.TrimSpace(value)
 	length := utf8.RuneCountInString(nickname)
@@ -325,17 +443,24 @@ func (s *Service) IssueEmailVerificationCode(ctx context.Context, userID int64) 
 	if err != nil {
 		return db.User{}, "", err
 	}
-	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+	code, err := generateVerificationCode()
 	if err != nil {
-		return db.User{}, "", fmt.Errorf("generate verification code: %w", err)
+		return db.User{}, "", err
 	}
-	code := fmt.Sprintf("%06d", n.Int64())
 	hash := sha256.Sum256([]byte(code))
 	err = s.queries.CreateEmailVerificationCode(ctx, db.CreateEmailVerificationCodeParams{UserID: userID, CodeHash: fmt.Sprintf("%x", hash[:]), ExpiresAt: pgtype.Timestamptz{Time: s.now().Add(EmailVerificationTTL), Valid: true}})
 	if err != nil {
 		return db.User{}, "", err
 	}
 	return user, code, nil
+}
+
+func generateVerificationCode() (string, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+	if err != nil {
+		return "", fmt.Errorf("generate verification code: %w", err)
+	}
+	return fmt.Sprintf("%06d", n.Int64()), nil
 }
 
 func (s *Service) VerifyEmailCode(ctx context.Context, userID int64, code string) error {

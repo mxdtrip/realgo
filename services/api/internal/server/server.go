@@ -135,10 +135,12 @@ func New(deps Deps) *chi.Mux {
 		ah := &authHandler{svc: deps.Auth, mailer: deps.Mailer, mailBaseURL: deps.MailBaseURL}
 		authRateLimit := rateLimit(deps.Redis, "auth", 20, time.Minute)
 		r.Route("/auth", func(r chi.Router) {
-			r.With(authRateLimit).Post("/register", ah.register)
+			r.With(rateLimit(deps.Redis, "registration", 5, time.Hour)).Post("/register", ah.register)
 			r.With(authRateLimit).Post("/login", ah.login)
 			r.With(rateLimit(deps.Redis, "password-reset-request", 5, time.Hour)).Post("/password-reset/request", ah.requestPasswordReset)
 			r.With(rateLimit(deps.Redis, "password-reset-confirm", 10, time.Hour)).Post("/password-reset/confirm", ah.confirmPasswordReset)
+			r.With(rateLimit(deps.Redis, "email-verification-request", 5, time.Hour)).Post("/email-verification/request", ah.requestEmailVerification)
+			r.With(rateLimit(deps.Redis, "email-verification-confirm", 10, time.Hour)).Post("/email-verification/confirm", ah.confirmEmailVerification)
 			r.With(authRateLimit).Post("/yandex", ah.yandexLogin)
 			r.With(authRateLimit).Post("/github", ah.githubLogin)
 			r.With(authRateLimit).Post("/refresh", ah.refresh)
@@ -154,8 +156,6 @@ func New(deps Deps) *chi.Mux {
 		r.With(requireAuth(deps.Auth)).Patch("/me/profile", ah.patchProfile)
 		r.With(requireAuth(deps.Auth)).Patch("/me/notification-settings", ah.patchNotificationSettings)
 		r.With(requireAuth(deps.Auth)).Post("/me/password", ah.changePassword)
-		r.With(requireAuth(deps.Auth), rateLimit(deps.Redis, "email-verification-request", 5, time.Hour)).Post("/me/email-verification/request", ah.requestEmailVerification)
-		r.With(requireAuth(deps.Auth), rateLimit(deps.Redis, "email-verification-confirm", 10, time.Hour)).Post("/me/email-verification/confirm", ah.confirmEmailVerification)
 		r.With(requireAuth(deps.Auth)).Post("/me/sessions/revoke", ah.revokeAllSessions)
 		r.With(requireAuth(deps.Auth)).Post("/me/export", ah.postExport)
 		r.With(

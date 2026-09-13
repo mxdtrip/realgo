@@ -37,6 +37,11 @@ UPDATE users
 SET password_hash = $2, updated_at = NOW()
 WHERE id = $1;
 
+-- name: MarkUserEmailVerified :exec
+UPDATE users
+SET email_verified_at = NOW(), updated_at = NOW()
+WHERE id = $1;
+
 -- name: UpdateUserProfile :one
 -- Partial update: a NULL param keeps the existing value, a non-NULL value
 -- (including an empty string) overwrites it. set_onboarding_completed, when

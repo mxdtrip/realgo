@@ -7099,6 +7099,19 @@ a.roadmap-step__practice-card:hover {
   box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.16);
 }
 
+/* Browser autofill must use the same dark surface as a regular field. This
+   covers the standalone recovery/verification inputs as well as compound
+   login controls below; otherwise Chrome paints the former white. */
+.auth-layer--page .auth-form input:-webkit-autofill,
+.auth-layer--page .auth-form input:-webkit-autofill:hover,
+.auth-layer--page .auth-form input:-webkit-autofill:focus,
+.auth-layer--page .auth-form input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #161b22 inset !important;
+  -webkit-text-fill-color: var(--text) !important;
+  caret-color: var(--text);
+  box-shadow: 0 0 0 1000px #161b22 inset !important;
+}
+
 .auth-layer--page .auth-form button[type="submit"] {
   min-height: 50px;
   margin-top: 5px;

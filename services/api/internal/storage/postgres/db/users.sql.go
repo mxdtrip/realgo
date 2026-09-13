@@ -200,6 +200,17 @@ func (q *Queries) LockUserForDeletion(ctx context.Context, id int64) (int64, err
 	return id, err
 }
 
+const markUserEmailVerified = `-- name: MarkUserEmailVerified :exec
+UPDATE users
+SET email_verified_at = NOW(), updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) MarkUserEmailVerified(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, markUserEmailVerified, id)
+	return err
+}
+
 const updateNotificationSettings = `-- name: UpdateNotificationSettings :one
 UPDATE users
 SET

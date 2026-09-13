@@ -9,15 +9,13 @@ import type { AuthTokens, AuthUser } from "./types";
 
 type AuthResponse = { user: AuthUser; tokens: AuthTokens };
 
-/** POST /auth/register → creates the account and starts a session. */
-export async function register(email: string, password: string, nickname: string): Promise<AuthUser> {
-  const data = await apiFetch<AuthResponse>("/auth/register", {
-    method: "POST",
-    auth: false,
-    body: { email, password, nickname },
-  });
-  setTokens(data.tokens);
-  return data.user;
+/** POST /auth/register → starts a pending email verification, without a session. */
+export async function register(email: string, password: string, nickname: string): Promise<void> {
+	await apiFetch<{ status: string }>("/auth/register", {
+		method: "POST",
+		auth: false,
+		body: { email, password, nickname },
+	});
 }
 
 /** POST /auth/login → authenticates and starts a session. */
@@ -39,12 +37,14 @@ export async function confirmPasswordReset(token: string, newPassword: string): 
   await apiFetch<{ status: string }>("/auth/password-reset/confirm", { method: "POST", auth: false, body: { token, new_password: newPassword } });
 }
 
-export async function requestEmailVerification(): Promise<void> {
-  await apiFetch<{ status: string }>("/me/email-verification/request", { method: "POST", body: {} });
+export async function requestEmailVerification(email: string): Promise<void> {
+	await apiFetch<{ status: string }>("/auth/email-verification/request", { method: "POST", auth: false, body: { email } });
 }
 
-export async function confirmEmailVerification(code: string): Promise<void> {
-  await apiFetch<{ status: string }>("/me/email-verification/confirm", { method: "POST", body: { code } });
+export async function confirmEmailVerification(email: string, code: string): Promise<AuthUser> {
+	const data = await apiFetch<AuthResponse>("/auth/email-verification/confirm", { method: "POST", auth: false, body: { email, code } });
+	setTokens(data.tokens);
+	return data.user;
 }
 
 /** POST /auth/yandex → exchanges a Yandex ID authorization code and starts a session. */
