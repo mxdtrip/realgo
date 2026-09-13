@@ -7290,7 +7290,6 @@ a.roadmap-step__practice-card:hover {
   /* Scale the complete form as one composition: typography, controls and
      whitespace retain their proportions instead of being tightened ad hoc. */
   zoom: 0.88;
-  transform: translateY(-32px);
 }
 
 .auth-panel__heading {
@@ -7308,6 +7307,7 @@ a.roadmap-step__practice-card:hover {
   width: calc(var(--letter-count) * 1ch);
   height: 1.05em;
   margin: 0;
+  transform: translateY(-24px);
   color: #f0f6fc;
   font-family: var(--font-stack-mono);
   font-size: clamp(27px, 3.22vw, 38px);
@@ -7660,7 +7660,6 @@ a.roadmap-step__practice-card:hover {
 
   .auth-layer--page .auth-panel {
     zoom: 0.94;
-    transform: translateY(-20px);
   }
 }
 
