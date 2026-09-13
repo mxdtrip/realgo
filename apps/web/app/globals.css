@@ -7287,6 +7287,9 @@ a.roadmap-step__practice-card:hover {
 
 .auth-layer--page .auth-panel {
   width: min(405px, 100%);
+  /* Scale the complete form as one composition: typography, controls and
+     whitespace retain their proportions instead of being tightened ad hoc. */
+  zoom: 0.88;
 }
 
 .auth-panel__intro {
@@ -7590,6 +7593,10 @@ a.roadmap-step__practice-card:hover {
 
   .auth-page__story-content {
     margin-bottom: 0;
+  }
+
+  .auth-layer--page .auth-panel {
+    zoom: 0.94;
   }
 }
 
