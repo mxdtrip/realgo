@@ -7309,7 +7309,7 @@ a.roadmap-step__practice-card:hover {
   margin: 0;
   color: #f0f6fc;
   font-family: var(--font-stack-mono);
-  font-size: clamp(39px, 4.6vw, 54px);
+  font-size: clamp(27px, 3.22vw, 38px);
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1;
@@ -7386,6 +7386,18 @@ a.roadmap-step__practice-card:hover {
 
 .auth-layer--page .auth-form {
   gap: 18px;
+}
+
+/* Every visual field sits on the same 18px rhythm. The consent pair is one
+   group: extra air surrounds it, while its internal gap stays unchanged. */
+.auth-layer--page .auth-panel--register .auth-form {
+  gap: 18px;
+}
+
+.auth-layer--page .auth-consents {
+  display: grid;
+  gap: 18px;
+  margin: 10px 0;
 }
 
 .auth-layer--page .auth-form label {
@@ -7593,6 +7605,11 @@ a.roadmap-step__practice-card:hover {
 
   .auth-layer--page .auth-panel--register .auth-form {
     gap: 10px;
+  }
+
+  .auth-layer--page .auth-panel--register .auth-consents {
+    gap: 10px;
+    margin: 8px 0;
   }
 
   .auth-layer--page .auth-panel--register .auth-form label {

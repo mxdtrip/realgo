@@ -184,39 +184,38 @@ export function AuthForm({ mode }: { mode: Mode }) {
         ) : null}
 
         {mode === "register" ? (
-          <label className="auth-consent">
-            <input
-              checked={termsAccepted}
-              disabled={pending}
-              onChange={(e) => setTermsAccepted(e.target.checked)}
-              required
-              type="checkbox"
-            />
-            <span>
-              Принимаю{" "}
-              <Link href="/terms" target="_blank">
-                Пользовательское соглашение
-              </Link>
-            </span>
-          </label>
-        ) : null}
-
-        {mode === "register" ? (
-          <label className="auth-consent">
-            <input
-              checked={personalDataConsent}
-              disabled={pending}
-              onChange={(e) => setPersonalDataConsent(e.target.checked)}
-              required
-              type="checkbox"
-            />
-            <span>
-              Даю согласие на обработку персональных данных на условиях{" "}
-              <Link href="/privacy" target="_blank">
-                Политики конфиденциальности
-              </Link>
-            </span>
-          </label>
+          <div className="auth-consents">
+            <label className="auth-consent">
+              <input
+                checked={termsAccepted}
+                disabled={pending}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                required
+                type="checkbox"
+              />
+              <span>
+                Принимаю{" "}
+                <Link href="/terms" target="_blank">
+                  Пользовательское соглашение
+                </Link>
+              </span>
+            </label>
+            <label className="auth-consent">
+              <input
+                checked={personalDataConsent}
+                disabled={pending}
+                onChange={(e) => setPersonalDataConsent(e.target.checked)}
+                required
+                type="checkbox"
+              />
+              <span>
+                Даю согласие на обработку персональных данных на условиях{" "}
+                <Link href="/privacy" target="_blank">
+                  Политики конфиденциальности
+                </Link>
+              </span>
+            </label>
+          </div>
         ) : null}
 
         {error ? (
