@@ -7485,6 +7485,7 @@ a.roadmap-step__practice-card:hover {
 }
 
 .auth-layer--page .auth-consent {
+  flex-direction: row;
   gap: 9px;
   letter-spacing: 0;
   text-transform: none;
