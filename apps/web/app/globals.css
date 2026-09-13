@@ -7217,14 +7217,41 @@ a.roadmap-step__practice-card:hover {
 .auth-page__story {
   padding: clamp(34px, 4vw, 52px);
   border-right: 0;
-  background:
-    linear-gradient(180deg, rgba(5, 11, 17, 0.04) 34%, rgba(5, 11, 17, 0.15) 55%, rgba(5, 11, 17, 0.88) 100%),
-    url("/auth-cows-at-work.png") center / cover no-repeat;
+  background: #0d1117;
 }
 
 .auth-page__story::before,
 .auth-page__story::after {
   display: none;
+}
+
+.auth-story-slides,
+.auth-story-slide {
+  position: absolute;
+  inset: 0;
+}
+
+.auth-story-slides {
+  z-index: 0;
+  overflow: hidden;
+}
+
+.auth-story-slides::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(180deg, rgba(5, 11, 17, 0.04) 34%, rgba(5, 11, 17, 0.15) 55%, rgba(5, 11, 17, 0.88) 100%);
+}
+
+.auth-story-slide {
+  opacity: 0;
+  background-position: center;
+  background-size: cover;
+  transition: opacity 0.9s ease;
+}
+
+.auth-story-slide.is-active {
+  opacity: 1;
 }
 
 .auth-page__brand {
@@ -7250,6 +7277,12 @@ a.roadmap-step__practice-card:hover {
 .auth-page__story-content {
   width: min(640px, 100%);
   margin: auto 0 18px;
+  animation: auth-story-quote-in 0.5s ease both;
+}
+
+@keyframes auth-story-quote-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .auth-page__quote-line {
@@ -7671,7 +7704,6 @@ a.roadmap-step__practice-card:hover {
   .auth-page__story {
     min-height: min(50vh, 450px);
     padding: 28px 24px;
-    background-position: center;
   }
 
   .auth-page__story-content {
@@ -7686,6 +7718,12 @@ a.roadmap-step__practice-card:hover {
 
 @media (prefers-reduced-motion: reduce) {
   .auth-sorting-word__letter {
+    transition: none;
+  }
+
+  .auth-story-slide,
+  .auth-page__story-content {
+    animation: none;
     transition: none;
   }
 }

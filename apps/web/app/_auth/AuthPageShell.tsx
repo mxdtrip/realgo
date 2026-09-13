@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { getDictionary } from "../_content/i18n";
+import { AuthStorySlideshow } from "./AuthStorySlideshow";
 
 export function AuthPageShell({ children }: { children: ReactNode }) {
   const dictionary = getDictionary();
@@ -20,14 +21,7 @@ export function AuthPageShell({ children }: { children: ReactNode }) {
           <span>{dictionary.common.brand}</span>
         </a>
 
-        <div className="auth-page__story-content">
-          <span aria-hidden="true" className="auth-page__quote-line" />
-          <blockquote>
-            Плохие программисты беспокоятся о коде.<br />
-            Хорошие — о структурах данных и их взаимосвязях.
-          </blockquote>
-          <p>Линус Торвальдс</p>
-        </div>
+        <AuthStorySlideshow />
       </aside>
 
       <div className="auth-page__main">{children}</div>
