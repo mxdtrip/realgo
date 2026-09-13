@@ -7293,7 +7293,9 @@ a.roadmap-step__practice-card:hover {
 }
 
 .auth-panel__heading {
-  margin-bottom: 27px;
+  display: grid;
+  margin-bottom: 31px;
+  place-items: center;
 }
 
 /* This uses the landing hero's mono wordmark language, but intentionally
@@ -7325,32 +7327,27 @@ a.roadmap-step__practice-card:hover {
   height: 1.05em;
   place-items: center;
   transition:
+    transform 0.43s cubic-bezier(0.65, 0, 0.35, 1),
     color 0.16s ease,
     text-shadow 0.16s ease;
   transform: translate3d(calc(var(--letter-position) * 1ch), 0, 0);
   will-change: transform;
-  animation: auth-sorting-word 1.05s cubic-bezier(0.65, 0, 0.35, 1) var(--sort-delay) both;
 }
 
-@keyframes auth-sorting-word {
-  0% {
-    transform: translate3d(calc(var(--letter-position) * 1ch), 0, 0);
-  }
-
-  42% {
-    color: var(--accent-bright);
-    text-shadow:
-      0 0 2px rgba(147, 187, 255, 0.7),
-      0 0 34px var(--accent-glow);
-  }
-
-  100% {
-    transform: translate3d(calc(var(--letter-index) * 1ch), 0, 0);
-  }
+.auth-sorting-word__letter.is-active {
+  color: var(--accent-bright);
+  text-shadow:
+    0 0 2px rgba(147, 187, 255, 0.7),
+    0 0 34px var(--accent-glow);
 }
 
 .auth-providers {
   gap: 14px;
+}
+
+.auth-layer--page .auth-providers {
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 
 .auth-provider {
@@ -7372,7 +7369,7 @@ a.roadmap-step__practice-card:hover {
 
 .auth-divider {
   gap: 12px;
-  margin: 26px 0 23px;
+  margin: 29px 0 19px;
   font-size: 10px;
 }
 
@@ -7502,9 +7499,9 @@ a.roadmap-step__practice-card:hover {
 }
 
 .auth-panel__switch {
-  margin: 10px 0 0;
+  margin: 23px 0 0;
   font-size: 12px;
-  text-align: left;
+  text-align: center;
 }
 
 /* One type scale for all secondary UI. Only the small technical kicker keeps
@@ -7567,7 +7564,7 @@ a.roadmap-step__practice-card:hover {
   }
 
   .auth-panel--register .auth-panel__heading {
-    margin-bottom: 18px;
+    margin-bottom: 22px;
   }
 
   .auth-panel--register .auth-providers {
@@ -7638,8 +7635,7 @@ a.roadmap-step__practice-card:hover {
 
 @media (prefers-reduced-motion: reduce) {
   .auth-sorting-word__letter {
-    animation: none;
-    transform: translate3d(calc(var(--letter-index) * 1ch), 0, 0);
+    transition: none;
   }
 }
 

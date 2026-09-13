@@ -75,18 +75,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
     <section aria-label={copy.aria} className={`auth-panel auth-panel--${mode}`}>
       <div className="auth-panel__heading">
         <AuthSortingWord label={mode === "login" ? "Вход" : "Регистрация"} word={mode} />
-        <p className="auth-panel__switch">
-          {mode === "login" ? "Впервые в ReAlgo?" : "Уже есть аккаунт?"}{" "}
-          <Link href={mode === "login" ? "/register" : "/login"}>
-            {mode === "login" ? "Создайте аккаунт" : "Войдите"}
-          </Link>
-        </p>
-      </div>
-
-      <AuthOAuthButtons disabled={pending} />
-
-      <div className="auth-divider" aria-hidden="true">
-        <span>или с электронной почтой</span>
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
@@ -253,6 +241,19 @@ export function AuthForm({ mode }: { mode: Mode }) {
           {!pending ? <span aria-hidden="true" className="auth-submit__arrow">→</span> : null}
         </button>
       </form>
+
+      <div className="auth-divider" aria-hidden="true">
+        <span>или продолжите через</span>
+      </div>
+
+      <AuthOAuthButtons disabled={pending} />
+
+      <p className="auth-panel__switch">
+        {mode === "login" ? "Впервые в ReAlgo?" : "Уже есть аккаунт?"}{" "}
+        <Link href={mode === "login" ? "/register" : "/login"}>
+          {mode === "login" ? "Создайте аккаунт" : "Войдите"}
+        </Link>
+      </p>
     </section>
   );
 }
