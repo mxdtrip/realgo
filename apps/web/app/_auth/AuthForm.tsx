@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useAuth } from "../_api/AuthProvider";
 import { ApiError } from "../_api/types";
 import { AuthOAuthButtons } from "./AuthOAuthButtons";
+import { AuthSortingWord } from "./AuthSortingWord";
 
 type Mode = "login" | "register";
 
@@ -37,14 +38,15 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
-  const [consent, setConsent] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [personalDataConsent, setPersonalDataConsent] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (pending) return;
-    if (mode === "register" && !consent) return;
+    if (mode === "register" && (!termsAccepted || !personalDataConsent)) return;
     if (mode === "register" && password.length < 8) {
       setError("Пароль должен содержать минимум 8 символов.");
       return;
@@ -71,13 +73,13 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   return (
     <section aria-label={copy.aria} className={`auth-panel auth-panel--${mode}`}>
-      <div className="auth-panel__intro">
-        <span className="auth-panel__kicker">// account</span>
-        <h1>{mode === "login" ? "С возвращением" : "Начнём путь"}</h1>
-        <p>
-          {mode === "login"
-            ? "Продолжайте там, где остановились."
-            : "Создайте аккаунт, чтобы сохранять задачи и интервальные повторения."}
+      <div className="auth-panel__heading">
+        <AuthSortingWord label={mode === "login" ? "Вход" : "Регистрация"} word={mode} />
+        <p className="auth-panel__switch">
+          {mode === "login" ? "Впервые в ReAlgo?" : "Уже есть аккаунт?"}{" "}
+          <Link href={mode === "login" ? "/register" : "/login"}>
+            {mode === "login" ? "Создайте аккаунт" : "Войдите"}
+          </Link>
         </p>
       </div>
 
@@ -85,15 +87,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
       <div className="auth-divider" aria-hidden="true">
         <span>или с электронной почтой</span>
-      </div>
-
-      <div className="auth-tabs" aria-label="Раздел авторизации">
-        <Link className={mode === "login" ? "active" : ""} href="/login">
-          Вход
-        </Link>
-        <Link className={mode === "register" ? "active" : ""} href="/register">
-          Регистрация
-        </Link>
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
@@ -205,20 +198,34 @@ export function AuthForm({ mode }: { mode: Mode }) {
         {mode === "register" ? (
           <label className="auth-consent">
             <input
-              checked={consent}
+              checked={termsAccepted}
               disabled={pending}
-              onChange={(e) => setConsent(e.target.checked)}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
               required
               type="checkbox"
             />
             <span>
               Принимаю{" "}
               <Link href="/terms" target="_blank">
-                Условия использования
-              </Link>{" "}
-              и{" "}
+                Пользовательское соглашение
+              </Link>
+            </span>
+          </label>
+        ) : null}
+
+        {mode === "register" ? (
+          <label className="auth-consent">
+            <input
+              checked={personalDataConsent}
+              disabled={pending}
+              onChange={(e) => setPersonalDataConsent(e.target.checked)}
+              required
+              type="checkbox"
+            />
+            <span>
+              Даю согласие на обработку персональных данных на условиях{" "}
               <Link href="/privacy" target="_blank">
-                Политику конфиденциальности
+                Политики конфиденциальности
               </Link>
             </span>
           </label>
@@ -233,7 +240,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
         <button
           disabled={
             pending ||
-            (mode === "register" && (!consent || !nickname.trim() || password.length < 8 || password !== passwordConfirmation))
+            (mode === "register" &&
+              (!termsAccepted ||
+                !personalDataConsent ||
+                !nickname.trim() ||
+                password.length < 8 ||
+                password !== passwordConfirmation))
           }
           type="submit"
         >
@@ -241,13 +253,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
           {!pending ? <span aria-hidden="true" className="auth-submit__arrow">→</span> : null}
         </button>
       </form>
-
-      <p className="auth-panel__switch">
-        {mode === "login" ? "Впервые в ReAlgo?" : "Уже есть аккаунт?"}{" "}
-        <Link href={mode === "login" ? "/register" : "/login"}>
-          {mode === "login" ? "Зарегистрироваться" : "Войти"}
-        </Link>
-      </p>
     </section>
   );
 }
