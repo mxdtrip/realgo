@@ -7519,6 +7519,31 @@ a.roadmap-step__practice-card:hover {
   opacity: 1;
 }
 
+.auth-password-forgot {
+  flex: none;
+  padding: 4px 2px;
+  color: var(--accent-bright);
+  font-family: var(--font-stack-sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-decoration: none;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.auth-password-forgot:hover {
+  color: #dbeafe;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.auth-password-forgot:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
 /* Chrome's default autofill paint otherwise covers only the text portion of
    our compound control, leaving the icon and eye on a different background. */
 .auth-layer--page .auth-form .auth-input input:-webkit-autofill,

@@ -129,6 +129,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
               onChange={(e) => setPassword(e.target.value)}
               disabled={pending}
             />
+            {mode === "login" ? (
+              <Link className="auth-password-forgot" href="/forgot-password">
+                Забыли пароль?
+              </Link>
+            ) : null}
             <button
               aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
               className="auth-password-toggle"
@@ -254,7 +259,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
           {mode === "login" ? "Создайте аккаунт" : "Войдите"}
         </Link>
       </p>
-      {mode === "login" ? <p className="auth-panel__switch"><Link href="/forgot-password">Не помню пароль</Link></p> : null}
     </section>
   );
 }
