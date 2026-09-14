@@ -4,6 +4,6 @@
   "type": "module",
   "dependencies": {
     "nodemailer": "10.0.9",
-    "smtp-server": "3.19.3"
+    "smtp-server": "3.19.12"
   }
 }
