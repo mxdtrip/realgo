@@ -7,10 +7,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log/slog"
+	"math/big"
 	"net/mail"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
@@ -23,10 +24,14 @@ import (
 
 const minPasswordLen = 8
 const maxPasswordBytes = 72
+const minNicknameRunes = 3
+const maxNicknameRunes = 32
 
-// PasswordResetTTL is deliberately short because reset links are bearer
-// credentials and are invalidated after their first successful use.
+// Recovery links are bearer credentials; verification codes are intentionally
+// shorter for a human to type, so they have a tighter expiry and are scoped to
+// an already authenticated account.
 const PasswordResetTTL = 30 * time.Minute
+const EmailVerificationTTL = 10 * time.Minute
 
 // A valid pre-computed bcrypt hash keeps the unknown-account login path close
 // in cost to the wrong-password path. Its plaintext is irrelevant and is never
@@ -51,44 +56,67 @@ func NewService(queries *db.Queries, redis *goredis.Client, cfg Config) *Service
 	}
 }
 
-// Register validates the input, creates a user and issues a token pair.
-func (s *Service) Register(ctx context.Context, email, password string) (db.User, TokenPair, error) {
+// CompleteRegistration atomically consumes the pending code and creates the
+// account. No code, no row in users, no access or refresh token.
+func (s *Service) CompleteRegistration(ctx context.Context, email, code, challenge string) (db.User, TokenPair, error) {
 	normalized, err := normalizeEmail(email)
-	if err != nil {
-		return db.User{}, TokenPair{}, err
+	if err != nil || len(code) != 6 || len(challenge) < 32 {
+		return db.User{}, TokenPair{}, ErrInvalidToken
 	}
-	if err := validatePassword(password); err != nil {
-		return db.User{}, TokenPair{}, err
-	}
-
-	hash, err := hashPassword(password)
+	codeHash := sha256.Sum256([]byte(code))
+	tx, err := s.queries.BeginTx(ctx)
 	if err != nil {
-		return db.User{}, TokenPair{}, err
+		return db.User{}, TokenPair{}, fmt.Errorf("begin registration confirmation: %w", err)
 	}
-
-	user, err := s.queries.CreateUser(ctx, db.CreateUserParams{Email: normalized, PasswordHash: hash})
-	if err != nil {
-		if isUniqueViolation(err) {
-			return db.User{}, TokenPair{}, ErrEmailTaken
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback(ctx)
 		}
-		return db.User{}, TokenPair{}, err
+	}()
+	q := s.queries.WithTx(tx)
+	pending, err := q.ConsumePendingRegistration(ctx, db.ConsumePendingRegistrationParams{Email: normalized, ChallengeHash: credentialHash(challenge), CodeHash: fmt.Sprintf("%x", codeHash[:])})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.User{}, TokenPair{}, ErrInvalidToken
 	}
-
-	tokens, err := s.issueTokens(ctx, user.ID, s.now())
 	if err != nil {
-		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
-		defer cancel()
-		if cleanupErr := s.queries.DeleteUserByID(cleanupCtx, user.ID); cleanupErr != nil {
-			slog.Error("auth: registration cleanup failed",
-				slog.String("layer", "service"),
-				slog.String("module", "auth"),
-				slog.Any("err", cleanupErr),
-				slog.Int64("user_id", user.ID),
-			)
-		}
 		return db.User{}, TokenPair{}, err
 	}
+	user, err := q.CreateUser(ctx, db.CreateUserParams{Email: pending.Email, PasswordHash: pgtype.Text{String: pending.PasswordHash, Valid: true}, Nickname: pending.Nickname})
+	if isUniqueViolation(err) {
+		return db.User{}, TokenPair{}, ErrEmailTaken
+	}
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	if err := q.MarkUserEmailVerified(ctx, user.ID); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	tokens, err := s.createSession(ctx, tx, user.ID, s.now())
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	committed = true
+
 	return user, tokens, nil
+}
+
+func normalizeNickname(value string) (string, error) {
+	nickname := strings.TrimSpace(value)
+	length := utf8.RuneCountInString(nickname)
+	if length < minNicknameRunes || length > maxNicknameRunes {
+		return "", ErrInvalidNickname
+	}
+	for _, char := range nickname {
+		if unicode.IsLetter(char) || unicode.IsDigit(char) || char == '_' || char == '-' {
+			continue
+		}
+		return "", ErrInvalidNickname
+	}
+	return nickname, nil
 }
 
 // Login verifies credentials and issues a token pair. It returns
@@ -100,7 +128,22 @@ func (s *Service) Login(ctx context.Context, email, password string) (db.User, T
 		return db.User{}, TokenPair{}, ErrInvalidCredentials
 	}
 
-	user, err := s.queries.GetUserByEmail(ctx, normalized)
+	tx, err := s.queries.BeginTx(ctx)
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	// Serialize password verification and session creation with password changes.
+	var lockedID int64
+	err = tx.QueryRow(ctx, "SELECT id FROM users WHERE email=$1 FOR UPDATE", normalized).Scan(&lockedID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		_ = checkPassword(dummyPasswordHash, password)
+		return db.User{}, TokenPair{}, ErrInvalidCredentials
+	}
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	user, err := s.queries.WithTx(tx).GetUserByID(ctx, lockedID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			_ = checkPassword(dummyPasswordHash, password)
@@ -108,63 +151,18 @@ func (s *Service) Login(ctx context.Context, email, password string) (db.User, T
 		}
 		return db.User{}, TokenPair{}, err
 	}
-	if !checkPassword(user.PasswordHash, password) {
+	if !checkPassword(passwordHashOrDummy(user.PasswordHash), password) || !user.PasswordHash.Valid {
 		return db.User{}, TokenPair{}, ErrInvalidCredentials
 	}
 
-	tokens, err := s.issueTokens(ctx, user.ID, s.now())
+	tokens, err := s.createSession(ctx, tx, user.ID, s.now())
 	if err != nil {
 		return db.User{}, TokenPair{}, err
 	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
 	return user, tokens, nil
-}
-
-// Refresh rotates a refresh token and issues a fresh token pair.
-func (s *Service) Refresh(ctx context.Context, refreshToken string) (TokenPair, error) {
-	// Redis can outlive a user row (for example after an account deletion on an
-	// older deployment). Never consume and renew such a zombie session.
-	userID, err := s.refreshTokenUserID(ctx, refreshToken)
-	if err != nil {
-		return TokenPair{}, err
-	}
-	if _, err := s.queries.GetUserByID(ctx, userID); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			_ = s.revokeRefreshToken(ctx, refreshToken)
-			return TokenPair{}, ErrInvalidToken
-		}
-		return TokenPair{}, err
-	}
-
-	rotatedUserID, newRefreshToken, err := s.rotateRefreshToken(ctx, refreshToken)
-	if err != nil {
-		return TokenPair{}, err
-	}
-	if rotatedUserID != userID {
-		_ = s.revokeRefreshToken(ctx, newRefreshToken)
-		return TokenPair{}, ErrInvalidToken
-	}
-	access, err := s.issueAccessToken(userID, s.now())
-	if err != nil {
-		return TokenPair{}, err
-	}
-	return s.tokenPair(access, newRefreshToken), nil
-}
-
-// Logout revokes a refresh token.
-func (s *Service) Logout(ctx context.Context, refreshToken string) error {
-	return s.revokeRefreshToken(ctx, refreshToken)
-}
-
-// NewSession issues an independent token pair for an already authenticated
-// user. Browser surfaces use it to avoid sharing one rotating refresh token.
-func (s *Service) NewSession(ctx context.Context, userID int64) (TokenPair, error) {
-	if _, err := s.queries.GetUserByID(ctx, userID); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return TokenPair{}, ErrInvalidToken
-		}
-		return TokenPair{}, err
-	}
-	return s.issueTokens(ctx, userID, s.now())
 }
 
 // ChangePassword verifies the current password and stores a freshly hashed new
@@ -178,7 +176,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 		}
 		return err
 	}
-	if !checkPassword(user.PasswordHash, currentPassword) {
+	if !checkPassword(passwordHashOrDummy(user.PasswordHash), currentPassword) || !user.PasswordHash.Valid {
 		return ErrInvalidCredentials
 	}
 	if err := validatePassword(newPassword); err != nil {
@@ -188,19 +186,24 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 	if err != nil {
 		return err
 	}
-	rows, err := s.queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{ID: userID, PasswordHash: hash})
+	tx, err := s.queries.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	tag, err := tx.Exec(ctx, "UPDATE users SET password_hash=$2, updated_at=NOW() WHERE id=$1 AND password_hash=$3", userID, hash, user.PasswordHash.String)
+	rows := tag.RowsAffected()
 	if err != nil {
 		return err
 	}
 	if rows == 0 {
 		return ErrInvalidToken
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
-// IssuePasswordReset creates a single-use reset credential. The bool result is
-// false for an unknown or malformed address so the HTTP layer can return the
-// same response for every address and avoid account enumeration.
+// IssuePasswordReset creates a one-time opaque credential. Unknown and
+// malformed addresses deliberately return found=false to prevent enumeration.
 func (s *Service) IssuePasswordReset(ctx context.Context, email string) (db.User, string, bool, error) {
 	normalized, err := normalizeEmail(email)
 	if err != nil {
@@ -213,25 +216,21 @@ func (s *Service) IssuePasswordReset(ctx context.Context, email string) (db.User
 	if err != nil {
 		return db.User{}, "", false, err
 	}
-
-	token, err := generatePasswordResetToken()
-	if err != nil {
-		return db.User{}, "", false, err
+	var raw [32]byte
+	if _, err := rand.Read(raw[:]); err != nil {
+		return db.User{}, "", false, fmt.Errorf("generate reset token: %w", err)
 	}
+	token := base64.RawURLEncoding.EncodeToString(raw[:])
 	hash := sha256.Sum256([]byte(token))
-	if err := s.queries.CreatePasswordResetToken(ctx, db.CreatePasswordResetTokenParams{
-		UserID:    user.ID,
-		TokenHash: fmt.Sprintf("%x", hash[:]),
-		ExpiresAt: pgtype.Timestamptz{Time: s.now().Add(PasswordResetTTL), Valid: true},
-	}); err != nil {
+	err = s.queries.CreatePasswordResetToken(ctx, db.CreatePasswordResetTokenParams{UserID: user.ID, TokenHash: fmt.Sprintf("%x", hash[:]), ExpiresAt: pgtype.Timestamptz{Time: s.now().Add(PasswordResetTTL), Valid: true}})
+	if err != nil {
 		return db.User{}, "", false, err
 	}
 	return user, token, true, nil
 }
 
-// ResetPassword atomically consumes the reset token and replaces the password.
-// Refresh sessions are revoked after commit so a recovered account cannot keep
-// an already-issued session alive.
+// ResetPassword consumes the token and changes the password in one database
+// transaction. Existing refresh sessions are invalidated once it commits.
 func (s *Service) ResetPassword(ctx context.Context, token, newPassword string) (db.User, error) {
 	if err := validatePassword(newPassword); err != nil {
 		return db.User{}, err
@@ -241,7 +240,6 @@ func (s *Service) ResetPassword(ctx context.Context, token, newPassword string) 
 		return db.User{}, err
 	}
 	tokenHash := sha256.Sum256([]byte(token))
-
 	tx, err := s.queries.BeginTx(ctx)
 	if err != nil {
 		return db.User{}, fmt.Errorf("begin password reset: %w", err)
@@ -252,43 +250,74 @@ func (s *Service) ResetPassword(ctx context.Context, token, newPassword string) 
 			_ = tx.Rollback(ctx)
 		}
 	}()
-
 	q := s.queries.WithTx(tx)
+	var lockedUser int64
+	if err := tx.QueryRow(ctx, "SELECT u.id FROM users u JOIN password_reset_tokens t ON t.user_id=u.id WHERE t.token_hash=$1 AND t.used_at IS NULL AND t.expires_at>NOW() FOR UPDATE OF u", fmt.Sprintf("%x", tokenHash[:])).Scan(&lockedUser); err != nil {
+		return db.User{}, ErrInvalidToken
+	}
 	userID, err := q.ConsumePasswordResetToken(ctx, fmt.Sprintf("%x", tokenHash[:]))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return db.User{}, ErrInvalidToken
 	}
 	if err != nil {
-		return db.User{}, fmt.Errorf("consume password reset token: %w", err)
+		return db.User{}, err
 	}
-	rows, err := q.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{ID: userID, PasswordHash: hash})
+	rows, err := q.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{ID: userID, PasswordHash: pgtype.Text{String: hash, Valid: true}})
 	if err != nil {
-		return db.User{}, fmt.Errorf("update reset password: %w", err)
+		return db.User{}, err
 	}
 	if rows == 0 {
 		return db.User{}, ErrInvalidToken
 	}
 	user, err := q.GetUserByID(ctx, userID)
 	if err != nil {
-		return db.User{}, fmt.Errorf("load reset user: %w", err)
+		return db.User{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return db.User{}, fmt.Errorf("commit password reset: %w", err)
+		return db.User{}, err
 	}
 	committed = true
 
-	if err := s.revokeAllRefreshTokens(ctx, userID); err != nil {
-		slog.Error("auth: revoke sessions after password reset failed", slog.Int64("user_id", userID), slog.Any("err", err))
-	}
 	return user, nil
 }
 
-func generatePasswordResetToken() (string, error) {
-	var raw [32]byte
-	if _, err := rand.Read(raw[:]); err != nil {
-		return "", fmt.Errorf("generate password reset token: %w", err)
+// IssueEmailVerificationCode uses crypto/rand and stores only its SHA-256
+// digest. Reissuing a code invalidates any previous unused code.
+func (s *Service) IssueEmailVerificationCode(ctx context.Context, userID int64) (db.User, string, error) {
+	user, err := s.UserByID(ctx, userID)
+	if err != nil {
+		return db.User{}, "", err
 	}
-	return base64.RawURLEncoding.EncodeToString(raw[:]), nil
+	code, err := generateVerificationCode()
+	if err != nil {
+		return db.User{}, "", err
+	}
+	hash := sha256.Sum256([]byte(code))
+	err = s.queries.CreateEmailVerificationCode(ctx, db.CreateEmailVerificationCodeParams{UserID: userID, CodeHash: fmt.Sprintf("%x", hash[:]), ExpiresAt: pgtype.Timestamptz{Time: s.now().Add(EmailVerificationTTL), Valid: true}})
+	if err != nil {
+		return db.User{}, "", err
+	}
+	return user, code, nil
+}
+
+func generateVerificationCode() (string, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+	if err != nil {
+		return "", fmt.Errorf("generate verification code: %w", err)
+	}
+	return fmt.Sprintf("%06d", n.Int64()), nil
+}
+
+func (s *Service) VerifyEmailCode(ctx context.Context, userID int64, code string) error {
+	if len(code) != 6 {
+		return ErrInvalidToken
+	}
+	hash := sha256.Sum256([]byte(code))
+	_, err := s.queries.ConsumeEmailVerificationCode(ctx, db.ConsumeEmailVerificationCodeParams{UserID: userID, CodeHash: fmt.Sprintf("%x", hash[:])})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrInvalidToken
+	}
+	return err
 }
 
 // RevokeAllSessions invalidates all refresh sessions for userID, including
@@ -405,7 +434,7 @@ func (s *Service) DeleteAccount(ctx context.Context, userID int64, password, ref
 		}
 		return err
 	}
-	if !checkPassword(user.PasswordHash, password) {
+	if !checkPassword(passwordHashOrDummy(user.PasswordHash), password) || !user.PasswordHash.Valid {
 		return ErrInvalidCredentials
 	}
 	if err := s.revokeAllRefreshTokens(ctx, userID); err != nil {
@@ -479,6 +508,18 @@ func normalizeEmail(email string) (string, error) {
 		return "", ErrInvalidEmail
 	}
 	return email, nil
+}
+
+// passwordHashOrDummy returns the stored bcrypt hash, or a precomputed dummy
+// hash when the account has none (an OAuth-only signup). Comparing against a
+// real bcrypt hash either way keeps this path's timing close to the
+// wrong-password case instead of failing near-instantly and leaking that the
+// account has no local password.
+func passwordHashOrDummy(hash pgtype.Text) string {
+	if hash.Valid {
+		return hash.String
+	}
+	return dummyPasswordHash
 }
 
 func isUniqueViolation(err error) bool {

@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 // Backed by the CARD_SESSION fixtures in auth-stub.mjs.
 
 const AKEY = "realgo:auth:access:v1";
-const RKEY = "realgo:auth:refresh:v1";
+const RKEY = "realgo:auth:session:v2";
 const SESSION_KEY = "realgo:card-review-session:v1";
 
 async function openSession(page, { token = null } = {}) {
@@ -14,8 +14,9 @@ async function openSession(page, { token = null } = {}) {
     ([a, r, sessionKey, kind]) => {
       localStorage.removeItem(sessionKey);
       if (kind) {
-        localStorage.setItem(a, `${kind}.access`);
-        localStorage.setItem(r, `${kind}.refresh`);
+        localStorage.removeItem(a);
+        localStorage.setItem(r, String(`${kind}.refresh`).split(".")[0]+".session");
+      document.cookie = "realgo-refresh-"+String(`${kind}.refresh`).split(".")[0]+".session="+String(`${kind}.refresh`).split(".")[0]+".refresh; Path=/; SameSite=Strict";
       } else {
         localStorage.removeItem(a);
         localStorage.removeItem(r);

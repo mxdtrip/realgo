@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 // Backed by the atlas fixtures in auth-stub.mjs.
 
 const AKEY = "realgo:auth:access:v1";
-const RKEY = "realgo:auth:refresh:v1";
+const RKEY = "realgo:auth:session:v2";
 const TOUR_KEY = "realgo.cabinet.tour";
 
 // Company selector is a search dialog (button trigger → dialog with a list
@@ -24,8 +24,9 @@ async function openAtlas(page, { token = "LIVE" } = {}) {
   await page.goto("/patterns");
   await page.evaluate(
     ([a, r, tourKey, kind]) => {
-      localStorage.setItem(a, `${kind}.access`);
-      localStorage.setItem(r, `${kind}.refresh`);
+      localStorage.removeItem(a);
+      localStorage.setItem(r, String(`${kind}.refresh`).split(".")[0]+".session");
+      document.cookie = "realgo-refresh-"+String(`${kind}.refresh`).split(".")[0]+".session="+String(`${kind}.refresh`).split(".")[0]+".refresh; Path=/; SameSite=Strict";
       localStorage.setItem(tourKey, "done");
       localStorage.removeItem("realgo.atlas.company");
       localStorage.removeItem("realgo.atlas.view");

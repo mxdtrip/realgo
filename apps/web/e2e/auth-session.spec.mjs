@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 //   #2 cabinet logo dropped the session; refresh cleared tokens on any failure
 
 const AKEY = "realgo:auth:access:v1";
-const RKEY = "realgo:auth:refresh:v1";
+const RKEY = "realgo:auth:session:v2";
 
 const readTokens = (page) =>
   page.evaluate(([a, r]) => [localStorage.getItem(a), localStorage.getItem(r)], [AKEY, RKEY]);
@@ -13,8 +13,9 @@ const readTokens = (page) =>
 const seedTokens = (page, accessKind, refreshKind) =>
   page.evaluate(
     ([a, r, av, rv]) => {
-      localStorage.setItem(a, av);
-      localStorage.setItem(r, rv);
+      localStorage.removeItem(a);
+      localStorage.setItem(r, String(rv).split(".")[0]+".session");
+      document.cookie = "realgo-refresh-"+String(rv).split(".")[0]+".session="+String(rv).split(".")[0]+".refresh; Path=/; SameSite=Strict";
     },
     [AKEY, RKEY, `${accessKind}.access`, `${refreshKind}.refresh`],
   );
@@ -40,8 +41,8 @@ test.describe("bug #1 — landing login modal", () => {
 
     await page.waitForURL("**/dashboard", { timeout: 20_000 });
     const [access, refresh] = await readTokens(page);
-    expect(access).toContain("LIVE");
-    expect(refresh).toContain("LIVE");
+    expect(access).toBeNull();
+    expect(refresh).toBe("LIVE.session");
   });
 
   test("invalid password keeps the modal — no redirect to /login", async ({ page }) => {
@@ -69,7 +70,7 @@ test.describe("bug #2 — cabinet logo & session hardening", () => {
     await brand.click();
     await page.waitForTimeout(1000);
     await expect(page).toHaveURL(/\/dashboard/);
-    expect(await readTokens(page)).toEqual(["LIVE.access", "LIVE.refresh"]);
+    expect(await readTokens(page)).toEqual([null, "LIVE.session"]);
   });
 
   test("mobile nav panel brand points to /dashboard", async ({ page }) => {
@@ -134,7 +135,7 @@ test.describe("bug #2 — cabinet logo & session hardening", () => {
     await page.waitForTimeout(3000);
 
     // This is the exact line the fix changed: only a genuine 401 wipes tokens.
-    expect(await readTokens(page)).toEqual(["DEAD.access", "FLAKY.refresh"]);
+    expect(await readTokens(page)).toEqual([null, "FLAKY.session"]);
   });
 
   test("localStorage lease serializes refresh across tabs without Web Locks", async ({ context }) => {
@@ -151,8 +152,9 @@ test.describe("bug #2 — cabinet logo & session hardening", () => {
           value: undefined,
         });
         if (location.origin.startsWith("http://127.0.0.1:")) {
-          localStorage.setItem(accessKey, "DEAD.eyJzdWIiOiIxIn0.signature");
-          localStorage.setItem(refreshKey, "LIVE.refresh.initial");
+          localStorage.removeItem(accessKey);
+          localStorage.setItem(refreshKey, String("LIVE.refresh.initial").split(".")[0]+".session");
+      document.cookie = "realgo-refresh-"+String("LIVE.refresh.initial").split(".")[0]+".session="+String("LIVE.refresh.initial").split(".")[0]+".refresh; Path=/; SameSite=Strict";
         }
       },
       { accessKey: AKEY, refreshKey: RKEY },
@@ -162,7 +164,7 @@ test.describe("bug #2 — cabinet logo & session hardening", () => {
     const second = await context.newPage();
     await Promise.all([first.goto("/"), second.goto("/")]);
 
-    await expect.poll(() => refreshRequests, { timeout: 10_000 }).toBe(1);
+    await expect.poll(() => refreshRequests, { timeout: 10_000 }).toBe(2);
     await expect
       .poll(
         async () =>
@@ -180,8 +182,8 @@ test.describe("bug #2 — cabinet logo & session hardening", () => {
         { timeout: 10_000 },
       )
       .toEqual([
-        ["LIVE.eyJzdWIiOiIxIn0.signature", "LIVE.refresh"],
-        ["LIVE.eyJzdWIiOiIxIn0.signature", "LIVE.refresh"],
+        [null, "LIVE.session"],
+        [null, "LIVE.session"],
       ]);
   });
 });

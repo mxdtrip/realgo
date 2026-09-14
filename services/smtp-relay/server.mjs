@@ -1,227 +1,76 @@
-import net from 'node:net';
-import tls from 'node:tls';
+import { fileURLToPath } from 'node:url';
+import { lookup } from 'node:dns/promises';
 import { SMTPServer } from 'smtp-server';
+import nodemailer from 'nodemailer';
 
 const MAX_MESSAGE_SIZE = 26_214_400;
-const CONNECT_TIMEOUT_MS = 30_000;
-const TRANSACTION_TIMEOUT_MS = 120_000;
+const sender = 'noreply@realgo.dev';
+const permittedHost = process.env.RELAY_CLIENT_HOST;
+const username = process.env.RELAY_SMTP_USERNAME;
+const password = process.env.RELAY_SMTP_PASSWORD;
+function upstreamTransport() { return nodemailer.createTransport({
+  host: process.env.RELAY_SMTP_HOST || 'mail.smtp2go.com',
+  port: Number(process.env.RELAY_SMTP_PORT || 2525),
+  secure: false, requireTLS: true,
+  tls: { rejectUnauthorized: true, minVersion: 'TLSv1.2' },
+  auth: { user: username, pass: password },
+  connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 20000,
+  pool: true, maxConnections: 2, maxMessages: 50,
+  logger: false, debug: false,
+}); }
+const failure = (message, responseCode) => Object.assign(new Error(message), { responseCode });
 
-const listenHost = process.env.SMTP_LISTEN_HOST || '0.0.0.0';
-const listenPort = parsePort(process.env.SMTP_LISTEN_PORT || '2526', 'SMTP_LISTEN_PORT');
-const upstreamHost = process.env.RELAY_SMTP_HOST || 'mail.smtp2go.com';
-const upstreamPort = parsePort(process.env.RELAY_SMTP_PORT || '2525', 'RELAY_SMTP_PORT');
-const upstreamTLSMode = (process.env.RELAY_SMTP_TLS_MODE || 'starttls').toLowerCase();
-const upstreamUsername = process.env.RELAY_SMTP_USERNAME;
-const upstreamPassword = process.env.RELAY_SMTP_PASSWORD;
-const senderAddress = (process.env.SENDER_ADDRESS || 'noreply@realgo.dev').toLowerCase();
-const allowedPrefixes = (process.env.ALLOWED_CLIENT_PREFIXES || '127.,::1,10.,172.,192.168.')
-  .split(',')
-  .map((value) => value.trim())
-  .filter(Boolean);
-
-if (!upstreamUsername || !upstreamPassword) {
-  throw new Error('RELAY_SMTP_USERNAME and RELAY_SMTP_PASSWORD are required');
+export function validSenderHeaders(raw) {
+  const boundary = raw.indexOf('\r\n\r\n');
+  if (boundary < 0 || boundary > 65536) return false;
+  const headers = raw.subarray(0, boundary).toString('utf8').replace(/\r\n[ \t]+/g, ' ');
+  const from = [...headers.matchAll(/^From:\s*(.+)$/gmi)];
+  const reply = [...headers.matchAll(/^Reply-To:\s*(.+)$/gmi)];
+  return from.length === 1 && /^(?:ReAlgo|"ReAlgo") <noreply@realgo\.dev>\s*$/i.test(from[0][1]) &&
+    reply.length === 1 && /^support@realgo\.dev\s*$/i.test(reply[0][1]);
 }
-if (!['starttls', 'implicit'].includes(upstreamTLSMode)) {
-  throw new Error('RELAY_SMTP_TLS_MODE must be starttls or implicit');
-}
-
-function parsePort(value, name) {
-  const port = Number.parseInt(value, 10);
-  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-    throw new Error(`${name} must be a valid TCP port`);
-  }
-  return port;
-}
-
-class UpstreamSMTPError extends Error {
-  constructor(stage, response, cause) {
-    const code = /^\d{3}/.exec(response || '')?.[0] || '';
-    super(`upstream SMTP ${stage} failed${code ? ` (${code})` : ''}`, { cause });
-    this.name = 'UpstreamSMTPError';
-    this.stage = stage;
-    this.code = code;
-    this.category = smtpFailureCategory(stage, code);
-    this.retryable = this.category === 'temporary_provider_error';
-  }
-}
-
-export function smtpFailureCategory(stage, code) {
-  if (stage === 'AUTH' || stage === 'CONFIG') return 'configuration_or_authentication_error';
-  if (code.startsWith('4')) return 'temporary_provider_error';
-  if (code.startsWith('5')) return 'permanent_rejection';
-  return 'transport_error';
-}
-
-function responseReader(socket) {
-  let buffer = '';
-  const waiters = [];
-  const consume = () => {
-    const lines = buffer.split('\r\n');
-    for (let end = 0; end < lines.length - 1; end += 1) {
-      if (/^\d{3} /.test(lines[end])) {
-        const response = lines.slice(0, end + 1).join('\r\n');
-        buffer = lines.slice(end + 1).join('\r\n');
-        waiters.shift()?.resolve(response);
-        return consume();
-      }
-    }
-  };
-  socket.on('data', (chunk) => {
-    buffer += chunk.toString('utf8');
-    consume();
-  });
-  socket.on('error', (error) => waiters.shift()?.reject(error));
-  return () => new Promise((resolve, reject) => {
-    waiters.push({ resolve, reject });
-    consume();
-  });
-}
-
-function expect(response, code, stage) {
-  if (!response.startsWith(code)) throw new UpstreamSMTPError(stage, response);
-}
-
-function dotStuff(raw) {
-  let message = raw.toString('latin1').replace(/\r?\n/g, '\r\n');
-  message = message.replace(/(^|\r\n)\./g, '$1..');
-  if (!message.endsWith('\r\n')) message += '\r\n';
-  return Buffer.from(`${message}.\r\n`, 'latin1');
-}
-
-function connectUpstream() {
-  if (upstreamTLSMode === 'implicit') {
-    return tls.connect({ host: upstreamHost, port: upstreamPort, servername: upstreamHost, rejectUnauthorized: true });
-  }
-  return net.connect(upstreamPort, upstreamHost);
-}
-
-async function upgradeStartTLS(plain) {
-  plain.removeAllListeners('data');
-  plain.removeAllListeners('error');
-  const secure = tls.connect({ socket: plain, servername: upstreamHost, rejectUnauthorized: true });
-  await new Promise((resolve, reject) => {
-    secure.once('secureConnect', resolve);
-    secure.once('error', reject);
-  });
-  return secure;
-}
-
-async function sendViaSMTP2GO({ from, to, raw }) {
-  let socket = connectUpstream();
-  socket.setTimeout(CONNECT_TIMEOUT_MS, () => socket.destroy(new Error('SMTP connection timeout')));
-  let read = responseReader(socket);
-  try {
-    if (upstreamTLSMode === 'implicit') {
-      await new Promise((resolve, reject) => {
-        socket.once('secureConnect', resolve);
-        socket.once('error', reject);
-      });
-    }
-    expect(await read(), '220', 'GREETING');
-    socket.write('EHLO realgo.dev\r\n');
-    expect(await read(), '250', 'EHLO');
-
-    if (upstreamTLSMode === 'starttls') {
-      socket.write('STARTTLS\r\n');
-      expect(await read(), '220', 'STARTTLS');
-      socket = await upgradeStartTLS(socket);
-      socket.setTimeout(TRANSACTION_TIMEOUT_MS, () => socket.destroy(new Error('SMTP transaction timeout')));
-      read = responseReader(socket);
-      socket.write('EHLO realgo.dev\r\n');
-      expect(await read(), '250', 'SECURE_EHLO');
-    }
-
-    const authToken = Buffer.from(`\0${upstreamUsername}\0${upstreamPassword}`).toString('base64');
-    socket.write(`AUTH PLAIN ${authToken}\r\n`);
-    expect(await read(), '235', 'AUTH');
-    socket.write(`MAIL FROM:<${from}>\r\n`);
-    expect(await read(), '250', 'MAIL_FROM');
-    for (const recipient of to) {
-      socket.write(`RCPT TO:<${recipient}>\r\n`);
-      expect(await read(), '250', 'RCPT_TO');
-    }
-    socket.write('DATA\r\n');
-    expect(await read(), '354', 'DATA');
-    socket.write(dotStuff(raw));
-    const queued = await read();
-    expect(queued, '250', 'MESSAGE');
-    socket.write('QUIT\r\n');
-    socket.end();
-    return { code: queued.slice(0, 3) };
-  } catch (error) {
-    socket.destroy();
-    if (error instanceof UpstreamSMTPError) throw error;
-    throw new UpstreamSMTPError('TRANSPORT', '', error);
-  }
-}
-
-async function sendWithBoundedRetry(message) {
-  try {
-    return await sendViaSMTP2GO(message);
-  } catch (error) {
-    // SMTP 4xx explicitly says the provider did not accept this transaction.
-    // Retry exactly once; a transport loss after DATA is intentionally not
-    // retried because acceptance could be ambiguous and duplicate reset
-    // messages are worse than a visible, logged failure.
-    if (!error.retryable) throw error;
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    return sendViaSMTP2GO(message);
-  }
-}
-
-function clientAllowed(remoteAddress) {
-  const address = remoteAddress?.replace(/^::ffff:/, '') || '';
-  return allowedPrefixes.some((prefix) => address.startsWith(prefix));
-}
-
+export function createRelay({ transporter, permittedHost, resolvePeers = lookup, maxSize = MAX_MESSAGE_SIZE }) {
+const connections = new Set();
 const server = new SMTPServer({
-  name: 'mail-relay.realgo.internal',
-  banner: 'ReAlgo SMTP2GO outbound relay',
-  hideSTARTTLS: true,
-  disabledCommands: ['AUTH'],
-  authOptional: true,
-  size: MAX_MESSAGE_SIZE,
-  onConnect(session, callback) {
-    if (!clientAllowed(session.remoteAddress)) return callback(new Error('Client not permitted'));
-    return callback();
+  hideSTARTTLS: true, disabledCommands: ['AUTH'], authOptional: true,
+  size: maxSize, maxClients: 4, socketTimeout: 30000,
+  async onConnect(session, callback) {
+    try {
+      const address = (session.remoteAddress || '').replace(/^::ffff:/, '');
+      const peers = await resolvePeers(permittedHost, { all: true });
+      if (!peers.some((peer) => peer.address === address) || connections.size >= 4) return callback(failure('Client not permitted', 554));
+      connections.add(session.id); callback();
+    } catch { callback(failure('Submission unavailable', 451)); }
   },
-  onMailFrom(address, session, callback) {
-    if (address.address.toLowerCase() !== senderAddress) return callback(new Error('Sender not permitted'));
-    return callback();
-  },
+  onClose(session) { connections.delete(session.id); },
+  onMailFrom(address, _session, callback) { callback(address.address.toLowerCase() === sender ? undefined : failure('Sender not permitted', 553)); },
+  onRcptTo(_address, session, callback) { callback(session.envelope.rcptTo.length < 1 ? undefined : failure('One recipient per message', 452)); },
   onData(stream, session, callback) {
-    const chunks = [];
-    let size = 0;
-    stream.on('data', (chunk) => {
-      size += chunk.length;
-      if (size <= MAX_MESSAGE_SIZE) chunks.push(chunk);
-    });
-    stream.on('error', callback);
+    const chunks = []; let size = 0; let completed = false;
+    const finish = (error, message) => { if (!completed) { completed = true; callback(error, message); } };
+    stream.on('data', (chunk) => { size += chunk.length; if (size <= maxSize) chunks.push(chunk); else chunks.length = 0; });
+    stream.on('error', () => finish(failure('Message stream failed', 451)));
     stream.on('end', async () => {
-      if (size > MAX_MESSAGE_SIZE) return callback(new Error('Message too large'));
+      if (completed) return;
+      if (stream.sizeExceeded || size > maxSize) return finish(failure('Message too large', 552));
+      const raw = Buffer.concat(chunks);
+      if (!validSenderHeaders(raw)) return finish(failure('Sender headers not permitted', 553));
       try {
-        const result = await sendWithBoundedRetry({
-          from: session.envelope.mailFrom.address,
-          to: session.envelope.rcptTo.map(({ address }) => address),
-          raw: Buffer.concat(chunks),
-        });
-        console.log(JSON.stringify({ event: 'relay_provider_accepted', provider: 'smtp2go', recipients: session.envelope.rcptTo.length, smtp_code: result.code }));
-        return callback(null, 'Queued by SMTP2GO');
+        await transporter.sendMail({ envelope: { from: sender, to: session.envelope.rcptTo.map(({ address }) => address) }, raw });
+        console.log(JSON.stringify({ event: 'relay_provider_accepted' }));
+        finish(null, 'Accepted by provider');
       } catch (error) {
-        const category = error instanceof UpstreamSMTPError ? error.category : 'transport_error';
-        const code = error instanceof UpstreamSMTPError ? error.code : '';
-        console.error(JSON.stringify({ event: 'relay_provider_failed', provider: 'smtp2go', category, smtp_code: code || undefined, recipients: session.envelope.rcptTo.length }));
-        return callback(error);
+        const permanent = Number(error.responseCode) >= 500;
+        console.error(JSON.stringify({ event: 'relay_provider_failed', category: permanent ? 'permanent' : 'temporary' }));
+        finish(failure('Provider delivery failed', permanent ? 554 : 451));
       }
     });
   },
 });
-
-server.on('error', (error) => {
-  console.error(JSON.stringify({ event: 'relay_server_error', message: error.message }));
-});
-
-server.listen(listenPort, listenHost, () => {
-  console.log(JSON.stringify({ event: 'relay_ready', provider: 'smtp2go', upstream_host: upstreamHost, upstream_port: upstreamPort, upstream_tls_mode: upstreamTLSMode, port: listenPort }));
-});
+server.on('error', () => { console.error(JSON.stringify({ event: 'relay_server_failed' })); });
+return server;
+}
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  if (!username || !password || !permittedHost) throw new Error('Relay credentials and RELAY_CLIENT_HOST are required');
+  createRelay({ transporter: upstreamTransport(), permittedHost }).listen(2526, '0.0.0.0');
+}
