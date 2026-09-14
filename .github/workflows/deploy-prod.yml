@@ -26,7 +26,10 @@ concurrency:
   group: deploy-prod
   cancel-in-progress: false
 jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
   deploy:
+    needs: verify
     runs-on: [self-hosted, linux, appbox]
     permissions:
       contents: read
@@ -62,11 +65,6 @@ jobs:
           # Groq calls ride this tunnel instead of the ISP's flagged egress).
           VPN_SUB_URL: ${{ secrets.VPN_SUB_URL }}
         run: |
-          # Shared only by the production VPN namespace and the local Stalwart
-          # container. Creating it here keeps a fresh appbox deploy self-healing.
-          docker network inspect realgo-mail-internal >/dev/null 2>&1 ||
-            docker network create realgo-mail-internal
-
           docker compose -f docker-compose.yml -f docker-compose.prod.yml pull --ignore-buildable || true
           docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --build --remove-orphans
 

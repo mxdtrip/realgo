@@ -45,7 +45,7 @@ func (m *resetTestMailbox) latestResetToken(t *testing.T) string {
 	if len(m.messages) == 0 {
 		t.Fatal("password reset did not enqueue a message")
 	}
-	match := regexp.MustCompile(`https://realgo\.dev/reset-password\?token=([^\s<]+)`).FindStringSubmatch(m.messages[len(m.messages)-1].Text)
+	match := regexp.MustCompile(`https://realgo\.dev/reset-password#token=([^\s<]+)`).FindStringSubmatch(m.messages[len(m.messages)-1].Text)
 	if len(match) != 2 {
 		t.Fatal("password reset message did not contain a reset link")
 	}
@@ -101,9 +101,30 @@ func TestPasswordResetEndToEnd(t *testing.T) {
 	const oldPassword = "OldPassword-2026!"
 	const newPassword = "NewPassword-2026!"
 	register := postResetJSON(t, srv.Client(), srv.URL+"/api/v1/auth/register", map[string]string{"email": email, "password": oldPassword})
-	if register.StatusCode != http.StatusCreated {
-		t.Fatalf("register status = %d, want %d", register.StatusCode, http.StatusCreated)
+	if register.StatusCode != http.StatusAccepted {
+		t.Fatalf("register status = %d, want %d", register.StatusCode, http.StatusAccepted)
 	}
+	var pending struct {
+		Data struct {
+			Challenge string `json:"challenge"`
+		} `json:"data"`
+	}
+	decodeResetResponse(t, register, &pending)
+	drain := func() {
+		for range 20 {
+			worked, err := authSvc.ProcessNextMail(t.Context(), mailbox, "https://realgo.dev")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !worked {
+				return
+			}
+		}
+	}
+	drain()
+	code := regexp.MustCompile(`код: (\d{6})`).FindStringSubmatch(mailbox.messages[0].Text)[1]
+	register = postResetJSON(t, srv.Client(), srv.URL+"/api/v1/auth/email-verification/confirm", map[string]string{"email": email, "code": code, "challenge": pending.Data.Challenge})
+	mailbox.messages = nil
 	var registered struct {
 		Data struct {
 			Tokens struct {
@@ -127,6 +148,7 @@ func TestPasswordResetEndToEnd(t *testing.T) {
 	if !sameResetResponse(knownBody, unknownBody) {
 		t.Fatal("known and unknown reset responses differ")
 	}
+	drain()
 	if mailbox.count() != 1 {
 		t.Fatalf("unknown account caused email delivery; count = %d, want 1", mailbox.count())
 	}
@@ -147,6 +169,7 @@ func TestPasswordResetEndToEnd(t *testing.T) {
 	if secondRequest.StatusCode != http.StatusAccepted {
 		t.Fatalf("second reset request status = %d, want %d", secondRequest.StatusCode, http.StatusAccepted)
 	}
+	drain()
 	token := mailbox.latestResetToken(t)
 	completed := postResetJSON(t, srv.Client(), srv.URL+"/api/v1/auth/password-reset/confirm", map[string]string{"token": token, "new_password": newPassword})
 	if completed.StatusCode != http.StatusOK {
@@ -186,7 +209,7 @@ func postResetJSON(t *testing.T, client *http.Client, url string, payload map[st
 
 func decodeResetResponse(t *testing.T, response *http.Response, target any) {
 	t.Helper()
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if err := json.NewDecoder(response.Body).Decode(target); err != nil {
 		t.Fatal(err)
 	}

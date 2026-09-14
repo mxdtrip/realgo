@@ -1,15 +1,12 @@
-const CACHE_NAME = "realgo-shell-v3";
+const CACHE_NAME = "realgo-shell-v4";
 const OFFLINE_URL = "/offline.html";
 const APP_SHELL = [
   "/",
-  "/dashboard",
-  "/cards",
-  "/cards/session",
   "/manifest.webmanifest",
   "/icons/realgo-logo.png",
   OFFLINE_URL,
 ];
-const CACHEABLE_DESTINATIONS = new Set(["document", "script", "style", "image", "font"]);
+const CACHEABLE_DESTINATIONS = new Set([ "script", "style", "image", "font"]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -49,15 +46,15 @@ self.addEventListener("fetch", (event) => {
 function shouldHandle(request) {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return false;
-  if (url.pathname.startsWith("/api/")) return false;
-  return request.mode === "navigate" || CACHEABLE_DESTINATIONS.has(request.destination);
+  if (url.pathname.startsWith("/api/") || url.search || /^(\/(login|register|reset-password|forgot-password|verify-email|auth))(\/|$)/.test(url.pathname)) return false;
+  return CACHEABLE_DESTINATIONS.has(request.destination);
 }
 
 function shouldCache(request, response) {
-  if (!response || response.status !== 200 || response.type !== "basic") return false;
+  if (!response || response.status !== 200 || response.type !== "basic" || /no-store|private/.test(response.headers.get("Cache-Control") || "")) return false;
   const url = new URL(request.url);
-  if (url.pathname.startsWith("/api/")) return false;
-  return request.mode === "navigate" || CACHEABLE_DESTINATIONS.has(request.destination);
+  if (url.pathname.startsWith("/api/") || url.search || /^(\/(login|register|reset-password|forgot-password|verify-email|auth))(\/|$)/.test(url.pathname)) return false;
+  return CACHEABLE_DESTINATIONS.has(request.destination);
 }
 
 function navigationFallback(request) {

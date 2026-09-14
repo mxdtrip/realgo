@@ -6,15 +6,16 @@ import { expect, test } from "@playwright/test";
 // (done-флаг тура, редирект уже онбордившихся) при этом не ослабляются.
 
 const AKEY = "realgo:auth:access:v1";
-const RKEY = "realgo:auth:refresh:v1";
+const RKEY = "realgo:auth:session:v2";
 const TOUR_KEY = "realgo.cabinet.tour";
 
 async function enterCabinet(page) {
   await page.goto("/dashboard");
   await page.evaluate(
     ([a, r, tourKey]) => {
-      localStorage.setItem(a, "LIVE.access");
-      localStorage.setItem(r, "LIVE.refresh");
+      localStorage.removeItem(a);
+      localStorage.setItem(r, String("LIVE.refresh").split(".")[0]+".session");
+      document.cookie = "realgo-refresh-"+String("LIVE.refresh").split(".")[0]+".session="+String("LIVE.refresh").split(".")[0]+".refresh; Path=/; SameSite=Strict";
       localStorage.setItem(tourKey, "done");
     },
     [AKEY, RKEY, TOUR_KEY],

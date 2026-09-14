@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Manrope } from "next/font/google";
 import { AuthProvider } from "./_api/AuthProvider";
@@ -6,6 +7,8 @@ import { DiagnosticsCollector } from "./_diagnostics/DiagnosticsCollector";
 import { PWAProvider } from "./_pwa/PWAProvider";
 import { ToastProvider } from "./_toast";
 import "./globals.css";
+
+export const dynamic = "force-dynamic";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -83,18 +86,21 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const requestHeaders = await headers();
+  const nonce = requestHeaders.get("x-nonce") ?? undefined;
+  const publicPage = requestHeaders.get("x-public-analytics") === "1";
   return (
     <html
       className={`${inter.variable} ${manrope.variable} ${jetBrainsMono.variable}`}
       lang="ru"
     >
-      <head>
-        <script
+      <head>{publicPage && <>
+        <script nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               (function(m,e,t,r,i,k,a){
@@ -108,7 +114,7 @@ export default function RootLayout({
             `,
           }}
         />
-        <script
+        <script nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -119,17 +125,17 @@ export default function RootLayout({
             `,
           }}
         />
-      </head>
+      </>}</head>
       <body>
-        <noscript>
+        {publicPage && <noscript>
           <iframe
             src="https://www.googletagmanager.com/ns.html?id=GTM-W6QGPJHT"
             height={0}
             width={0}
             style={{ display: "none", visibility: "hidden" }}
           />
-        </noscript>
-        <noscript>
+        </noscript>}
+        {publicPage && <noscript>
           <div>
             <img
               src="https://mc.yandex.ru/watch/111710140"
@@ -137,7 +143,7 @@ export default function RootLayout({
               alt=""
             />
           </div>
-        </noscript>
+        </noscript>}
         <AuthProvider>
           <ToastProvider>
             <PWAProvider />

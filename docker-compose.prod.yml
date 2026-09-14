@@ -8,6 +8,10 @@
 
 services:
   mail-relay:
+    networks: [mail-delivery, mail-egress]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
     build:
       context: ./services/smtp-relay
     restart: unless-stopped
@@ -17,6 +21,7 @@ services:
       RELAY_SMTP_TLS_MODE: ${SMTP2GO_SMTP_TLS_MODE:-starttls}
       RELAY_SMTP_USERNAME: ${SMTP2GO_SMTP_USERNAME:?SMTP2GO_SMTP_USERNAME must be set}
       RELAY_SMTP_PASSWORD: ${SMTP2GO_SMTP_PASSWORD:?SMTP2GO_SMTP_PASSWORD must be set}
+      RELAY_CLIENT_HOST: vpngw
       SENDER_ADDRESS: noreply@realgo.dev
       SMTP_LISTEN_HOST: 0.0.0.0
       SMTP_LISTEN_PORT: "2526"
@@ -79,12 +84,18 @@ services:
       - "8080"
     networks:
       default:
-      realgo-mail:
+      mail-delivery:
 
   api:
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
     network_mode: "service:vpngw"
     environment:
       APP_ENV: production
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      MAIL_BASE_URL: ${MAIL_BASE_URL:-https://realgo.dev}
+      MAIL_SMTP_TIMEOUT: ${MAIL_SMTP_TIMEOUT:-10s}
       MAIL_SMTP_HOST: mail-relay
       MAIL_SMTP_PORT: "2526"
       MAIL_SMTP_USERNAME: ""
@@ -151,6 +162,6 @@ services:
       - ./Caddyfile.internal.prod:/etc/caddy/Caddyfile:ro
 
 networks:
-  realgo-mail:
-    name: realgo-mail-internal
-    external: true
+  mail-delivery:
+    internal: true
+  mail-egress: {}

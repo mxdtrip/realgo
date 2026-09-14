@@ -4,10 +4,10 @@
 // mount, exposes login/register/logout, and re-syncs when the token store
 // changes (including from another tab).
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import * as authApi from "./auth";
-import { authChangedEvent, hasSession } from "./tokens";
+import { authChangedEvent, hasSession, refreshTokenStorageKey } from "./tokens";
 import { ApiError } from "./types";
 import type { AuthUser } from "./types";
 
@@ -21,7 +21,10 @@ type AuthContextValue = {
   user: AuthUser | null;
   status: AuthStatus;
   login: (email: string, password: string) => Promise<AuthUser>;
-  register: (email: string, password: string) => Promise<AuthUser>;
+	register: (email: string, password: string, nickname?: string) => Promise<void>;
+	completeEmailVerification: (email: string, code: string) => Promise<AuthUser>;
+  loginWithYandex: (code: string, redirectUri: string) => Promise<AuthUser>;
+  loginWithGithub: (code: string, redirectUri: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   /** Re-runs the session check — CabinetGuard's retry action on `status === "error"`. */
   retry: () => void;
@@ -33,8 +36,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
 
+  const syncGeneration = useRef(0);
+
   // Load (or clear) the session-backed user. Runs on mount and on auth changes.
   const sync = useCallback(async () => {
+    const generation = ++syncGeneration.current;
     if (!hasSession()) {
       setUser(null);
       setStatus("anonymous");
@@ -42,9 +48,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       const me = await authApi.getMe();
+      if (generation !== syncGeneration.current) return;
       setUser(me);
       setStatus("authenticated");
     } catch (e) {
+      if (generation !== syncGeneration.current) return;
       if (e instanceof ApiError && e.status === 401) {
         setUser(null);
         setStatus("anonymous");
@@ -67,10 +75,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void sync();
     const onChange = () => void sync();
     window.addEventListener(authChangedEvent, onChange);
-    window.addEventListener("storage", onChange);
+    const onStorage = (event: StorageEvent) => { if (event.key === refreshTokenStorageKey || event.key === null) void sync(); };
+    window.addEventListener("storage", onStorage);
     return () => {
       window.removeEventListener(authChangedEvent, onChange);
-      window.removeEventListener("storage", onChange);
+      window.removeEventListener("storage", onStorage);
     };
   }, [sync]);
 
@@ -81,8 +90,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return u;
   }, []);
 
-  const register = useCallback(async (email: string, password: string) => {
-    const u = await authApi.register(email, password);
+	const register = useCallback(async (email: string, password: string, nickname?: string) => {
+		await authApi.register(email, password, nickname ?? "");
+	}, []);
+
+	const completeEmailVerification = useCallback(async (email: string, code: string) => {
+		const u = await authApi.confirmEmailVerification(email, code);
+		setUser(u);
+		setStatus("authenticated");
+		return u;
+	}, []);
+
+  const loginWithYandex = useCallback(async (code: string, redirectUri: string) => {
+    const u = await authApi.loginWithYandex(code, redirectUri);
+    setUser(u);
+    setStatus("authenticated");
+    return u;
+  }, []);
+
+  const loginWithGithub = useCallback(async (code: string, redirectUri: string) => {
+    const u = await authApi.loginWithGithub(code, redirectUri);
     setUser(u);
     setStatus("authenticated");
     return u;
@@ -103,8 +130,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [sync]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, register, logout, retry }),
-    [user, status, login, register, logout, retry],
+		() => ({ user, status, login, register, completeEmailVerification, loginWithYandex, loginWithGithub, logout, retry }),
+		[user, status, login, register, completeEmailVerification, loginWithYandex, loginWithGithub, logout, retry],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

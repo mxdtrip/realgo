@@ -30,13 +30,13 @@ import (
 func TestExtensionEventIdempotencyUnderConcurrentPosts(t *testing.T) {
 	ctx := context.Background()
 	pg, err := postgres.New(ctx, &config.Database{
-		Host: "localhost", Port: 5432, User: "postgres", Password: "postgres",
-		DBName: "freeburger", SSLMode: "disable", MaxConns: 16,
+		Host: "localhost", Port: integrationDBPort(), User: "postgres", Password: "postgres",
+		DBName: integrationDBName(), SSLMode: "disable", MaxConns: 16,
 		MaxConnLifetime: time.Hour, MaxConnIdleTime: time.Minute,
 	})
 	require.NoError(t, err)
 
-	rdb, err := redis.New(ctx, &config.Redis{Host: "localhost", Port: "6379"})
+	rdb, err := redis.New(ctx, &config.Redis{Host: "localhost", Port: integrationRedisPort()})
 	require.NoError(t, err)
 
 	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, auth.Config{
@@ -183,10 +183,10 @@ func TestExtensionSolvedCreatesSchedule(t *testing.T) {
 
 	pg, err := postgres.New(ctx, &config.Database{
 		Host:            "localhost",
-		Port:            5432,
+		Port:            integrationDBPort(),
 		User:            "postgres",
 		Password:        "postgres",
-		DBName:          "freeburger",
+		DBName:          integrationDBName(),
 		SSLMode:         "disable",
 		MaxConns:        16,
 		MaxConnLifetime: time.Hour,
@@ -196,7 +196,7 @@ func TestExtensionSolvedCreatesSchedule(t *testing.T) {
 
 	rdb, err := redis.New(ctx, &config.Redis{
 		Host: "localhost",
-		Port: "6379",
+		Port: integrationRedisPort(),
 	})
 	require.NoError(t, err)
 
@@ -341,10 +341,10 @@ func TestExtensionDuplicateSelfHealsMissingSchedule(t *testing.T) {
 
 	pg, err := postgres.New(ctx, &config.Database{
 		Host:            "localhost",
-		Port:            5432,
+		Port:            integrationDBPort(),
 		User:            "postgres",
 		Password:        "postgres",
-		DBName:          "freeburger",
+		DBName:          integrationDBName(),
 		SSLMode:         "disable",
 		MaxConns:        16,
 		MaxConnLifetime: time.Hour,
@@ -352,7 +352,7 @@ func TestExtensionDuplicateSelfHealsMissingSchedule(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	rdb, err := redis.New(ctx, &config.Redis{Host: "localhost", Port: "6379"})
+	rdb, err := redis.New(ctx, &config.Redis{Host: "localhost", Port: integrationRedisPort()})
 	require.NoError(t, err)
 
 	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, auth.Config{

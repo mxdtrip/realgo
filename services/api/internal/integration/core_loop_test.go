@@ -27,13 +27,13 @@ import (
 func TestCoreLoopAuthEventsQueueRate(t *testing.T) {
 	ctx := context.Background()
 	pg, err := postgres.New(ctx, &config.Database{
-		Host: "localhost", Port: 5432, User: "postgres", Password: "postgres",
-		DBName: "freeburger", SSLMode: "disable", MaxConns: 2,
+		Host: "localhost", Port: integrationDBPort(), User: "postgres", Password: "postgres",
+		DBName: integrationDBName(), SSLMode: "disable", MaxConns: 2,
 		MaxConnLifetime: time.Hour, MaxConnIdleTime: time.Minute,
 	})
 	require.NoError(t, err)
 
-	rdb, err := redis.New(ctx, &config.Redis{Host: "localhost", Port: "6379"})
+	rdb, err := redis.New(ctx, &config.Redis{Host: "localhost", Port: integrationRedisPort()})
 	require.NoError(t, err)
 
 	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, auth.Config{
@@ -42,7 +42,9 @@ func TestCoreLoopAuthEventsQueueRate(t *testing.T) {
 		RefreshTTL: time.Hour,
 		Issuer:     "freeburger",
 	})
+	mailer := &captureMailer{}
 	h := server.New(server.Deps{
+		Mailer:   mailer,
 		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Postgres: pg,
 		Redis:    rdb,
@@ -61,7 +63,8 @@ func TestCoreLoopAuthEventsQueueRate(t *testing.T) {
 		pg.Close()
 	}()
 
-	token := register(t, h, email)
+	testHarness := &contractHarness{ctx: ctx, handler: h, pg: pg, rdb: rdb, remote: nextRemoteAddr(), auth: authSvc, mailer: mailer}
+	token := testHarness.register(t, email, "Password123!").access
 	postJSON(t, h, "/api/v1/extension/events", token, map[string]any{
 		"eventId": eventID, "source": "leetcode", "event": "problem_solved",
 		"occurredAt": time.Now().Add(-48 * time.Hour).UTC().Format(time.RFC3339),
@@ -84,11 +87,6 @@ func TestCoreLoopAuthEventsQueueRate(t *testing.T) {
 		"rating": "normal", "reviewedAt": time.Now().UTC().Format(time.RFC3339),
 	})
 	require.Equal(t, "completed", rated["data"].(map[string]any)["status"])
-}
-
-func register(t *testing.T, h http.Handler, email string) string {
-	body := postJSON(t, h, "/api/v1/auth/register", "", map[string]any{"email": email, "password": "Password123!"})
-	return body["data"].(map[string]any)["tokens"].(map[string]any)["access_token"].(string)
 }
 
 func postJSON(t *testing.T, h http.Handler, path, token string, payload map[string]any) map[string]any {
@@ -115,4 +113,9 @@ func do(t *testing.T, h http.Handler, req *http.Request) map[string]any {
 	var out map[string]any
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out))
 	return out
+}
+
+// Shared domain fixtures use the real pending -> email -> confirmation flow.
+func register(t *testing.T, _ http.Handler, email string) string {
+	return newContractHarness(t).register(t, email, "Password123!").access
 }
