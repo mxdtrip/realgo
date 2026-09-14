@@ -1,8 +1,8 @@
 package server
 
 import (
+	"errors"
 	"log/slog"
- "errors"
 	"net/http"
 	"strings"
 
@@ -28,8 +28,11 @@ func requireAuth(svc *auth.Service) func(http.Handler) http.Handler {
 			}
 			userID, err := svc.ValidateAccessToken(r.Context(), token)
 			if err != nil {
-				if !errors.Is(err,auth.ErrInvalidToken) { response.Fail(w,http.StatusServiceUnavailable,"auth_unavailable","authentication service temporarily unavailable"); return }
- slog.Warn("server: requireAuth failed", slog.String("reason","invalid_token"))
+				if !errors.Is(err, auth.ErrInvalidToken) {
+					response.Fail(w, http.StatusServiceUnavailable, "auth_unavailable", "authentication service temporarily unavailable")
+					return
+				}
+				slog.Warn("server: requireAuth failed", slog.String("reason", "invalid_token"))
 				response.Fail(w, http.StatusUnauthorized, "INVALID_TOKEN", "invalid or expired token")
 				return
 			}
