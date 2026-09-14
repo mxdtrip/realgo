@@ -173,5 +173,6 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
+      - run: npm audit --omit=dev --audit-level=moderate
       - run: node --check server.mjs
       - run: node --test
