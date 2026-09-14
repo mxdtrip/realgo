@@ -135,6 +135,7 @@ func New(deps Deps) *chi.Mux {
 		ah := &authHandler{svc: deps.Auth, mailer: deps.Mailer, mailBaseURL: deps.MailBaseURL}
 		authRateLimit := rateLimit(deps.Redis, "auth", 20, time.Minute)
 		r.Route("/auth", func(r chi.Router) {
+			r.Use(ah.browserSessionGuard)
 			r.With(rateLimit(deps.Redis, "registration", 5, time.Hour)).Post("/register", ah.register)
 			r.With(authRateLimit).Post("/login", ah.login)
 			r.With(rateLimit(deps.Redis, "password-reset-request", 5, time.Hour)).Post("/password-reset/request", ah.requestPasswordReset)

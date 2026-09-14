@@ -28,8 +28,17 @@ services:
       RELAY_SMTP_USERNAME: ${SMTP2GO_SMTP_USERNAME:?SMTP2GO_SMTP_USERNAME must be set}
       RELAY_SMTP_PASSWORD: ${SMTP2GO_SMTP_PASSWORD:?SMTP2GO_SMTP_PASSWORD must be set}
       SENDER_ADDRESS: noreply@realgo.dev
+      RELAY_CLIENT_HOST: api
+    networks: [mail-delivery, mail-egress]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
 
   api:
+    networks: [default, mail-delivery]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
     depends_on:
       mail-relay:
         condition: service_started
@@ -115,3 +124,8 @@ services:
   frpc:
     volumes: !override
       - ./frpc.staging.toml:/etc/frp/frpc.toml:ro
+
+networks:
+  mail-delivery:
+    internal: true
+  mail-egress: {}

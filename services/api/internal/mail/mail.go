@@ -90,7 +90,7 @@ func (s *SMTP) Send(ctx context.Context, msg Message) error {
 	if err != nil {
 		return fmt.Errorf("smtp dial: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(s.cfg.Timeout))
 	if mode == "implicit" {
 		secure := tls.Client(conn, &tls.Config{ServerName: s.cfg.Host, MinVersion: tls.VersionTLS12})
@@ -103,7 +103,7 @@ func (s *SMTP) Send(ctx context.Context, msg Message) error {
 	if err != nil {
 		return fmt.Errorf("smtp client: %w", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	if mode == "starttls" {
 		if err := client.StartTLS(&tls.Config{ServerName: s.cfg.Host, MinVersion: tls.VersionTLS12}); err != nil {
 			return fmt.Errorf("smtp starttls: %w", err)
@@ -131,7 +131,8 @@ func (s *SMTP) Send(ctx context.Context, msg Message) error {
 	if err = w.Close(); err != nil {
 		return fmt.Errorf("smtp complete: %w", err)
 	}
-	return client.Quit()
+	_ = client.Quit()
+	return nil
 }
 
 func format(to *stdmail.Address, msg Message) string {
