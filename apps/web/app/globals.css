@@ -7492,7 +7492,7 @@ a.roadmap-step__practice-card:hover {
   width: 17px;
   height: 17px;
   margin-left: 13px;
-  stroke: #7d8590;
+  stroke: #9aa4b2;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.5;
@@ -7512,6 +7512,11 @@ a.roadmap-step__practice-card:hover {
 .auth-layer--page .auth-form .auth-input input:focus {
   background: transparent;
   box-shadow: none;
+}
+
+.auth-layer--page .auth-form .auth-input input::placeholder {
+  color: #9aa4b2;
+  opacity: 1;
 }
 
 /* Chrome's default autofill paint otherwise covers only the text portion of
@@ -7536,7 +7541,7 @@ a.roadmap-step__practice-card:hover {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: var(--text-faint);
+  color: #9aa4b2;
 }
 
 .auth-password-toggle:hover:not(:disabled) {
@@ -7591,6 +7596,7 @@ a.roadmap-step__practice-card:hover {
 
 .auth-panel__switch {
   margin: 23px 0 0;
+  color: #9aa4b2;
   font-size: 14px;
   text-align: center;
 }
@@ -7604,6 +7610,7 @@ a.roadmap-step__practice-card:hover {
 }
 
 .auth-layer--page .auth-divider {
+  color: #9aa4b2;
   font-size: 12px;
   letter-spacing: 0;
 }
@@ -7632,7 +7639,7 @@ a.roadmap-step__practice-card:hover {
 }
 
 .auth-layer--page .auth-consent span {
-  color: var(--text-dim);
+  color: #a8b1bd;
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 0;
@@ -7704,8 +7711,8 @@ a.roadmap-step__practice-card:hover {
 }
 
 @media (min-width: 921px) and (max-height: 880px) {
-  .auth-layer--page {
-    align-items: start;
+  .auth-sorting-word {
+    transform: translateY(-20px);
   }
 }
 
@@ -7726,6 +7733,12 @@ a.roadmap-step__practice-card:hover {
   .auth-layer--page .auth-panel {
     zoom: 0.94;
     transform: translateY(24px);
+  }
+
+  /* Keep the word visually connected to the form on a stacked layout. The
+     desktop lift is intentionally reduced here instead of moving the form. */
+  .auth-sorting-word {
+    transform: translateY(-32px);
   }
 }
 
