@@ -7,14 +7,15 @@ import { expect, test } from "@playwright/test";
 // fixtures in auth-stub.mjs.
 
 const AKEY = "realgo:auth:access:v1";
-const RKEY = "realgo:auth:refresh:v1";
+const RKEY = "realgo:auth:session:v2";
 
 async function openAuthed(page, path) {
   await page.goto("/dashboard");
   await page.evaluate(
     ([a, r]) => {
-      localStorage.setItem(a, "LIVE.access");
-      localStorage.setItem(r, "LIVE.refresh");
+      localStorage.removeItem(a);
+      localStorage.setItem(r, String("LIVE.refresh").split(".")[0]+".session");
+      document.cookie = "realgo-refresh-"+String("LIVE.refresh").split(".")[0]+".session="+String("LIVE.refresh").split(".")[0]+".refresh; Path=/; SameSite=Strict";
       localStorage.setItem("realgo.cabinet.tour", "done");
     },
     [AKEY, RKEY],

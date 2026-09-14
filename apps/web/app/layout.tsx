@@ -7,6 +7,8 @@ import { PWAProvider } from "./_pwa/PWAProvider";
 import { ToastProvider } from "./_toast";
 import "./globals.css";
 
+export const dynamic = "force-dynamic";
+
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
   variable: "--font-sans",

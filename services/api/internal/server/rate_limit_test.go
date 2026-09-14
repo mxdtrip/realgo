@@ -47,7 +47,7 @@ func TestClientIPIgnoresForwardedHeadersFromPrivateUntrustedRemote(t *testing.T)
 	}
 }
 
-func TestClientIPUsesForwardedHeaderFromTrustedProxy(t *testing.T) {
+func TestClientIPIgnoresForwardedHeaderEvenFromTrustedProxy(t *testing.T) {
 	req := &http.Request{
 		RemoteAddr: "127.0.0.1:12345",
 		Header: http.Header{
@@ -55,8 +55,8 @@ func TestClientIPUsesForwardedHeaderFromTrustedProxy(t *testing.T) {
 		},
 	}
 
-	if got := clientIP(req); got != "198.51.100.88" {
-		t.Fatalf("clientIP = %q, want Forwarded header client IP", got)
+	if got := clientIP(req); got != "127.0.0.1" {
+		t.Fatalf("clientIP = %q, must ignore untrusted Forwarded header", got)
 	}
 }
 

@@ -18,10 +18,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mxdtrip/realgo/services/api/internal/mail"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 
@@ -56,6 +58,8 @@ type Driver struct {
 	srv    *httptest.Server
 	client *http.Client
 	pg     *postgres.Storage
+	auth   *auth.Service
+	mailer *mailbox
 }
 
 // Option configures the driver's server.Deps beyond the test harness defaults.
@@ -110,7 +114,9 @@ func New(t *testing.T, h *testutil.Harness, opts ...Option) *Driver {
 		Issuer:     "freeburger",
 	})
 
+	mailer := &mailbox{}
 	deps := server.Deps{
+		Mailer:   mailer,
 		Logger:   slog.Default(),
 		Postgres: pg,
 		Redis:    rd,
@@ -125,7 +131,7 @@ func New(t *testing.T, h *testutil.Harness, opts ...Option) *Driver {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	return &Driver{t: t, srv: srv, client: srv.Client(), pg: pg}
+	return &Driver{t: t, srv: srv, client: srv.Client(), pg: pg, auth: authSvc, mailer: mailer}
 }
 
 func (d *Driver) Close() { d.srv.Close() }
@@ -549,7 +555,26 @@ func (d *Driver) Register(t *testing.T, email, password string) specifications.A
 	t.Helper()
 	resp := d.do(t, http.MethodPost, "/api/v1/auth/register",
 		map[string]string{"email": email, "password": password}, "")
-
+	var pending struct {
+		Data struct {
+			Challenge string `json:"challenge"`
+		} `json:"data"`
+	}
+	d.decode(t, resp, &pending)
+	if pending.Data.Challenge == "" {
+		t.Fatal("registration did not return a challenge")
+	}
+	for range 100 {
+		worked, err := d.auth.ProcessNextMail(context.Background(), d.mailer, "https://realgo.test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !worked {
+			break
+		}
+	}
+	code := regexp.MustCompile(`код: (\d{6})`).FindStringSubmatch(d.mailer.messages[len(d.mailer.messages)-1].Text)[1]
+	resp = d.do(t, http.MethodPost, "/api/v1/auth/email-verification/confirm", map[string]string{"email": email, "code": code, "challenge": pending.Data.Challenge}, "")
 	var out struct {
 		Data struct {
 			Tokens struct {
@@ -913,4 +938,11 @@ ORDER BY ra.id ASC
 		t.Fatalf("driver: iterate problem review attempts (slug=%q): %v", slug, err)
 	}
 	return attempts
+}
+
+type mailbox struct{ messages []mail.Message }
+
+func (m *mailbox) Send(_ context.Context, message mail.Message) error {
+	m.messages = append(m.messages, message)
+	return nil
 }

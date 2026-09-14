@@ -1,0 +1,10 @@
+BEGIN;
+DROP TRIGGER users_revoke_password_credentials ON users;
+DROP FUNCTION revoke_password_credentials();
+DROP TABLE auth_mail_jobs;
+DELETE FROM pending_registrations;
+ALTER TABLE pending_registrations DROP CONSTRAINT pending_registrations_challenge_key;
+ALTER TABLE pending_registrations DROP COLUMN challenge_hash;
+ALTER TABLE pending_registrations ADD CONSTRAINT pending_registrations_email_key UNIQUE(email);
+DROP TABLE auth_sessions;
+COMMIT;

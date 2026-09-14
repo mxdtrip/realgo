@@ -2,5 +2,8 @@
   "name": "realgo-smtp2go-relay",
   "private": true,
   "type": "module",
-  "dependencies": { "smtp-server": "3.19.3" }
+  "dependencies": {
+    "nodemailer": "10.0.9",
+    "smtp-server": "3.19.3"
+  }
 }

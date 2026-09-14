@@ -55,7 +55,7 @@ async function postJson(url: string, body: unknown): Promise<any> {
   return data?.data ?? null;
 }
 
-async function postAuthorizedJson(url: string, accessToken: string): Promise<any> {
+async function postAuthorizedJson(url: string, accessToken: string, body: unknown = {}): Promise<any> {
   let res: Response;
   try {
     res = await fetch(url, {
@@ -64,7 +64,7 @@ async function postAuthorizedJson(url: string, accessToken: string): Promise<any
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-      body: "{}",
+      body: JSON.stringify(body),
     });
   } catch {
     throw new AuthError("Не удалось связаться с realgo. Бэкенд запущен?", 0, "network");
@@ -245,7 +245,7 @@ async function syncWebSessionOnce(
   const baseUrl = await getApiBaseUrl();
   let data: any;
   try {
-    data = await postAuthorizedJson(`${baseUrl}${AUTH_BASE}/device-session`, accessToken!);
+    data = await postAuthorizedJson(`${baseUrl}${AUTH_BASE}/device-session`, accessToken!, { refresh_token: refreshToken });
   } catch (e) {
     // Compatibility with an older backend during a rolling/local upgrade. The
     // fallback preserves the previous behaviour; once the additive endpoint is

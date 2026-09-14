@@ -24,7 +24,8 @@ export class ApiError extends Error {
 /** Token pair issued by the auth endpoints (wire format = snake_case). */
 export type AuthTokens = {
   access_token: string;
-  refresh_token: string;
+  session_id: string;
+  refresh_token?: string;
   token_type: string;
   expires_in: number;
 };

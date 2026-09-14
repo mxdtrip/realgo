@@ -26,13 +26,16 @@ concurrency:
   group: deploy-prod
   cancel-in-progress: false
 jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
   deploy:
+    needs: verify
     runs-on: [self-hosted, linux, appbox]
     permissions:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build & start
         if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl')
         env:
@@ -47,6 +50,17 @@ jobs:
           # Gemini key for AI card generation. Optional: when unset the api
           # boots normally with generation disabled.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # The API remains in vpngw for AI egress. It submits only to the
+          # private relay; the relay lives on the normal Docker network and
+          # forwards transactional mail to SMTP2GO over STARTTLS.
+          MAIL_ENABLED: ${{ secrets.SMTP2GO_SMTP_USERNAME != '' && secrets.SMTP2GO_SMTP_PASSWORD != '' }}
+          SMTP2GO_SMTP_HOST: mail.smtp2go.com
+          SMTP2GO_SMTP_PORT: "2525"
+          SMTP2GO_SMTP_TLS_MODE: starttls
+          SMTP2GO_SMTP_USERNAME: ${{ secrets.SMTP2GO_SMTP_USERNAME }}
+          SMTP2GO_SMTP_PASSWORD: ${{ secrets.SMTP2GO_SMTP_PASSWORD }}
+          MAIL_BASE_URL: https://realgo.dev
+          MAIL_SMTP_TIMEOUT: 10s
           # VLESS subscription for the vpngw gateway (api shares its netns so
           # Groq calls ride this tunnel instead of the ISP's flagged egress).
           VPN_SUB_URL: ${{ secrets.VPN_SUB_URL }}

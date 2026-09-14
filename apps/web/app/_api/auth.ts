@@ -11,11 +11,12 @@ type AuthResponse = { user: AuthUser; tokens: AuthTokens };
 
 /** POST /auth/register → starts a pending email verification, without a session. */
 export async function register(email: string, password: string, nickname: string): Promise<void> {
-	await apiFetch<{ status: string }>("/auth/register", {
+	const data = await apiFetch<{ status: string; challenge: string }>("/auth/register", {
 		method: "POST",
 		auth: false,
 		body: { email, password, nickname },
 	});
+  window.sessionStorage.setItem("realgo:registration-challenge", data.challenge);
 }
 
 /** POST /auth/login → authenticates and starts a session. */
@@ -38,11 +39,11 @@ export async function confirmPasswordReset(token: string, newPassword: string): 
 }
 
 export async function requestEmailVerification(email: string): Promise<void> {
-	await apiFetch<{ status: string }>("/auth/email-verification/request", { method: "POST", auth: false, body: { email } });
+	await apiFetch<{ status: string }>("/auth/email-verification/request", { method: "POST", auth: false, body: { email, challenge: window.sessionStorage.getItem("realgo:registration-challenge") ?? "" } });
 }
 
 export async function confirmEmailVerification(email: string, code: string): Promise<AuthUser> {
-	const data = await apiFetch<AuthResponse>("/auth/email-verification/confirm", { method: "POST", auth: false, body: { email, code } });
+	const data = await apiFetch<AuthResponse>("/auth/email-verification/confirm", { method: "POST", auth: false, body: { email, code, challenge: window.sessionStorage.getItem("realgo:registration-challenge") ?? "" } });
 	setTokens(data.tokens);
 	return data.user;
 }
@@ -83,7 +84,7 @@ export async function logout(): Promise<void> {
       await apiFetch<{ status: string }>("/auth/logout", {
         method: "POST",
         auth: false,
-        body: { refresh_token: refresh },
+        body: {},
       });
     } catch {
       // A failed revocation must not block local logout.

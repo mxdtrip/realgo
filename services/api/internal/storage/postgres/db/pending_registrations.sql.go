@@ -14,14 +14,16 @@ import (
 const consumePendingRegistration = `-- name: ConsumePendingRegistration :one
 DELETE FROM pending_registrations
 WHERE email = $1::text
-  AND code_hash = $2::char(64)
+  AND challenge_hash = $2::text
+  AND code_hash = $3::char(64)
   AND expires_at > NOW()
 RETURNING email, password_hash, nickname
 `
 
 type ConsumePendingRegistrationParams struct {
-	Email    string
-	CodeHash string
+	Email         string
+	ChallengeHash string
+	CodeHash      string
 }
 
 type ConsumePendingRegistrationRow struct {
@@ -31,35 +33,32 @@ type ConsumePendingRegistrationRow struct {
 }
 
 func (q *Queries) ConsumePendingRegistration(ctx context.Context, arg ConsumePendingRegistrationParams) (ConsumePendingRegistrationRow, error) {
-	row := q.db.QueryRow(ctx, consumePendingRegistration, arg.Email, arg.CodeHash)
+	row := q.db.QueryRow(ctx, consumePendingRegistration, arg.Email, arg.ChallengeHash, arg.CodeHash)
 	var i ConsumePendingRegistrationRow
 	err := row.Scan(&i.Email, &i.PasswordHash, &i.Nickname)
 	return i, err
 }
 
 const createPendingRegistration = `-- name: CreatePendingRegistration :exec
-INSERT INTO pending_registrations (email, password_hash, nickname, code_hash, expires_at)
+INSERT INTO pending_registrations (email, password_hash, nickname, code_hash, expires_at, challenge_hash)
 VALUES (
   $1::text,
   $2::text,
   $3::text,
   $4::char(64),
-  $5::timestamptz
+  $5::timestamptz,
+  $6::text
 )
-ON CONFLICT (email) DO UPDATE SET
-  password_hash = EXCLUDED.password_hash,
-  nickname = EXCLUDED.nickname,
-  code_hash = EXCLUDED.code_hash,
-  expires_at = EXCLUDED.expires_at,
-  updated_at = NOW()
+ON CONFLICT (challenge_hash) DO NOTHING
 `
 
 type CreatePendingRegistrationParams struct {
-	Email        string
-	PasswordHash string
-	Nickname     pgtype.Text
-	CodeHash     string
-	ExpiresAt    pgtype.Timestamptz
+	Email         string
+	PasswordHash  string
+	Nickname      pgtype.Text
+	CodeHash      string
+	ExpiresAt     pgtype.Timestamptz
+	ChallengeHash string
 }
 
 func (q *Queries) CreatePendingRegistration(ctx context.Context, arg CreatePendingRegistrationParams) error {
@@ -69,6 +68,7 @@ func (q *Queries) CreatePendingRegistration(ctx context.Context, arg CreatePendi
 		arg.Nickname,
 		arg.CodeHash,
 		arg.ExpiresAt,
+		arg.ChallengeHash,
 	)
 	return err
 }
@@ -79,17 +79,25 @@ SET code_hash = $1::char(64),
     expires_at = $2::timestamptz,
     updated_at = NOW()
 WHERE email = $3::text
+  AND challenge_hash = $4::text
+  AND expires_at > NOW()
 RETURNING email
 `
 
 type RefreshPendingRegistrationCodeParams struct {
-	CodeHash  string
-	ExpiresAt pgtype.Timestamptz
-	Email     string
+	CodeHash      string
+	ExpiresAt     pgtype.Timestamptz
+	Email         string
+	ChallengeHash string
 }
 
 func (q *Queries) RefreshPendingRegistrationCode(ctx context.Context, arg RefreshPendingRegistrationCodeParams) (string, error) {
-	row := q.db.QueryRow(ctx, refreshPendingRegistrationCode, arg.CodeHash, arg.ExpiresAt, arg.Email)
+	row := q.db.QueryRow(ctx, refreshPendingRegistrationCode,
+		arg.CodeHash,
+		arg.ExpiresAt,
+		arg.Email,
+		arg.ChallengeHash,
+	)
 	var email string
 	err := row.Scan(&email)
 	return email, err
