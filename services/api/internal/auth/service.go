@@ -165,9 +165,8 @@ func (s *Service) Login(ctx context.Context, email, password string) (db.User, T
 	return user, tokens, nil
 }
 
-// ChangePassword verifies the current password and stores a freshly hashed new
-// password. Revoking sessions remains a separate explicit operation so adding
-// this endpoint does not unexpectedly sign other clients out.
+// ChangePassword verifies the current password and atomically replaces its hash.
+// The database trigger invalidates all sessions and unused reset credentials.
 func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassword, newPassword string) error {
 	user, err := s.queries.GetUserByID(ctx, userID)
 	if err != nil {
@@ -320,7 +319,7 @@ func (s *Service) VerifyEmailCode(ctx context.Context, userID int64, code string
 	return err
 }
 
-// RevokeAllSessions invalidates all refresh sessions for userID, including
+// RevokeAllSessions invalidates all access and refresh sessions for userID, including
 // legacy sessions created before the per-user Redis index existed.
 func (s *Service) RevokeAllSessions(ctx context.Context, userID int64) error {
 	return s.revokeAllRefreshTokens(ctx, userID)
