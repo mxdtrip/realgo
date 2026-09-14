@@ -13,6 +13,11 @@ const SLIDES = [
     image: "/auth-boat-laptop.png",
     quote: <>Сделайте систему настолько простой,<br />чтобы в ней очевидно не было недостатков.</>,
   },
+  {
+    author: "Миша P1xart",
+    image: "/auth-campfire-commit.png",
+    quote: <>Пацаны, к понедельнику коммит будет,<br />готовьтесь.</>,
+  },
 ] as const;
 
 export function AuthStorySlideshow() {
