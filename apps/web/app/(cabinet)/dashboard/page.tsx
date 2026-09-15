@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getDictionary } from "../../_content/i18n";
 import { DashboardClient } from "./_components/DashboardClient";
 
-export const metadata: Metadata = { title: "Дашборд" };
+export const metadata: Metadata = { title: "Сегодня" };
 
 export default function DashboardPage() {
   const copy = getDictionary().cabinet;
@@ -35,6 +35,7 @@ export default function DashboardPage() {
         difficultyLabels: page.difficultyLabels,
         statLabels: page.statLabels,
         statTooltips: page.statTooltips,
+        statActions: page.statActions,
         launcher: page.launcher,
         heatmap: page.heatmap,
         reviewTypes: copy.pages.reviews.types,

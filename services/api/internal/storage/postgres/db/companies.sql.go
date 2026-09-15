@@ -9,6 +9,37 @@ import (
 	"context"
 )
 
+const listCompanies = `-- name: ListCompanies :many
+SELECT code, name
+FROM companies
+ORDER BY name
+`
+
+type ListCompaniesRow struct {
+	Code string
+	Name string
+}
+
+func (q *Queries) ListCompanies(ctx context.Context) ([]ListCompaniesRow, error) {
+	rows, err := q.db.Query(ctx, listCompanies)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCompaniesRow
+	for rows.Next() {
+		var i ListCompaniesRow
+		if err := rows.Scan(&i.Code, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const searchCompanies = `-- name: SearchCompanies :many
 SELECT code, name
 FROM companies

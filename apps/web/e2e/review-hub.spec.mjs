@@ -72,7 +72,9 @@ test.describe("/queue — очередь повторений", () => {
 
     await expect(page.getByRole("heading", { name: "Повторения на сегодня" })).toBeVisible();
     await expect(page.locator(".review-queue-card")).toHaveCount(3);
-    await expect(page.getByRole("link", { name: /Открыть задачу/ })).toHaveAttribute(
+    const problem = page.locator(".review-queue-card", { hasText: "Koko Eating Bananas" });
+    const openProblem = problem.getByRole("link", { name: /Открыть задачу/ });
+    await expect(openProblem).toHaveAttribute(
       "href",
       "https://example.test/koko",
     );
@@ -81,12 +83,19 @@ test.describe("/queue — очередь повторений", () => {
       "/cards/session",
     );
 
-    const problem = page.locator(".review-queue-card", { hasText: "Koko Eating Bananas" });
+    await openProblem.evaluate((element) => {
+      element.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    });
+    await openProblem.click();
+    const dialog = page.getByRole("dialog", { name: "Koko Eating Bananas" });
+    await expect(dialog.getByRole("heading", { name: "Как вспомнилась задача?" })).toBeVisible();
+
     const rate = page.waitForRequest(
       (request) => request.method() === "POST" && request.url().includes("/me/reviews/501/rate"),
     );
-    await problem.getByRole("button", { name: "Нормально" }).click();
+    await dialog.getByRole("button", { name: /Нормально/ }).click();
     await rate;
+    await expect(dialog.getByText("Повторение сохранено")).toBeVisible();
     await expect(problem).toHaveCount(0);
   });
 });
@@ -177,6 +186,10 @@ test.describe("/dashboard — лаунчер практики", () => {
       "href",
       "/queue",
     );
+    const roadmapProgress = page.getByRole("link", { name: /прогресс плана/i });
+    await expect(roadmapProgress).toContainText("67%");
+    await expect(roadmapProgress).toContainText("Открыть план");
+    await expect(roadmapProgress).toHaveAttribute("href", "/roadmap");
   });
 
   test("finished day never links the primary action to an empty due session", async ({ page }) => {

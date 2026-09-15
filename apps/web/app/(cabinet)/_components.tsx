@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { CabinetIcon } from "./_icons";
@@ -91,6 +92,8 @@ export function MetricCard({
   delta,
   deltaTone = "flat",
   series,
+  href,
+  actionLabel,
 }: Readonly<{
   label: string;
   value: string;
@@ -101,9 +104,11 @@ export function MetricCard({
   delta?: string;
   deltaTone?: MetricDeltaTone;
   series?: readonly number[];
+  href?: string;
+  actionLabel?: string;
 }>) {
-  return (
-    <article className={`metric-card metric-card--${tone}`} tabIndex={tooltip ? 0 : undefined}>
+  const content = (
+    <>
       <div className="metric-card__top">
         {icon ? <CabinetIcon name={icon} /> : null}
         <span>{label}</span>
@@ -115,12 +120,28 @@ export function MetricCard({
         ) : null}
       </div>
       <p>{hint}</p>
+      {actionLabel ? <span className="metric-card__action">{actionLabel}</span> : null}
       {series ? <Sparkline className="metric-card__spark" data={series} /> : null}
       {tooltip ? (
         <span className="metric-card__tip" role="tooltip">
           {tooltip}
         </span>
       ) : null}
+    </>
+  );
+
+  const className = `metric-card metric-card--${tone}`;
+  if (href) {
+    return (
+      <Link className={`${className} metric-card--link`} href={href}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <article className={className} tabIndex={tooltip ? 0 : undefined}>
+      {content}
     </article>
   );
 }

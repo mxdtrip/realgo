@@ -11,6 +11,7 @@ import {
 } from "../../../_api/reviews";
 import { ApiError } from "../../../_api/types";
 import { CabinetIcon } from "../../_icons";
+import { ReviewProblemRatingDialog, type ReviewProblemRatingDialogCopy } from "./ReviewProblemRatingDialog";
 
 type QueueCopy = Readonly<{
   eyebrow: string;
@@ -27,9 +28,7 @@ type QueueCopy = Readonly<{
   itemActions: Readonly<Record<"problem" | "card" | "pattern" | "fallback", string>>;
   itemTypes: Readonly<Record<"problem" | "card" | "pattern" | "fallback", string>>;
   difficultyLabels: Readonly<Record<string, string>>;
-  ratePrompt: string;
-  ratings: Readonly<Record<ReviewRating, string>>;
-  rateError: string;
+  taskDialog: ReviewProblemRatingDialogCopy;
   dueNow: string;
   attemptUnits: readonly [string, string, string];
 }>;
@@ -73,8 +72,8 @@ export function ReviewQueueClient({ copy }: Readonly<{ copy: QueueCopy }>) {
   const [items, setItems] = useState<ReviewQueueItem[]>([]);
   const [state, setState] = useState<"loading" | "loaded" | "error">("loading");
   const [error, setError] = useState("");
-  const [pendingId, setPendingId] = useState<string | null>(null);
   const [reloadVersion, setReloadVersion] = useState(0);
+  const [activeProblem, setActiveProblem] = useState<ReviewQueueItem | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -94,17 +93,8 @@ export function ReviewQueueClient({ copy }: Readonly<{ copy: QueueCopy }>) {
   }, [copy.errorTitle, reloadVersion]);
 
   async function handleRate(item: ReviewQueueItem, rating: ReviewRating) {
-    const key = String(item.id);
-    setPendingId(key);
-    setError("");
-    try {
-      await rateReview(item.id, rating);
-      setItems((current) => current.filter((entry) => String(entry.id) !== key));
-    } catch (reason) {
-      setError(reason instanceof ApiError ? reason.message : copy.rateError);
-    } finally {
-      setPendingId(null);
-    }
+    await rateReview(item.id, rating);
+    setItems((current) => current.filter((entry) => entry.id !== item.id));
   }
 
   return (
@@ -149,7 +139,6 @@ export function ReviewQueueClient({ copy }: Readonly<{ copy: QueueCopy }>) {
         <section className="review-queue-list" aria-label={copy.panelTitle}>
           {items.map((item, index) => {
             const action = actionFor(item, copy);
-            const pending = pendingId === String(item.id);
             return (
               <article className="review-queue-card" key={item.id}>
                 <div className="review-queue-card__number">{String(index + 1).padStart(2, "0")}</div>
@@ -169,35 +158,28 @@ export function ReviewQueueClient({ copy }: Readonly<{ copy: QueueCopy }>) {
                       href={action.href}
                       rel={action.external ? "noreferrer" : undefined}
                       target={action.external ? "_blank" : undefined}
+                      onClick={action.external ? () => setActiveProblem(item) : undefined}
                     >
                       {action.label}
                       <CabinetIcon name="arrow" />
                     </a>
                   </div>
                 </div>
-                {item.entityType === "problem" ? (
-                  <div className="review-queue-card__rating">
-                    <span>{copy.ratePrompt}</span>
-                    <div>
-                      {(["hard", "normal", "easy"] as const).map((rating) => (
-                        <button
-                          className={`review-queue-rate review-queue-rate--${rating}`}
-                          disabled={pending}
-                          key={rating}
-                          type="button"
-                          onClick={() => void handleRate(item, rating)}
-                        >
-                          {copy.ratings[rating]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
               </article>
             );
           })}
           {error ? <p className="review-queue-inline-error" role="alert">{error}</p> : null}
         </section>
+      ) : null}
+
+      {activeProblem ? (
+        <ReviewProblemRatingDialog
+          item={activeProblem}
+          meta={localizeMeta(activeProblem.meta, copy.difficultyLabels)}
+          copy={copy.taskDialog}
+          onClose={() => setActiveProblem(null)}
+          onRate={(rating) => handleRate(activeProblem, rating)}
+        />
       ) : null}
     </main>
   );

@@ -2,9 +2,12 @@ package roadmap
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -18,7 +21,13 @@ import (
 	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 )
 
-var ErrUserNotFound = errors.New("roadmap: user not found")
+var (
+	ErrUserNotFound        = errors.New("roadmap: user not found")
+	ErrSubpatternNotFound  = errors.New("roadmap: subpattern not found")
+	ErrRoadmapNotFound     = errors.New("roadmap: plan not found")
+	ErrRoadmapTaskNotFound = errors.New("roadmap: task not found in active plan")
+	ErrNoTaskReplacement   = errors.New("roadmap: no comparable replacement available")
+)
 
 type atlasSource interface {
 	GetAtlas(ctx context.Context, userID int64, companyCode string) (patterns.AtlasResponse, error)
@@ -68,15 +77,23 @@ func (r *pgRepository) Get(ctx context.Context, userID int64) (Response, error) 
 	}
 
 	companyCode := textValue(config.CompanyCode)
-	atlas, source, err := r.loadAtlas(ctx, userID, companyCode, "")
+	companyName := strings.TrimSpace(config.CompanyName)
+	atlas, source, err := r.loadAtlas(ctx, userID, companyCode, companyName)
 	if err != nil {
 		return Response{}, err
 	}
-	if target.Company != nil && companyCode != "" {
-		code := companyCode
-		target.Company.Code = &code
+	target.InterviewDate = datePtr(config.InterviewDate)
+	if companyCode != "" || companyName != "" {
+		var code *string
+		if companyCode != "" {
+			value := companyCode
+			code = &value
+		}
+		target.Company = &Company{Code: code, Name: companyName}
+	} else {
+		target.Company = nil
 	}
-	rows, err := r.q.ListUserRoadmapPlanItems(ctx, userID)
+	rows, err := r.q.ListUserRoadmapPlanItems(ctx, db.ListUserRoadmapPlanItemsParams{UserID: userID, PlanKey: config.PlanKey})
 	if err != nil {
 		return Response{}, fmt.Errorf("roadmap: list plan items: %w", err)
 	}
@@ -93,6 +110,7 @@ func (r *pgRepository) Get(ctx context.Context, userID int64) (Response, error) 
 		generatedAt,
 		atlas,
 	)
+	resp.PlanKey = config.PlanKey
 	if err := r.enrichPlan(ctx, userID, companyCode, &resp); err != nil {
 		return Response{}, err
 	}
@@ -117,13 +135,28 @@ func (r *pgRepository) Save(ctx context.Context, userID int64, req ConfigRequest
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := r.q.WithTx(tx)
 
+	planKey := roadmapPlanKey(req.CompanyCode, req.CompanyName)
 	companyCode := pgtype.Text{}
 	if code := strings.TrimSpace(req.CompanyCode); code != "" {
 		companyCode = pgtype.Text{String: code, Valid: true}
 	}
+	interviewDate := pgtype.Timestamptz{}
+	if req.InterviewDate != nil && strings.TrimSpace(*req.InterviewDate) != "" {
+		parsed, parseErr := time.Parse(time.DateOnly, strings.TrimSpace(*req.InterviewDate))
+		if parseErr != nil {
+			return Response{}, fmt.Errorf("roadmap: parse interview date: %w", parseErr)
+		}
+		interviewDate = pgtype.Timestamptz{Time: parsed.Add(9 * time.Hour), Valid: true}
+	}
+	if err := q.DeactivateUserRoadmapConfigs(ctx, userID); err != nil {
+		return Response{}, fmt.Errorf("roadmap: deactivate configs: %w", err)
+	}
 	if err := q.UpsertUserRoadmapConfig(ctx, db.UpsertUserRoadmapConfigParams{
 		UserID:           userID,
+		PlanKey:          planKey,
 		CompanyCode:      companyCode,
+		CompanyName:      strings.TrimSpace(req.CompanyName),
+		InterviewDate:    interviewDate,
 		PriorityMode:     resp.PriorityMode,
 		HorizonWeeks:     int32(resp.HorizonWeeks),
 		WeeklyCapacity:   int32(resp.WeeklyCapacity),
@@ -133,12 +166,13 @@ func (r *pgRepository) Save(ctx context.Context, userID int64, req ConfigRequest
 	}); err != nil {
 		return Response{}, fmt.Errorf("roadmap: upsert config: %w", err)
 	}
-	if err := q.DeleteUserRoadmapPlanItems(ctx, userID); err != nil {
+	if err := q.DeleteUserRoadmapPlanItems(ctx, db.DeleteUserRoadmapPlanItemsParams{UserID: userID, PlanKey: planKey}); err != nil {
 		return Response{}, fmt.Errorf("roadmap: clear plan items: %w", err)
 	}
 	for _, item := range items {
 		if err := q.InsertUserRoadmapPlanItem(ctx, db.InsertUserRoadmapPlanItemParams{
 			UserID:         userID,
+			PlanKey:        planKey,
 			WeekIndex:      int32(item.WeekIndex),
 			Position:       int32(item.Position),
 			Selected:       item.Selected,
@@ -148,14 +182,6 @@ func (r *pgRepository) Save(ctx context.Context, userID int64, req ConfigRequest
 		}
 	}
 
-	interviewDate := pgtype.Timestamptz{}
-	if req.InterviewDate != nil && strings.TrimSpace(*req.InterviewDate) != "" {
-		parsed, parseErr := time.Parse(time.DateOnly, strings.TrimSpace(*req.InterviewDate))
-		if parseErr != nil {
-			return Response{}, fmt.Errorf("roadmap: parse interview date: %w", parseErr)
-		}
-		interviewDate = pgtype.Timestamptz{Time: parsed.Add(9 * time.Hour), Valid: true}
-	}
 	if err := q.SetRoadmapTarget(ctx, db.SetRoadmapTargetParams{
 		TargetCompany: strings.TrimSpace(req.CompanyName),
 		InterviewDate: interviewDate,
@@ -170,6 +196,7 @@ func (r *pgRepository) Save(ctx context.Context, userID int64, req ConfigRequest
 
 	now := r.now().UTC().Format(time.RFC3339)
 	resp.Configured = true
+	resp.PlanKey = planKey
 	resp.GeneratedAt = &now
 	return resp, nil
 }
@@ -189,8 +216,8 @@ func (r *pgRepository) prepare(ctx context.Context, userID int64, req ConfigRequ
 
 	existing := []planItem{}
 	if req.PreserveProgress {
-		if _, configErr := r.q.GetUserRoadmapConfig(ctx, userID); configErr == nil {
-			rows, rowsErr := r.q.ListUserRoadmapPlanItems(ctx, userID)
+		if config, configErr := r.q.GetUserRoadmapConfigByKey(ctx, db.GetUserRoadmapConfigByKeyParams{UserID: userID, PlanKey: roadmapPlanKey(req.CompanyCode, req.CompanyName)}); configErr == nil {
+			rows, rowsErr := r.q.ListUserRoadmapPlanItems(ctx, db.ListUserRoadmapPlanItemsParams{UserID: userID, PlanKey: config.PlanKey})
 			if rowsErr != nil {
 				return Response{}, nil, fmt.Errorf("roadmap: list existing plan: %w", rowsErr)
 			}
@@ -205,6 +232,7 @@ func (r *pgRepository) prepare(ctx context.Context, userID int64, req ConfigRequ
 		horizon = frozen
 	}
 	resp := responseFromPlan(target, mode, source, horizon, weeklyCapacityDefault, items, false, nil, atlas)
+	resp.PlanKey = roadmapPlanKey(req.CompanyCode, req.CompanyName)
 	companyCode := ""
 	if atlas.Company != nil {
 		companyCode = atlas.Company.Code
@@ -237,13 +265,20 @@ func (r *pgRepository) enrichPlan(ctx context.Context, userID int64, companyCode
 	tasksByCode := make(map[string][]Task, len(codes))
 	for _, row := range problemRows {
 		tasksByCode[row.SubpatternCode] = append(tasksByCode[row.SubpatternCode], Task{
-			ID:         row.ID,
-			Title:      row.Title,
-			URL:        row.Url,
-			Difficulty: row.Difficulty,
-			Tier:       row.Tier,
-			Status:     row.Status,
+			ID:           row.ID,
+			OriginalID:   row.ID,
+			Title:        row.Title,
+			URL:          row.Url,
+			Difficulty:   row.Difficulty,
+			Tier:         row.Tier,
+			Status:       row.Status,
+			LastRating:   textPtr(row.LastRating),
+			NextReviewAt: timePtrString(row.NextReviewAt),
+			ReviewCount:  int(row.ReviewCount),
 		})
+	}
+	if err := r.applyTaskAccessOverrides(ctx, userID, resp.PlanKey, tasksByCode); err != nil {
+		return err
 	}
 
 	cardRows, err := r.q.ListRoadmapPlanCardProgress(ctx, db.ListRoadmapPlanCardProgressParams{
@@ -256,35 +291,465 @@ func (r *pgRepository) enrichPlan(ctx context.Context, userID int64, companyCode
 	cardsByCode := make(map[string]CardProgress, len(codes))
 	for _, row := range cardRows {
 		cardsByCode[row.SubpatternCode] = CardProgress{
-			Total:    int(row.TotalCards),
-			Reviewed: int(row.ReviewedCards),
-			Due:      int(row.DueCards),
+			Total:         int(row.TotalCards),
+			Reviewed:      int(row.ReviewedCards),
+			Due:           int(row.DueCards),
+			Reinforcement: int(row.ReinforcementCards),
+			NextReviewAt:  timePtrString(row.NextReviewAt),
 		}
 	}
 
+	theoryRows, err := r.q.ListRoadmapTheoryProgress(ctx, db.ListRoadmapTheoryProgressParams{
+		UserID:          userID,
+		SubpatternCodes: codes,
+	})
+	if err != nil {
+		return fmt.Errorf("roadmap: list theory progress: %w", err)
+	}
+	theoryByCode := make(map[string]TheoryProgress, len(theoryRows))
+	for _, row := range theoryRows {
+		theoryByCode[row.SubpatternCode] = TheoryProgress{
+			Completed:   row.TheoryCompletedAt.Valid,
+			CompletedAt: timePtrString(row.TheoryCompletedAt),
+		}
+	}
+
+	now := r.now()
 	for weekIndex := range resp.Weeks {
 		for itemIndex := range resp.Weeks[weekIndex].Items {
 			item := &resp.Weeks[weekIndex].Items[itemIndex]
+			item.Theory = theoryByCode[item.Code]
 			item.Tasks = tasksByCode[item.Code]
 			if item.Tasks == nil {
 				item.Tasks = []Task{}
 			}
 			item.CardProgress = cardsByCode[item.Code]
-			total, completed := len(item.Tasks)+item.CardProgress.Total, item.CardProgress.Reviewed
+			total, completed := 1+len(item.Tasks)+item.CardProgress.Total, item.CardProgress.Reviewed
+			if item.Theory.Completed {
+				completed++
+			}
+			reinforcement := Reinforcement{
+				Count:        item.CardProgress.Reinforcement,
+				Due:          item.CardProgress.Due,
+				NextReviewAt: item.CardProgress.NextReviewAt,
+			}
 			for _, task := range item.Tasks {
 				if task.Status == "solved" || task.Status == "reviewing" {
 					completed++
 				}
+				if task.LastRating != nil && (*task.LastRating == "hard" || *task.LastRating == "normal") {
+					reinforcement.Count++
+				}
+				if task.NextReviewAt != nil {
+					if reviewAt, parseErr := time.Parse(time.RFC3339, *task.NextReviewAt); parseErr == nil {
+						if !reviewAt.After(now) {
+							reinforcement.Due++
+						}
+						reinforcement.NextReviewAt = earlierReview(reinforcement.NextReviewAt, task.NextReviewAt)
+					}
+				}
 			}
-			if total > 0 {
-				item.PlanProgress = percent(completed, total)
-			} else {
-				item.PlanProgress = item.MasteryPercent
-			}
+			item.Reinforcement = reinforcement
+			item.PlanProgress = percent(completed, total)
+			item.Stage = learningStage(*item)
 		}
 	}
 	recalculatePlanProgress(resp)
+	resp.NextAction = buildNextAction(resp)
 	return nil
+}
+
+type taskAccessOverride struct {
+	status               string
+	replacementProblemID *int64
+}
+
+// applyTaskAccessOverrides keeps the initial three task slots stable while
+// allowing one inaccessible source task to be skipped or substituted. The
+// override is scoped to the plan, so another company preparation is unchanged.
+func (r *pgRepository) applyTaskAccessOverrides(ctx context.Context, userID int64, planKey string, tasksByCode map[string][]Task) error {
+	if planKey == "" {
+		return nil
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT problem_id, status, replacement_problem_id
+		FROM user_roadmap_task_access_overrides
+		WHERE user_id = $1 AND plan_key = $2`, userID, planKey)
+	if err != nil {
+		return fmt.Errorf("roadmap: list task access overrides: %w", err)
+	}
+	defer rows.Close()
+
+	overrides := make(map[int64]taskAccessOverride)
+	replacementIDs := make([]int64, 0)
+	for rows.Next() {
+		var problemID int64
+		var status string
+		var replacementProblemID *int64
+		if err := rows.Scan(&problemID, &status, &replacementProblemID); err != nil {
+			return fmt.Errorf("roadmap: scan task access override: %w", err)
+		}
+		overrides[problemID] = taskAccessOverride{status: status, replacementProblemID: replacementProblemID}
+		if replacementProblemID != nil {
+			replacementIDs = append(replacementIDs, *replacementProblemID)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("roadmap: iterate task access overrides: %w", err)
+	}
+	if len(overrides) == 0 {
+		return nil
+	}
+
+	replacements, err := r.loadReplacementTasks(ctx, userID, replacementIDs)
+	if err != nil {
+		return err
+	}
+	for code, tasks := range tasksByCode {
+		for index, task := range tasks {
+			override, ok := overrides[task.OriginalID]
+			if !ok {
+				continue
+			}
+			switch override.status {
+			case "skipped":
+				tasks[index].AccessStatus = "unavailable"
+				tasks[index].Status = "unavailable"
+			case "replaced":
+				if override.replacementProblemID == nil {
+					continue
+				}
+				replacement, found := replacements[*override.replacementProblemID]
+				if !found {
+					continue
+				}
+				replacement.OriginalID = task.OriginalID
+				replacement.Tier = task.Tier
+				replacement.AccessStatus = "replaced"
+				tasks[index] = replacement
+			}
+		}
+		tasksByCode[code] = tasks
+	}
+	return nil
+}
+
+func (r *pgRepository) loadReplacementTasks(ctx context.Context, userID int64, ids []int64) (map[int64]Task, error) {
+	result := make(map[int64]Task, len(ids))
+	if len(ids) == 0 {
+		return result, nil
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT
+			pr.id,
+			pr.title,
+			pr.url,
+			COALESCE(pr.difficulty, '')::text,
+			COALESCE(upp.status, 'not_started')::text,
+			rs.last_rating,
+			rs.next_review_at,
+			COALESCE(rs.review_count, 0)::integer
+		FROM problems pr
+		LEFT JOIN user_problem_progress upp ON upp.problem_id = pr.id AND upp.user_id = $1
+		LEFT JOIN review_schedules rs ON rs.problem_id = pr.id AND rs.user_id = $1
+		WHERE pr.id = ANY($2::bigint[])`, userID, ids)
+	if err != nil {
+		return nil, fmt.Errorf("roadmap: load replacement tasks: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var task Task
+		var lastRating pgtype.Text
+		var nextReviewAt pgtype.Timestamptz
+		if err := rows.Scan(
+			&task.ID,
+			&task.Title,
+			&task.URL,
+			&task.Difficulty,
+			&task.Status,
+			&lastRating,
+			&nextReviewAt,
+			&task.ReviewCount,
+		); err != nil {
+			return nil, fmt.Errorf("roadmap: scan replacement task: %w", err)
+		}
+		task.OriginalID = task.ID
+		task.LastRating = textPtr(lastRating)
+		task.NextReviewAt = timePtrString(nextReviewAt)
+		result[task.ID] = task
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("roadmap: iterate replacement tasks: %w", err)
+	}
+	return result, nil
+}
+
+func (r *pgRepository) ResolveTaskAccess(ctx context.Context, userID, requestedProblemID int64, action string) (TaskAccessResolution, error) {
+	resp, err := r.Get(ctx, userID)
+	if err != nil {
+		return TaskAccessResolution{}, err
+	}
+	if !resp.Configured || resp.PlanKey == "" {
+		return TaskAccessResolution{}, ErrRoadmapNotFound
+	}
+
+	var selected Task
+	var subpatternCode string
+	found := false
+	for _, week := range resp.Weeks {
+		for _, item := range week.Items {
+			for _, task := range item.Tasks {
+				if task.OriginalID == requestedProblemID || task.ID == requestedProblemID {
+					selected = task
+					subpatternCode = item.Code
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+		if found {
+			break
+		}
+	}
+	if !found {
+		return TaskAccessResolution{}, ErrRoadmapTaskNotFound
+	}
+	originalID := selected.OriginalID
+	if originalID == 0 {
+		originalID = selected.ID
+	}
+
+	resolution := TaskAccessResolution{Action: action, OriginalProblemID: originalID}
+	storageStatus := "skipped"
+	if action == "replace" {
+		storageStatus = "replaced"
+		excluded := make([]int64, 0)
+		for _, week := range resp.Weeks {
+			for _, item := range week.Items {
+				if item.Code != subpatternCode {
+					continue
+				}
+				for _, task := range item.Tasks {
+					excluded = append(excluded, task.ID)
+					if task.OriginalID != 0 && task.OriginalID != task.ID {
+						excluded = append(excluded, task.OriginalID)
+					}
+				}
+			}
+		}
+		companyCode := ""
+		if resp.Target.Company != nil && resp.Target.Company.Code != nil {
+			companyCode = *resp.Target.Company.Code
+		}
+		replacementID, replacementErr := r.findReplacementProblem(ctx, subpatternCode, companyCode, selected.Difficulty, selected.Tier, excluded)
+		if replacementErr != nil {
+			return TaskAccessResolution{}, replacementErr
+		}
+		resolution.ReplacementProblemID = &replacementID
+	}
+
+	var replacementID any
+	if resolution.ReplacementProblemID != nil {
+		replacementID = *resolution.ReplacementProblemID
+	}
+	_, err = r.pool.Exec(ctx, `
+		INSERT INTO user_roadmap_task_access_overrides (
+			user_id, plan_key, problem_id, replacement_problem_id, status, updated_at
+		) VALUES ($1, $2, $3, $4, $5, NOW())
+		ON CONFLICT (user_id, plan_key, problem_id) DO UPDATE SET
+			replacement_problem_id = EXCLUDED.replacement_problem_id,
+			status = EXCLUDED.status,
+			updated_at = NOW()`, userID, resp.PlanKey, originalID, replacementID, storageStatus)
+	if err != nil {
+		return TaskAccessResolution{}, fmt.Errorf("roadmap: save task access override: %w", err)
+	}
+	return resolution, nil
+}
+
+func (r *pgRepository) findReplacementProblem(ctx context.Context, subpatternCode, companyCode, difficulty, tier string, excluded []int64) (int64, error) {
+	var problemID int64
+	err := r.pool.QueryRow(ctx, `
+		SELECT pr.id
+		FROM patterns sp
+		JOIN problem_subpatterns ps ON ps.subpattern_id = sp.id
+		JOIN problems pr ON pr.id = ps.problem_id
+		LEFT JOIN companies co ON co.code = NULLIF($2::text, '')
+		LEFT JOIN company_problems cp ON cp.problem_id = pr.id AND cp.company_id = co.id
+		WHERE sp.code = $1
+		  AND ($2::text = '' OR cp.problem_id IS NOT NULL)
+		  AND NOT (pr.id = ANY($5::bigint[]))
+		ORDER BY
+			CASE WHEN LOWER(COALESCE(pr.difficulty, '')) = LOWER($3::text) THEN 0 ELSE 1 END,
+			CASE WHEN COALESCE(ps.tier, '') = $4::text THEN 0 ELSE 1 END,
+			CASE ps.tier WHEN 'foundational' THEN 0 WHEN 'core' THEN 1 WHEN 'advanced' THEN 2 ELSE 3 END,
+			CASE LOWER(COALESCE(pr.difficulty, '')) WHEN 'easy' THEN 0 WHEN 'medium' THEN 1 WHEN 'hard' THEN 2 ELSE 3 END,
+			COALESCE(cp.evidence_count, 0) DESC,
+			ps.position NULLS LAST,
+			pr.id
+		LIMIT 1`, subpatternCode, companyCode, difficulty, tier, excluded).Scan(&problemID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrNoTaskReplacement
+	}
+	if err != nil {
+		return 0, fmt.Errorf("roadmap: find replacement task: %w", err)
+	}
+	return problemID, nil
+}
+
+func learningStage(item Item) string {
+	if !item.Theory.Completed {
+		return StageTheory
+	}
+	for _, task := range item.Tasks {
+		if task.Status != "solved" && task.Status != "reviewing" && task.AccessStatus != "unavailable" {
+			return StageTasks
+		}
+	}
+	if item.CardProgress.Reviewed < item.CardProgress.Total {
+		return StageCards
+	}
+	return StageComplete
+}
+
+func earlierReview(current, candidate *string) *string {
+	if candidate == nil {
+		return current
+	}
+	if current == nil {
+		return candidate
+	}
+	currentAt, currentErr := time.Parse(time.RFC3339, *current)
+	candidateAt, candidateErr := time.Parse(time.RFC3339, *candidate)
+	if candidateErr == nil && (currentErr != nil || candidateAt.Before(currentAt)) {
+		return candidate
+	}
+	return current
+}
+
+func buildNextAction(resp *Response) *NextAction {
+	for _, week := range resp.Weeks {
+		if week.Status == "done" {
+			continue
+		}
+		for _, item := range week.Items {
+			action := NextAction{Stage: item.Stage, PatternCode: item.Code, WeekID: week.ID}
+			switch item.Stage {
+			case StageTheory:
+				action.Title = "Изучить " + item.Name
+				action.Description = item.Name + " · этап 1 из 3 · теория"
+				action.Href = "/patterns/" + url.PathEscape(item.Code) + "?from=roadmap"
+			case StageTasks:
+				for _, task := range item.Tasks {
+					if task.Status == "solved" || task.Status == "reviewing" || task.AccessStatus == "unavailable" {
+						continue
+					}
+					action.Title = task.Title
+					action.Description = item.Name + " · этап 2 из 3 · задача"
+					action.Href = task.URL
+					break
+				}
+			case StageCards:
+				action.Title = "Вопросы по " + item.Name
+				action.Description = item.Name + " · этап 3 из 3 · карточки"
+				action.Href = "/patterns/" + url.PathEscape(item.Code) + "/session"
+			default:
+				continue
+			}
+			if action.Href != "" {
+				return &action
+			}
+		}
+	}
+	return nil
+}
+
+func (r *pgRepository) CompleteTheory(ctx context.Context, userID int64, code string) (TheoryCompletion, error) {
+	completedAt, err := r.q.CompleteRoadmapTheory(ctx, db.CompleteRoadmapTheoryParams{
+		UserID:         userID,
+		SubpatternCode: strings.TrimSpace(code),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return TheoryCompletion{}, ErrSubpatternNotFound
+	}
+	if err != nil {
+		return TheoryCompletion{}, fmt.Errorf("roadmap: complete theory: %w", err)
+	}
+	return TheoryCompletion{
+		Code:        strings.TrimSpace(code),
+		CompletedAt: completedAt.Time.UTC().Format(time.RFC3339),
+	}, nil
+}
+
+func (r *pgRepository) List(ctx context.Context, userID int64) ([]Summary, error) {
+	if _, err := r.target(ctx, userID); err != nil {
+		return nil, err
+	}
+	rows, err := r.q.ListUserRoadmapConfigs(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("roadmap: list configs: %w", err)
+	}
+	summaries := make([]Summary, 0, len(rows))
+	for _, row := range rows {
+		var company *Company
+		if row.CompanyCode.Valid || strings.TrimSpace(row.CompanyName) != "" {
+			var code *string
+			if row.CompanyCode.Valid {
+				value := row.CompanyCode.String
+				code = &value
+			}
+			company = &Company{Code: code, Name: row.CompanyName}
+		}
+		summaries = append(summaries, Summary{
+			PlanKey:       row.PlanKey,
+			Company:       company,
+			InterviewDate: datePtr(row.InterviewDate),
+			PriorityMode:  row.PriorityMode,
+			GeneratedAt:   timePtrString(row.GeneratedAt),
+			Active:        row.IsActive,
+		})
+	}
+	return summaries, nil
+}
+
+func (r *pgRepository) Activate(ctx context.Context, userID int64, planKey string) (Response, error) {
+	config, err := r.q.GetUserRoadmapConfigByKey(ctx, db.GetUserRoadmapConfigByKeyParams{
+		UserID: userID, PlanKey: strings.TrimSpace(planKey),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Response{}, ErrRoadmapNotFound
+	}
+	if err != nil {
+		return Response{}, fmt.Errorf("roadmap: get config to activate: %w", err)
+	}
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return Response{}, fmt.Errorf("roadmap: begin activation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := r.q.WithTx(tx)
+	if err := q.DeactivateUserRoadmapConfigs(ctx, userID); err != nil {
+		return Response{}, fmt.Errorf("roadmap: deactivate configs: %w", err)
+	}
+	if _, err := q.ActivateUserRoadmapConfig(ctx, db.ActivateUserRoadmapConfigParams{
+		UserID: userID, PlanKey: config.PlanKey,
+	}); err != nil {
+		return Response{}, fmt.Errorf("roadmap: activate config: %w", err)
+	}
+	if err := q.SetRoadmapTarget(ctx, db.SetRoadmapTargetParams{
+		TargetCompany: config.CompanyName,
+		InterviewDate: config.InterviewDate,
+		TargetTopics:  []string{},
+		UserID:        userID,
+	}); err != nil {
+		return Response{}, fmt.Errorf("roadmap: sync active target: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Response{}, fmt.Errorf("roadmap: commit activation: %w", err)
+	}
+	return r.Get(ctx, userID)
 }
 
 func recalculatePlanProgress(resp *Response) {
@@ -296,14 +761,18 @@ func recalculatePlanProgress(resp *Response) {
 			continue
 		}
 		weekSum := 0
+		weekCompleted := true
 		for _, item := range week.Items {
 			weekSum += item.PlanProgress
 			overallSum += item.PlanProgress
 			itemCount++
+			if item.Stage != StageComplete {
+				weekCompleted = false
+			}
 		}
 		week.Progress = int(math.Round(float64(weekSum) / float64(len(week.Items))))
 		switch {
-		case week.Progress >= 100:
+		case weekCompleted:
 			week.Status = "done"
 		case !activeAssigned:
 			week.Status = "active"
@@ -348,13 +817,39 @@ func (r *pgRepository) Clear(ctx context.Context, userID int64) error {
 	if err := q.DeleteUserRoadmapConfig(ctx, userID); err != nil {
 		return fmt.Errorf("roadmap: delete config: %w", err)
 	}
-	if err := q.ClearRoadmapTarget(ctx, userID); err != nil {
-		return fmt.Errorf("roadmap: clear target: %w", err)
+	if _, err := q.ActivateLatestUserRoadmapConfig(ctx, userID); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("roadmap: activate fallback config: %w", err)
+	}
+	remaining, err := q.GetUserRoadmapConfig(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		if err := q.ClearRoadmapTarget(ctx, userID); err != nil {
+			return fmt.Errorf("roadmap: clear target: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("roadmap: get fallback config: %w", err)
+	} else if err := q.SetRoadmapTarget(ctx, db.SetRoadmapTargetParams{
+		TargetCompany: remaining.CompanyName,
+		InterviewDate: remaining.InterviewDate,
+		TargetTopics:  []string{},
+		UserID:        userID,
+	}); err != nil {
+		return fmt.Errorf("roadmap: sync fallback target: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("roadmap: commit clear: %w", err)
 	}
 	return nil
+}
+
+func roadmapPlanKey(companyCode, companyName string) string {
+	if code := strings.TrimSpace(companyCode); code != "" {
+		return code
+	}
+	if name := strings.ToLower(strings.TrimSpace(companyName)); name != "" {
+		digest := sha256.Sum256([]byte(name))
+		return "custom:" + hex.EncodeToString(digest[:8])
+	}
+	return "core"
 }
 
 func (r *pgRepository) target(ctx context.Context, userID int64) (Target, error) {
@@ -543,6 +1038,7 @@ func itemFromSubpattern(sub patterns.AtlasSubpattern, difficultyCounts map[strin
 			DifficultyCounts: counts,
 			MasteryPercent:   sub.Mastery.Percent,
 			PlanProgress:     sub.Mastery.Percent,
+			Stage:            StageTheory,
 			Tasks:            []Task{},
 		},
 		TaxonomyPosition: sub.Position,

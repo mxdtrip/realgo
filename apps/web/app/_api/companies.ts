@@ -17,3 +17,7 @@ export function searchCompanies(query: string, signal?: AbortSignal, limit = 8) 
   const params = new URLSearchParams({ query, limit: String(limit) });
   return apiFetch<Company[]>(`/companies/search?${params}`, { signal });
 }
+
+export function listCompanies(signal?: AbortSignal) {
+  return apiFetch<Company[]>("/companies", { signal });
+}

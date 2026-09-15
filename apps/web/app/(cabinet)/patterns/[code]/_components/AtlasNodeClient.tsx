@@ -14,6 +14,7 @@ import {
   getPractice,
   removePracticeSubpattern,
 } from "../../../../_api/practice";
+import { completeRoadmapTheory } from "../../../../_api/roadmap";
 import { ApiError } from "../../../../_api/types";
 import { useToast } from "../../../../_toast";
 import { CabinetPanel } from "../../../_components";
@@ -69,7 +70,8 @@ export function AtlasNodeClient({
   code,
   copy,
   atlasCopy,
-}: Readonly<{ code: string; copy: NodeCopy; atlasCopy: AtlasCopy }>) {
+  fromRoadmap,
+}: Readonly<{ code: string; copy: NodeCopy; atlasCopy: AtlasCopy; fromRoadmap: boolean }>) {
   const router = useRouter();
   const [detail, setDetail] = useState<NodeDetail | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -114,8 +116,8 @@ export function AtlasNodeClient({
 
   return (
     <main className={isProfile ? "cabinet-page cabinet-page--pattern" : "cabinet-page"}>
-      <Link className="cabinet-ghost-link" href="/patterns">
-        {copy.backLink}
+      <Link className="cabinet-ghost-link" href={fromRoadmap ? "/roadmap#current-plan" : "/patterns"}>
+        {fromRoadmap ? copy.backToRoadmap : copy.backLink}
       </Link>
 
       {loadState === "loading" ? (
@@ -140,7 +142,12 @@ export function AtlasNodeClient({
       ) : null}
 
       {loadState === "loaded" && detail ? (
-        <SubpatternProfile detail={detail} copy={copy} atlasCopy={atlasCopy} />
+        <SubpatternProfile
+          detail={detail}
+          copy={copy}
+          atlasCopy={atlasCopy}
+          fromRoadmap={fromRoadmap}
+        />
       ) : null}
     </main>
   );
@@ -206,12 +213,16 @@ function SubpatternProfile({
   detail,
   copy,
   atlasCopy,
-}: Readonly<{ detail: NodeDetail; copy: NodeCopy; atlasCopy: AtlasCopy }>) {
+  fromRoadmap,
+}: Readonly<{ detail: NodeDetail; copy: NodeCopy; atlasCopy: AtlasCopy; fromRoadmap: boolean }>) {
+  const router = useRouter();
+  const toast = useToast();
   const material = detail.material;
   const mastery = detail.mastery;
   const stats = detail.stats;
   const problems = detail.practice;
   const [problemsExpanded, setProblemsExpanded] = useState(false);
+  const [theoryPending, setTheoryPending] = useState(false);
   const visibleProblems =
     problemsExpanded || problems.length <= PROBLEMS_PREVIEW_COUNT
       ? problems
@@ -230,6 +241,18 @@ function SubpatternProfile({
 
   const tierLabel = (tier: string) =>
     (copy.practice.tiers as Record<string, string>)[tier] ?? tier;
+
+  const finishTheory = async () => {
+    if (theoryPending) return;
+    setTheoryPending(true);
+    try {
+      await completeRoadmapTheory(detail.code);
+      router.push("/roadmap#current-plan");
+    } catch (e: unknown) {
+      toast.error(e instanceof ApiError ? e.message : copy.roadmapStage.failed);
+      setTheoryPending(false);
+    }
+  };
 
   return (
     <article className="pattern-profile">
@@ -266,7 +289,10 @@ function SubpatternProfile({
           ) : null}
         </div>
         <div className="pattern-profile__cta-col">
-          <Link className="pattern-profile__cta" href={`/patterns/${detail.code}/session`}>
+          <Link
+            className="pattern-profile__cta"
+            href={`/patterns/${detail.code}/session${fromRoadmap ? "?from=roadmap" : ""}`}
+          >
             <span className="pattern-profile__sub-head">
               <span>{copy.cta.eyebrow}</span>
               <span className="pattern-profile__sub-arrow" aria-hidden="true">
@@ -418,6 +444,25 @@ function SubpatternProfile({
           {null}
         </ProfileSection>
       )}
+
+      {fromRoadmap ? (
+        <section className="pattern-learning-transition" aria-labelledby="theory-stage-title">
+          <div>
+            <span>{copy.roadmapStage.eyebrow}</span>
+            <h2 id="theory-stage-title">{copy.roadmapStage.title}</h2>
+            <p>{copy.roadmapStage.description}</p>
+          </div>
+          <button
+            className="cabinet-cta"
+            disabled={theoryPending}
+            type="button"
+            onClick={() => void finishTheory()}
+          >
+            {theoryPending ? copy.roadmapStage.pending : copy.roadmapStage.action}
+            <span aria-hidden="true">→</span>
+          </button>
+        </section>
+      ) : null}
 
       <ProfileSection
         title={copy.problems.title}

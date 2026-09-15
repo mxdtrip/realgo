@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/mxdtrip/realgo/services/api/internal/patterns"
+	"github.com/mxdtrip/realgo/services/api/internal/roadmap"
 )
 
 func TestServiceGet_EmptyUser(t *testing.T) {
@@ -102,6 +103,58 @@ func TestServiceGet_FutureReviewDoesNotLinkToEmptyDueQueue(t *testing.T) {
 	}
 	if got.NextAction.DueAt == nil || !got.NextAction.DueAt.Equal(dueAt) {
 		t.Fatalf("NextAction.DueAt = %v, want %v", got.NextAction.DueAt, dueAt)
+	}
+}
+
+func TestServiceGet_UsesExactRoadmapStepWhenQueueIsEmpty(t *testing.T) {
+	planAction := &roadmap.NextAction{
+		Stage:       roadmap.StageTheory,
+		Title:       "Изучить Two Pointers",
+		Description: "Two Pointers · этап 1 из 3 · теория",
+		Href:        "/patterns/two_pointers?from=roadmap",
+	}
+	svc := NewService(fakeRepository{}, fakeWeakRepository{}, fakeRoadmapSource{
+		response: roadmap.Response{NextAction: planAction},
+	})
+
+	got, err := svc.Get(context.Background(), 42)
+	if err != nil {
+		t.Fatalf("Get returned error: %v", err)
+	}
+	if got.NextAction.Title != planAction.Title || got.NextAction.Href != planAction.Href {
+		t.Fatalf("NextAction = %+v, want roadmap action %+v", got.NextAction, planAction)
+	}
+}
+
+func TestServiceGet_IncludesConfiguredRoadmapProgress(t *testing.T) {
+	companyCode := "cmp_google"
+	svc := NewService(fakeRepository{
+		metrics: Metrics{DueCount: 2},
+	}, fakeWeakRepository{}, fakeRoadmapSource{
+		response: roadmap.Response{
+			Configured:      true,
+			OverallProgress: 67,
+			Target: roadmap.Target{Company: &roadmap.Company{
+				Code: &companyCode,
+				Name: "Google",
+			}},
+		},
+	})
+
+	got, err := svc.Get(context.Background(), 42)
+	if err != nil {
+		t.Fatalf("Get returned error: %v", err)
+	}
+	if len(got.Stats) != 5 {
+		t.Fatalf("Stats len = %d, want 5", len(got.Stats))
+	}
+	stat := got.Stats[4]
+	assertStat(t, stat, "roadmap_progress", 67, "67%", statToneAccent)
+	if stat.Href != "/roadmap" {
+		t.Fatalf("roadmap stat href = %q, want /roadmap", stat.Href)
+	}
+	if stat.Hint != "план подготовки · Google" {
+		t.Fatalf("roadmap stat hint = %q", stat.Hint)
 	}
 }
 
@@ -246,6 +299,15 @@ func (f fakeRepository) GetNextReview(context.Context, int64) (*ReviewPreview, e
 
 type fakeWeakRepository struct {
 	items []patterns.WeakPattern
+}
+
+type fakeRoadmapSource struct {
+	response roadmap.Response
+	err      error
+}
+
+func (f fakeRoadmapSource) Get(context.Context, int64) (roadmap.Response, error) {
+	return f.response, f.err
 }
 
 func (f fakeWeakRepository) ListWeak(context.Context, int64, int32) ([]patterns.WeakPattern, error) {

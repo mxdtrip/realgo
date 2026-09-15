@@ -97,13 +97,14 @@ func New(deps Deps) *chi.Mux {
 	reviewHandler := v1.NewReviewHandler(reviewService)
 
 	patternsHandler := patterns.NewHandler(patterns.NewRepository(deps.Postgres.Pool))
-	roadmapHandler := roadmap.NewHandler(roadmap.NewRepository(deps.Postgres.Pool))
+	roadmapRepo := roadmap.NewRepository(deps.Postgres.Pool)
+	roadmapHandler := roadmap.NewHandler(roadmapRepo)
 	problemsHandler := problems.NewHandler(problems.NewRepository(deps.Postgres.Pool))
 	cardsSvc := cards.NewService(cards.NewRepository(deps.Postgres.Pool), reviewService)
 	problemCardsHandler := problemcards.NewHandler(problemcards.NewService(problemcards.NewRepository(deps.Postgres.Pool), cardsSvc, deps.Redis))
 	roadmapsHandler := roadmaps.NewHandler(roadmaps.NewRepository(deps.Postgres.Pool))
 	companiesHandler := companies.NewHandler(companies.NewRepository(deps.Postgres.Pool))
-	dashboardHandler := dashboard.NewHandler(dashboard.NewService(dashboard.NewRepository(deps.Postgres.Pool), patterns.NewRepository(deps.Postgres.Pool)))
+	dashboardHandler := dashboard.NewHandler(dashboard.NewService(dashboard.NewRepository(deps.Postgres.Pool), patterns.NewRepository(deps.Postgres.Pool), roadmapRepo))
 	cardsHandler := cards.NewHandler(cardsSvc)
 	practiceHandler := practice.NewHandler(practice.NewRepository(deps.Postgres.Pool))
 	quizRepo := quiz.NewRepository(deps.Postgres.Pool)
@@ -187,10 +188,15 @@ func New(deps Deps) *chi.Mux {
 
 		// S4: personalized roadmap progress and authenticated company suggestions.
 		r.With(requireAuth(deps.Auth)).Get("/me/roadmap", roadmapHandler.Get)
+		r.With(requireAuth(deps.Auth)).Get("/me/roadmaps", roadmapHandler.List)
+		r.With(requireAuth(deps.Auth)).Put("/me/roadmaps/{planKey}/activate", roadmapHandler.Activate)
 		r.With(requireAuth(deps.Auth)).Post("/me/roadmap/preview", roadmapHandler.Preview)
 		r.With(requireAuth(deps.Auth)).Put("/me/roadmap", roadmapHandler.Put)
+		r.With(requireAuth(deps.Auth)).Put("/me/roadmap/patterns/{code}/theory", roadmapHandler.CompleteTheory)
+		r.With(requireAuth(deps.Auth)).Post("/me/roadmap/tasks/{problemID}/access", roadmapHandler.ResolveTaskAccess)
 		r.With(requireAuth(deps.Auth)).Delete("/me/roadmap", roadmapHandler.Delete)
 		r.With(requireAuth(deps.Auth)).Get("/companies/search", companiesHandler.Search)
+		r.With(requireAuth(deps.Auth)).Get("/companies", companiesHandler.List)
 
 		r.Route("/extension", func(r chi.Router) {
 			extensionRateLimit := rateLimit(deps.Redis, "extension", 120, time.Minute)

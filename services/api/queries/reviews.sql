@@ -76,6 +76,22 @@ INSERT INTO review_attempts (user_id, problem_id, pattern_id, card_id, rating, r
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, user_id, problem_id, pattern_id, card_id, rating, review_type, duration_sec, was_correct, created_at;
 
+-- name: MarkProblemAttempted :one
+-- A manual "not solved" result is progress, but it is not an FSRS rating.
+-- Keep already solved/reviewing problems intact when an older task is retried.
+INSERT INTO user_problem_progress (user_id, problem_id, status, first_seen_at)
+SELECT sqlc.arg(user_id)::bigint, p.id, 'in_progress', sqlc.arg(attempted_at)::timestamptz
+FROM problems p
+WHERE p.id = sqlc.arg(problem_id)::bigint
+ON CONFLICT (user_id, problem_id) DO UPDATE
+SET status = CASE
+        WHEN user_problem_progress.status IN ('solved', 'reviewing')
+            THEN user_problem_progress.status
+        ELSE 'in_progress'
+    END,
+    first_seen_at = COALESCE(user_problem_progress.first_seen_at, EXCLUDED.first_seen_at)
+RETURNING status;
+
 -- name: GetReviewStats :one
 SELECT
     COUNT(*)::integer AS total_reviews,

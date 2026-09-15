@@ -92,6 +92,50 @@ test.describe("pattern atlas tree", () => {
     await expect(page.locator(".atlas-tree")).toHaveCount(0);
   });
 
+  test("company picker puts roadmap companies before the catalog", async ({ page }) => {
+    await page.route("**/api/v1/me/roadmaps", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: [
+            {
+              planKey: "cmp_stub",
+              company: { code: "cmp_stub", name: "Stub Corp" },
+              interviewDate: "2026-09-01",
+              priorityMode: "balanced",
+              active: true,
+            },
+          ],
+        }),
+      });
+    });
+    await page.route("**/api/v1/me/patterns/atlas/companies", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            companies: [
+              { code: "cmp_stub", name: "Stub Corp", subpattern_count: 2, demo_only: true },
+              { code: "cmp_other", name: "Other Corp", subpattern_count: 1, demo_only: false },
+            ],
+          },
+        }),
+      });
+    });
+
+    await openAtlas(page);
+    await page.locator(".atlas-company__trigger").click();
+    const dialog = page.locator(".shell-dialog--company");
+
+    await expect(dialog.getByText("Компании из плана подготовки", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("option")).toHaveText([
+      "— без компании —",
+      "Stub Corp",
+      "Other Corp",
+    ]);
+    await expect(dialog.getByText("Все компании", { exact: true })).toBeVisible();
+  });
+
   test("company overlay adds relevance badges and demo note", async ({ page }) => {
     await openAtlas(page);
     await expect(page.locator(".atlas-tree")).toBeVisible();

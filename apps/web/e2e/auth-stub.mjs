@@ -438,6 +438,36 @@ const ATLAS_NODES = {
     company_practice: [],
     relevant_companies: [],
   },
+  two_pointers: {
+    code: "two_pointers",
+    name: "Two Pointers",
+    kind: "subpattern",
+    description: "Два указателя сужают область поиска без вложенного перебора.",
+    taxonomy_version: "realgo-v2",
+    techniques: [],
+    recognition_symptoms: [],
+    checklist: [],
+    example_problems: [],
+    families: [{ code: "arrays_hashing", name: "Arrays & Hashing" }],
+    tools: [{ code: "tool_arrays", name: "Arrays" }],
+    material: {
+      what_it_is: "Стаб: два указателя движутся по общей структуре данных.",
+      mental_model: "Стаб: после каждого шага пространство поиска уменьшается.",
+      recognition_cues: ["Отсортированный массив", "Поиск пары"],
+      anti_cues: ["Нужны все комбинации"],
+      core_invariant: "Ответ остаётся между левым и правым указателями.",
+      canonical_skeleton: "while left < right: ...",
+      mini_example: "Сумма меньше цели — сдвигаем левый указатель.",
+      common_mistakes: ["Не обновить указатель на равных значениях"],
+      dont_confuse_with: [],
+    },
+    stats: stubStats({ problem_count: 8, solved_count: 1 }),
+    mastery: stubMastery("learning", 40),
+    cards: [],
+    practice: [],
+    company_practice: [],
+    relevant_companies: [],
+  },
 };
 
 // ---- Dashboard / roadmap / extension fixtures -----------------------------
@@ -461,6 +491,7 @@ const DASHBOARD = {
     { key: "solved_total", label: "solved", value: 12, displayValue: "12", hint: "решено задач всего", tone: "default" },
     { key: "streak", label: "streak", value: 4, displayValue: "4", hint: "дней подряд активности", tone: "accent" },
     { key: "readiness", label: "readiness", value: 61, displayValue: "61%", hint: "оценка готовности", tone: "warning" },
+    { key: "roadmap_progress", label: "roadmap progress", value: 67, displayValue: "67%", hint: "план подготовки · Google", tone: "accent", href: "/roadmap" },
   ],
   reviewPreview: [
     {
@@ -487,7 +518,8 @@ const DASHBOARD = {
 };
 
 const ROADMAP = {
-  overallProgress: 34,
+  planKey: "cmp_google",
+  overallProgress: 67,
   target: { company: { code: "cmp_google", name: "Google" }, interviewDate: "2026-09-01", topics: ["arrays_hashing", "two_pointers"] },
   priorityMode: "balanced",
   availableModes: ["balanced", "easy_first", "company_frequency", "knowledge_gaps"],
@@ -495,10 +527,18 @@ const ROADMAP = {
   source: "company",
   horizonWeeks: 2,
   weeklyCapacity: 3,
-  selectedCount: 2,
+  selectedCount: 3,
   reserveCount: 1,
   configured: true,
   generatedAt: NOW_ISO,
+  nextAction: {
+    stage: "theory",
+    title: "Изучить Two Pointers",
+    description: "Two Pointers · этап 1 из 3 · теория",
+    href: "/patterns/two_pointers?from=roadmap",
+    patternCode: "two_pointers",
+    weekId: "week_02",
+  },
   weeks: [
     {
       id: "week_01",
@@ -515,37 +555,135 @@ const ROADMAP = {
         difficultyCounts: { easy: 4, medium: 8 },
         masteryPercent: 100,
         planProgress: 100,
+        stage: "complete",
+        theory: { completed: true, completedAt: PAST_ISO },
         tasks: [
-          { id: 701, title: "Two Sum", url: "https://leetcode.com/problems/two-sum/", difficulty: "easy", tier: "foundational", status: "solved" },
+          { id: 701, title: "Two Sum", url: "https://leetcode.com/problems/two-sum/", difficulty: "easy", tier: "foundational", status: "solved", lastRating: "easy", nextReviewAt: FUTURE_ISO, reviewCount: 1 },
         ],
-        cardProgress: { total: 3, reviewed: 3, due: 0 },
+        cardProgress: { total: 3, reviewed: 3, due: 0, reinforcement: 0, nextReviewAt: FUTURE_ISO },
+        reinforcement: { count: 0, due: 0, nextReviewAt: FUTURE_ISO },
       }],
     },
     {
       id: "week_02",
       label: "week 02",
       title: "Two Pointers",
-      progress: 40,
+      progress: 33,
       focus: "solve pattern problems and reviews",
       status: "active",
-      topics: ["two_pointers"],
-      items: [{
-        code: "two_pointers",
-        name: "Two Pointers",
-        relevantProblemCount: 8,
-        difficultyCounts: { easy: 2, medium: 6 },
-        masteryPercent: 40,
-        planProgress: 40,
-        tasks: [
-          { id: 702, title: "Valid Palindrome", url: "https://leetcode.com/problems/valid-palindrome/", difficulty: "easy", tier: "foundational", status: "solved" },
-          { id: 703, title: "Two Sum II", url: "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/", difficulty: "medium", tier: "core", status: "not_started" },
-        ],
-        cardProgress: { total: 3, reviewed: 1, due: 0 },
-      }],
+      topics: ["two_pointers", "fixed_size_window"],
+      items: [
+        {
+          code: "two_pointers",
+          name: "Two Pointers",
+          relevantProblemCount: 8,
+          difficultyCounts: { easy: 2, medium: 6 },
+          masteryPercent: 40,
+          planProgress: 33,
+          stage: "theory",
+          theory: { completed: false },
+          tasks: [
+            { id: 702, title: "Valid Palindrome", url: "https://leetcode.com/problems/valid-palindrome/", difficulty: "easy", tier: "foundational", status: "solved", reviewCount: 0 },
+            { id: 703, title: "Two Sum II", url: "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/", difficulty: "medium", tier: "core", status: "not_started", reviewCount: 0 },
+          ],
+          cardProgress: { total: 3, reviewed: 1, due: 0, reinforcement: 1, nextReviewAt: FUTURE_ISO },
+          reinforcement: { count: 1, due: 0, nextReviewAt: FUTURE_ISO },
+        },
+        {
+          code: "fixed_size_window",
+          name: "Fixed-Size Window",
+          relevantProblemCount: 5,
+          difficultyCounts: { easy: 1, medium: 4 },
+          masteryPercent: 0,
+          planProgress: 0,
+          stage: "theory",
+          theory: { completed: false },
+          tasks: [
+            { id: 704, title: "Maximum Average Subarray I", url: "https://leetcode.com/problems/maximum-average-subarray-i/", difficulty: "easy", tier: "foundational", status: "not_started", reviewCount: 0 },
+          ],
+          cardProgress: { total: 3, reviewed: 0, due: 0, reinforcement: 0 },
+          reinforcement: { count: 0, due: 0 },
+        },
+      ],
     },
   ],
   patterns: [],
 };
+
+let roadmapTheoryCompleted = false;
+let activeRoadmapPlan = "cmp_google";
+const roadmapTaskAttempts = new Map();
+const roadmapTaskAccess = new Map();
+
+const COMPANY_CATALOG = [
+  { id: "cmp_google", name: "Google", source: "manual" },
+  { id: "cmp_meta", name: "Meta", source: "manual" },
+  { id: "cmp_yandex", name: "Yandex", source: "manual" },
+  { id: "cmp_microsoft", name: "Microsoft", source: "manual" },
+];
+
+function roadmapPayload() {
+  const payload = structuredClone(ROADMAP);
+  if (activeRoadmapPlan === "cmp_meta") {
+    payload.planKey = "cmp_meta";
+    payload.target.company = { code: "cmp_meta", name: "Meta" };
+  }
+  for (const week of payload.weeks) {
+    for (const item of week.items) {
+      for (const task of item.tasks) {
+        const access = roadmapTaskAccess.get(task.id);
+        if (access?.action === "skip") {
+          task.status = "unavailable";
+          task.accessStatus = "unavailable";
+          continue;
+        }
+        if (access?.action === "replace") {
+          task.originalId = task.id;
+          task.id = access.replacementProblemId;
+          task.title = "3Sum";
+          task.url = "https://leetcode.com/problems/3sum/";
+          task.accessStatus = "replaced";
+        }
+        const outcome = roadmapTaskAttempts.get(task.id);
+        if (!outcome) continue;
+        task.status = outcome === "not_solved" ? "in_progress" : "reviewing";
+        if (outcome !== "not_solved") {
+          task.lastRating = outcome;
+          task.reviewCount += 1;
+          task.nextReviewAt = FUTURE_ISO;
+        }
+      }
+    }
+  }
+  if (!roadmapTheoryCompleted) return payload;
+  const item = payload.weeks[1].items[0];
+  item.theory = { completed: true, completedAt: new Date().toISOString() };
+  item.stage = "tasks";
+  item.planProgress = 50;
+  payload.weeks[1].progress = 50;
+  payload.overallProgress = 75;
+  payload.nextAction = {
+    stage: "tasks",
+    title: "Two Sum II",
+    description: "Two Pointers · этап 2 из 3 · задача",
+    href: "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/",
+    patternCode: "two_pointers",
+    weekId: "week_02",
+  };
+  if (roadmapTaskAttempts.has(703) && roadmapTaskAttempts.get(703) !== "not_solved") {
+    item.stage = "cards";
+    item.planProgress = 67;
+    payload.nextAction = {
+      stage: "cards",
+      title: "Вопросы по Two Pointers",
+      description: "Two Pointers · этап 3 из 3 · карточки",
+      href: "/patterns/two_pointers/session",
+      patternCode: "two_pointers",
+      weekId: "week_02",
+    };
+  }
+  return payload;
+}
 
 const EXTENSION_STATUS = {
   connected: true,
@@ -683,19 +821,85 @@ const server = createServer((req, res) => {
     if (req.method === "GET" && path === `${PREFIX}/me/roadmap`) {
       const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
       if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
-      return ok(res, ROADMAP);
+      return ok(res, roadmapPayload());
+    }
+
+    if (req.method === "GET" && path === `${PREFIX}/me/roadmaps`) {
+      return ok(res, [
+        { planKey: "cmp_google", company: { code: "cmp_google", name: "Google" }, interviewDate: "2026-09-01", priorityMode: "balanced", active: activeRoadmapPlan === "cmp_google" },
+        { planKey: "cmp_meta", company: { code: "cmp_meta", name: "Meta" }, interviewDate: "2026-09-01", priorityMode: "balanced", active: activeRoadmapPlan === "cmp_meta" },
+      ]);
+    }
+
+    const activateMatch = path.match(/^\/api\/v1\/me\/roadmaps\/([^/]+)\/activate$/);
+    if (req.method === "PUT" && activateMatch) {
+      activeRoadmapPlan = decodeURIComponent(activateMatch[1]);
+      return ok(res, roadmapPayload());
     }
 
     if (req.method === "POST" && path === `${PREFIX}/me/roadmap/preview`) {
       const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
       if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
-      return ok(res, { ...ROADMAP, priorityMode: body.priorityMode ?? "balanced", configured: false });
+      return ok(res, { ...roadmapPayload(), priorityMode: body.priorityMode ?? "balanced", configured: false });
     }
 
     if (req.method === "PUT" && path === `${PREFIX}/me/roadmap`) {
       const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
       if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
-      return ok(res, { ...ROADMAP, priorityMode: body.priorityMode ?? "balanced", configured: true });
+      activeRoadmapPlan = body.companyCode || `custom:${String(body.companyName || "core").toLowerCase()}`;
+      const payload = roadmapPayload();
+      return ok(res, {
+        ...payload,
+        planKey: activeRoadmapPlan,
+        target: {
+          ...payload.target,
+          company: body.companyName ? { code: body.companyCode || null, name: body.companyName } : null,
+        },
+        priorityMode: body.priorityMode ?? "balanced",
+        configured: true,
+      });
+    }
+
+    if (req.method === "GET" && path === `${PREFIX}/companies`) {
+      return ok(res, COMPANY_CATALOG);
+    }
+
+    if (req.method === "GET" && path === `${PREFIX}/companies/search`) {
+      const query = new URL(req.url, `http://127.0.0.1:${PORT}`).searchParams.get("query")?.toLowerCase() ?? "";
+      return ok(res, COMPANY_CATALOG.filter((company) => company.name.toLowerCase().includes(query)));
+    }
+
+    if (req.method === "PUT" && path === `${PREFIX}/me/roadmap/patterns/two_pointers/theory`) {
+      const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+      if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
+      roadmapTheoryCompleted = true;
+      return ok(res, { code: "two_pointers", completedAt: new Date().toISOString() });
+    }
+
+    const roadmapTaskAccessMatch = path.match(/^\/api\/v1\/me\/roadmap\/tasks\/(\d+)\/access$/);
+    if (req.method === "POST" && roadmapTaskAccessMatch) {
+      const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+      if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
+      const problemId = Number(roadmapTaskAccessMatch[1]);
+      if (body.action !== "replace" && body.action !== "skip") {
+        return fail(res, 400, "validation_error", "stub: invalid action");
+      }
+      const replacementProblemId = body.action === "replace" ? 1703 : undefined;
+      roadmapTaskAccess.set(problemId, { action: body.action, replacementProblemId });
+      return ok(res, { action: body.action, originalProblemId: problemId, replacementProblemId });
+    }
+
+    const roadmapAttemptMatch = path.match(/^\/api\/v1\/me\/reviews\/problems\/(\d+)\/attempt$/);
+    if (req.method === "POST" && roadmapAttemptMatch) {
+      const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+      if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
+      const problemId = Number(roadmapAttemptMatch[1]);
+      roadmapTaskAttempts.set(problemId, body.outcome);
+      return ok(res, {
+        problemId,
+        outcome: body.outcome,
+        status: body.outcome === "not_solved" ? "in_progress" : "reviewing",
+      });
     }
 
     if (req.method === "DELETE" && path === `${PREFIX}/me/roadmap`) {

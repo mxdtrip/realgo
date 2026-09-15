@@ -322,14 +322,14 @@ func TestRecalculatePlanProgress_UsesAssignedWorkAndUnlocksNextWeek(t *testing.T
 		{
 			ID: "week_01",
 			Items: []Item{
-				{Code: "first", PlanProgress: 100},
-				{Code: "second", PlanProgress: 100},
+				{Code: "first", PlanProgress: 100, Stage: StageComplete},
+				{Code: "second", PlanProgress: 100, Stage: StageComplete},
 			},
 		},
 		{
 			ID: "week_02",
 			Items: []Item{
-				{Code: "third", PlanProgress: 50},
+				{Code: "third", PlanProgress: 50, Stage: StageTasks},
 			},
 		},
 	}}
@@ -344,5 +344,94 @@ func TestRecalculatePlanProgress_UsesAssignedWorkAndUnlocksNextWeek(t *testing.T
 	}
 	if resp.OverallProgress != 83 {
 		t.Fatalf("overallProgress = %d, want 83", resp.OverallProgress)
+	}
+}
+
+func TestLearningStage_FollowsTheoryTasksCardsOrder(t *testing.T) {
+	item := Item{
+		Tasks:        []Task{{Status: "solved"}, {Status: "solved"}},
+		CardProgress: CardProgress{Total: 3, Reviewed: 3},
+	}
+	if got := learningStage(item); got != StageTheory {
+		t.Fatalf("stage = %q, want theory before completed work can advance", got)
+	}
+
+	item.Theory.Completed = true
+	item.Tasks[1].Status = "not_started"
+	if got := learningStage(item); got != StageTasks {
+		t.Fatalf("stage = %q, want tasks", got)
+	}
+
+	item.Tasks[1].Status = "reviewing"
+	item.CardProgress.Reviewed = 2
+	if got := learningStage(item); got != StageCards {
+		t.Fatalf("stage = %q, want cards", got)
+	}
+
+	item.CardProgress.Reviewed = 3
+	if got := learningStage(item); got != StageComplete {
+		t.Fatalf("stage = %q, want complete", got)
+	}
+}
+
+func TestRecalculatePlanProgress_UnlocksNextWeekAfterUnavailableTask(t *testing.T) {
+	resp := Response{Weeks: []Week{
+		{Items: []Item{{PlanProgress: 75, Stage: StageComplete}}},
+		{Items: []Item{{PlanProgress: 0, Stage: StageTheory}}},
+	}}
+
+	recalculatePlanProgress(&resp)
+
+	if got := resp.Weeks[0].Status; got != "done" {
+		t.Fatalf("first week status = %q, want done", got)
+	}
+	if got := resp.Weeks[1].Status; got != "active" {
+		t.Fatalf("second week status = %q, want active", got)
+	}
+	if resp.OverallProgress != 38 {
+		t.Fatalf("overall progress = %d, want 38", resp.OverallProgress)
+	}
+}
+
+func TestBuildNextAction_UsesFirstIncompleteStage(t *testing.T) {
+	resp := Response{Weeks: []Week{{
+		ID:     "week_01",
+		Status: "active",
+		Items: []Item{
+			{Code: "two_pointers", Name: "Two Pointers", Stage: StageTheory},
+			{
+				Code:  "sliding_window",
+				Name:  "Sliding Window",
+				Stage: StageTasks,
+				Tasks: []Task{{Title: "Best Time", URL: "https://example.test/problem", Status: "not_started"}},
+			},
+		},
+	}}}
+
+	action := buildNextAction(&resp)
+	if action == nil {
+		t.Fatal("next action must be present")
+	}
+	if action.Stage != StageTheory || action.PatternCode != "two_pointers" {
+		t.Fatalf("action = %+v, want first pattern theory", action)
+	}
+	if action.Href != "/patterns/two_pointers?from=roadmap" {
+		t.Fatalf("href = %q", action.Href)
+	}
+}
+
+func TestRoadmapPlanKey_IsStableAndSeparatesCustomCompanies(t *testing.T) {
+	if got := roadmapPlanKey("cmp_google", "Google"); got != "cmp_google" {
+		t.Fatalf("catalog plan key = %q, want cmp_google", got)
+	}
+	if got := roadmapPlanKey("", ""); got != "core" {
+		t.Fatalf("core plan key = %q, want core", got)
+	}
+	first := roadmapPlanKey("", "  Example Corp  ")
+	if first != roadmapPlanKey("", "example corp") {
+		t.Fatalf("custom plan key is not normalized: %q", first)
+	}
+	if first == roadmapPlanKey("", "Another Corp") {
+		t.Fatal("different custom companies must not share a plan key")
 	}
 }

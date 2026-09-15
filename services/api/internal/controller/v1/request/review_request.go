@@ -6,6 +6,20 @@ type RateReviewRequest struct {
 	ReviewedAt string `json:"reviewedAt"` // ISO 8601
 }
 
+type ProblemAttemptRequest struct {
+	Outcome     string `json:"outcome"`     // not_solved, hard, normal, easy
+	AttemptedAt string `json:"attemptedAt"` // ISO 8601
+}
+
+func (r ProblemAttemptRequest) Valid() bool {
+	switch r.Outcome {
+	case "not_solved", "hard", "normal", "easy":
+		return true
+	default:
+		return false
+	}
+}
+
 // Valid проверяет корректность рейтинга
 func (r RateReviewRequest) Valid() bool {
 	switch r.Rating {

@@ -46,6 +46,7 @@ type FocusCopy = {
     repeatDue: string;
     repeatDueFallback: string;
     returnToCards: string;
+    returnToRoadmap: string;
     showAnswer: string;
   };
 };
@@ -55,6 +56,7 @@ type FocusCardReviewSessionProps = {
   cards: readonly ReviewCard[];
   copy: FocusCopy;
   exitHref?: string;
+  returnLabel?: string;
   modeLabel?: string;
   sessionScope?: string;
   startFresh?: boolean;
@@ -75,6 +77,7 @@ export function FocusCardReviewSession({
   cards,
   copy,
   exitHref = "/cards",
+  returnLabel,
   modeLabel,
   onRate,
   sessionScope = "due",
@@ -183,7 +186,7 @@ export function FocusCardReviewSession({
                 ? `${copy.focus.repeatDue} · ${session.dueReplayCount}`
                 : copy.focus.repeatDueFallback}
             </button>
-            <Link href={exitHref}>{copy.focus.returnToCards}</Link>
+            <Link href={exitHref}>{returnLabel ?? copy.focus.returnToCards}</Link>
           </div>
         </section>
       </main>

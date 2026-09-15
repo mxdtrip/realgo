@@ -8,3 +8,8 @@ ORDER BY
     (name ILIKE sqlc.arg(query)::text || '%') DESC,
     name
 LIMIT sqlc.arg(max_results)::int;
+
+-- name: ListCompanies :many
+SELECT code, name
+FROM companies
+ORDER BY name;

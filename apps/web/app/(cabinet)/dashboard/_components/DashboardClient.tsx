@@ -47,6 +47,7 @@ type DashboardCopy = Readonly<{
   difficultyLabels: Readonly<Record<string, string>>;
   statLabels: Readonly<Record<string, string>>;
   statTooltips: Readonly<Record<string, string>>;
+  statActions: Readonly<Record<string, string>>;
   launcher: PracticeLauncherCopy;
   heatmap: Readonly<{
     title: string;
@@ -103,6 +104,7 @@ const statIcons: Record<string, string> = {
   solved_total: "problems",
   streak: "streak",
   readiness: "readiness",
+  roadmap_progress: "roadmap",
 };
 
 function metricTone(stat: DashboardStat): MetricTone {
@@ -245,10 +247,17 @@ export function DashboardClient({ copy }: Readonly<{ copy: DashboardCopy }>) {
               </p>
             </div>
             <div className="dashboard-next-action__actions">
-              <Link className="cabinet-cta" href={data.nextAction.href}>
-                {dueToday === 0 ? copy.nextActionPlan : copy.nextActionOpen}
-                <CabinetIcon name="arrow" />
-              </Link>
+              {data.nextAction.href.startsWith("http") ? (
+                <a className="cabinet-cta" href={data.nextAction.href} target="_blank" rel="noreferrer">
+                  {dueToday === 0 ? copy.nextActionPlan : copy.nextActionOpen}
+                  <CabinetIcon name="arrow" />
+                </a>
+              ) : (
+                <Link className="cabinet-cta" href={data.nextAction.href}>
+                  {dueToday === 0 ? copy.nextActionPlan : copy.nextActionOpen}
+                  <CabinetIcon name="arrow" />
+                </Link>
+              )}
               {dueToday > 0 && data.nextAction.href !== "/queue" ? (
                 <Link className="cabinet-ghost-link" href="/queue">
                   {copy.nextActionQueue}
@@ -298,6 +307,8 @@ export function DashboardClient({ copy }: Readonly<{ copy: DashboardCopy }>) {
                 tone={metricTone(stat)}
                 icon={statIcons[stat.key]}
                 tooltip={copy.statTooltips[stat.key]}
+                href={stat.href}
+                actionLabel={copy.statActions[stat.key]}
               />
             ))}
           </section>
