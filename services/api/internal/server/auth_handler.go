@@ -24,9 +24,10 @@ import (
 
 // authHandler exposes the authentication endpoints over the auth service.
 type authHandler struct {
-	svc         *auth.Service
-	mailer      mail.Sender
-	mailBaseURL string
+	svc                      *auth.Service
+	mailer                   mail.Sender
+	mailBaseURL              string
+	requireEmailVerification bool
 }
 
 const maxJSONBodyBytes = 1 << 20
@@ -149,6 +150,15 @@ func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 	}
 	var req registrationRequest
 	if !decodeJSON(w, r, &req) || !validateCredentials(w, req.Email, req.Password, "Register") {
+		return
+	}
+	if !h.requireEmailVerification {
+		user, tokens, err := h.svc.Register(r.Context(), req.Email, req.Password)
+		if err != nil {
+			writeAuthError(w, err, "Register", slog.String("email_hash", emailLogHash(req.Email)))
+			return
+		}
+		response.JSON(w, http.StatusCreated, authResponse{User: newUserResponse(user), Tokens: tokens})
 		return
 	}
 	code, err := h.svc.StartRegistration(r.Context(), req.Email, req.Password, req.Nickname)

@@ -8,14 +8,18 @@ import { clearTokens, getRefreshToken, setTokens } from "./tokens";
 import type { AuthTokens, AuthUser } from "./types";
 
 type AuthResponse = { user: AuthUser; tokens: AuthTokens };
+type RegistrationResponse = AuthResponse | { status: "verification_requested" };
 
-/** POST /auth/register → starts a pending email verification, without a session. */
-export async function register(email: string, password: string, nickname: string): Promise<void> {
-	await apiFetch<{ status: string }>("/auth/register", {
-		method: "POST",
-		auth: false,
-		body: { email, password, nickname },
-	});
+/** Creates a session outside production; production still verifies the mailbox first. */
+export async function register(email: string, password: string): Promise<AuthUser | null> {
+  const data = await apiFetch<RegistrationResponse>("/auth/register", {
+    method: "POST",
+    auth: false,
+    body: { email, password },
+  });
+  if (!("tokens" in data)) return null;
+  setTokens(data.tokens);
+  return data.user;
 }
 
 /** POST /auth/login → authenticates and starts a session. */

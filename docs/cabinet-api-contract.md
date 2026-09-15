@@ -100,17 +100,24 @@
 
 ### `POST /auth/register`
 
-Создаёт аккаунт. После регистрации frontend отправляет пользователя в onboarding.
+В `local` и других непроизводственных окружениях создаёт аккаунт и сессию
+сразу, после чего frontend отправляет пользователя в onboarding. В
+`production` сначала сохраняет краткоживущую заявку и отправляет код на
+почту; сессия создаётся только после `POST /auth/email-verification/confirm`.
 
 Request:
 
 ```json
 {
   "email": "user@example.com",
-  "password": "strong-password",
-  "locale": "ru",
-  "timezone": "Europe/Moscow"
+  "password": "strong-password"
 }
+```
+
+Production-ответ до подтверждения почты:
+
+```json
+{ "data": { "status": "verification_requested" } }
 ```
 
 Response:
