@@ -411,7 +411,7 @@ const ru = {
           ["plan", "free mock"],
           ["interview", "20.07.2026"],
           ["sync", "2m ago"],
-          ["build", "v0.4.2 · fsrs-6"],
+          ["build", "v0.5.0 · fsrs-6"],
         ],
         menuSettings: "Настройки",
         menuReport: "Сообщить о проблеме",
