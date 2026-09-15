@@ -134,7 +134,7 @@ func buildNextAction(metrics Metrics, dueItems []ReviewPreviewItem, nextReview *
 		dueAt := first.DueAt
 		return NextAction{
 			Type:        actionType(first.Type),
-			Title:       fmt.Sprintf("%d повторений на сегодня", metrics.DueCount),
+			Title:       fmt.Sprintf("%d %s на сегодня", metrics.DueCount, pluralReview(metrics.DueCount)),
 			Description: nonEmpty(first.Meta, first.Title),
 			Href:        actionHref(first.Type),
 			DueAt:       &dueAt,
@@ -150,12 +150,24 @@ func buildNextAction(metrics Metrics, dueItems []ReviewPreviewItem, nextReview *
 	}
 	dueAt := nextReview.DueAt
 	return NextAction{
-		Type:        actionType(nextReview.Type),
-		Title:       "Следующее повторение",
-		Description: nonEmpty(nextReview.Meta, nextReview.Title),
-		Href:        actionHref(nextReview.Type),
+		Type:        nextActionTypeRoadmapStep,
+		Title:       "На сегодня всё готово",
+		Description: "Следующее повторение: " + nonEmpty(nextReview.Meta, nextReview.Title),
+		Href:        "/roadmap",
 		DueAt:       &dueAt,
 	}
+}
+
+func pluralReview(value int) string {
+	mod10 := value % 10
+	mod100 := value % 100
+	if mod10 == 1 && mod100 != 11 {
+		return "повторение"
+	}
+	if mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) {
+		return "повторения"
+	}
+	return "повторений"
 }
 
 func mapReviewPreview(items []ReviewPreview) []ReviewPreviewItem {
@@ -224,7 +236,7 @@ func actionHref(reviewType string) string {
 	if reviewType == reviewPreviewTypeCard {
 		return "/cards/session"
 	}
-	return "/reviews"
+	return "/queue"
 }
 
 func reviewMeta(patternName, difficulty string) string {

@@ -264,6 +264,12 @@ const CARD_SESSION = {
   ],
 };
 
+const DUE_CARDS_SUMMARY = {
+  totalDue: 0,
+  estimatedMinutes: 0,
+  byType: [],
+};
+
 function atlasPayload(withCompany) {
   const subpatterns = [
     {
@@ -445,9 +451,9 @@ const dayKey = (agoDays) => {
 const DASHBOARD = {
   nextAction: {
     type: "problem_review",
-    title: "2 повторений на сегодня",
+    title: "2 повторения на сегодня",
     description: "Binary Search · medium",
-    href: "/reviews",
+    href: "/queue",
     dueAt: NOW_ISO,
   },
   stats: [
@@ -502,7 +508,18 @@ const ROADMAP = {
       focus: "solve pattern problems and reviews",
       status: "done",
       topics: ["arrays_hashing"],
-      items: [{ code: "arrays_hashing", name: "Arrays & Hashing", relevantProblemCount: 12, difficultyCounts: { easy: 4, medium: 8 }, masteryPercent: 100 }],
+      items: [{
+        code: "arrays_hashing",
+        name: "Arrays & Hashing",
+        relevantProblemCount: 12,
+        difficultyCounts: { easy: 4, medium: 8 },
+        masteryPercent: 100,
+        planProgress: 100,
+        tasks: [
+          { id: 701, title: "Two Sum", url: "https://leetcode.com/problems/two-sum/", difficulty: "easy", tier: "foundational", status: "solved" },
+        ],
+        cardProgress: { total: 3, reviewed: 3, due: 0 },
+      }],
     },
     {
       id: "week_02",
@@ -512,7 +529,19 @@ const ROADMAP = {
       focus: "solve pattern problems and reviews",
       status: "active",
       topics: ["two_pointers"],
-      items: [{ code: "two_pointers", name: "Two Pointers", relevantProblemCount: 8, difficultyCounts: { easy: 2, medium: 6 }, masteryPercent: 40 }],
+      items: [{
+        code: "two_pointers",
+        name: "Two Pointers",
+        relevantProblemCount: 8,
+        difficultyCounts: { easy: 2, medium: 6 },
+        masteryPercent: 40,
+        planProgress: 40,
+        tasks: [
+          { id: 702, title: "Valid Palindrome", url: "https://leetcode.com/problems/valid-palindrome/", difficulty: "easy", tier: "foundational", status: "solved" },
+          { id: 703, title: "Two Sum II", url: "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/", difficulty: "medium", tier: "core", status: "not_started" },
+        ],
+        cardProgress: { total: 3, reviewed: 1, due: 0 },
+      }],
     },
   ],
   patterns: [],
@@ -745,6 +774,12 @@ const server = createServer((req, res) => {
     }
 
     // ---- Card session fixtures (e2e for /cards/session) ----------------
+    if (path === `${PREFIX}/me/cards/due-summary` && req.method === "GET") {
+      const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+      if (kindOf(bearer) !== "LIVE") return fail(res, 401, "unauthorized", "stub: session invalid");
+      return ok(res, DUE_CARDS_SUMMARY);
+    }
+
     if (path === `${PREFIX}/me/cards/session` && req.method === "GET") {
       const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
       const kind = kindOf(bearer);

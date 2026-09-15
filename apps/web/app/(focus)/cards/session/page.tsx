@@ -7,10 +7,10 @@ export const metadata: Metadata = { title: "Сессия повторения" }
 
 export default async function CardSessionPage({
   searchParams,
-}: Readonly<{ searchParams: Promise<{ scope?: string }> }>) {
+}: Readonly<{ searchParams: Promise<{ scope?: string; restart?: string }> }>) {
   const dictionary = getDictionary();
   const session = dictionary.cabinet.pages.cards.session;
-  const { scope } = await searchParams;
+  const { scope, restart } = await searchParams;
 
   return (
     <CardSessionClient
@@ -19,6 +19,7 @@ export default async function CardSessionPage({
       errorFallback={session.sessionError}
       retryLabel={session.retry}
       scope={scope === "practice" ? "practice" : "due"}
+      startFresh={restart === "1"}
     />
   );
 }

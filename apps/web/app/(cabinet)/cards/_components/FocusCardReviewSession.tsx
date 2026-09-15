@@ -28,6 +28,7 @@ type FocusCopy = {
     completedDescription: string;
     completedEyebrow: string;
     completedTitle: string;
+    dueMode: string;
     easy: string;
     easyHint: string;
     exit: string;
@@ -37,6 +38,7 @@ type FocusCopy = {
     normal: string;
     normalHint: string;
     of: string;
+    practiceMode: string;
     progress: string;
     ratePrompt: string;
     saveError: string;
@@ -52,6 +54,10 @@ type FocusCardReviewSessionProps = {
   brand: string;
   cards: readonly ReviewCard[];
   copy: FocusCopy;
+  exitHref?: string;
+  modeLabel?: string;
+  sessionScope?: string;
+  startFresh?: boolean;
   /** Persists a rating before the UI advances to the next card. */
   onRate?: (cardId: string, rating: ReviewRating, reviewedAt: string) => void | Promise<void>;
 };
@@ -64,7 +70,16 @@ const ratings = [
 
 const cardExitMs = 420;
 
-export function FocusCardReviewSession({ brand, cards, copy, onRate }: Readonly<FocusCardReviewSessionProps>) {
+export function FocusCardReviewSession({
+  brand,
+  cards,
+  copy,
+  exitHref = "/cards",
+  modeLabel,
+  onRate,
+  sessionScope = "due",
+  startFresh = false,
+}: Readonly<FocusCardReviewSessionProps>) {
   const [advanceRating, setAdvanceRating] = useState<ReviewRating | null>(null);
   const [rateError, setRateError] = useState("");
   const advanceTimeoutRef = useRef<number | null>(null);
@@ -74,12 +89,19 @@ export function FocusCardReviewSession({ brand, cards, copy, onRate }: Readonly<
     if (!settings.enabled || !settings.cardReviewReminder || getNotificationPermission() !== "granted") return;
     void showRealgoNotification(copy.sessionCompleteTitle, {
       body: copy.sessionCompleteBody,
-      data: { url: "/cards" },
+      data: { url: exitHref },
       tag: "realgo-card-session-complete",
     });
-  }, [copy.sessionCompleteBody, copy.sessionCompleteTitle]);
+  }, [copy.sessionCompleteBody, copy.sessionCompleteTitle, exitHref]);
 
-  const session = useCardReviewSession(cards, copy.nextReview, notifyComplete, onRate);
+  const session = useCardReviewSession(
+    cards,
+    copy.nextReview,
+    notifyComplete,
+    onRate,
+    sessionScope,
+    startFresh,
+  );
   const currentPosition = Math.min(session.completedUnique + 1, session.totalCards);
   const isAdvancing = advanceRating !== null;
 
@@ -161,7 +183,7 @@ export function FocusCardReviewSession({ brand, cards, copy, onRate }: Readonly<
                 ? `${copy.focus.repeatDue} · ${session.dueReplayCount}`
                 : copy.focus.repeatDueFallback}
             </button>
-            <Link href="/cards">{copy.focus.returnToCards}</Link>
+            <Link href={exitHref}>{copy.focus.returnToCards}</Link>
           </div>
         </section>
       </main>
@@ -179,9 +201,12 @@ export function FocusCardReviewSession({ brand, cards, copy, onRate }: Readonly<
       <div className="focus-gradient" aria-hidden="true" />
 
       <header className="focus-header">
-        <Link className="site-brand" href="/cards">
-          {brand}
-        </Link>
+        <div className="focus-context">
+          <Link className="site-brand" href="/cards">
+            {brand}
+          </Link>
+          {modeLabel ? <span>{modeLabel}</span> : null}
+        </div>
         <div className="focus-progress" aria-label={`${copy.focus.progress} ${currentPosition} ${copy.focus.of} ${session.totalCards}`}>
           <span>
             {copy.focus.progress} {currentPosition} {copy.focus.of} {session.totalCards}
@@ -196,7 +221,7 @@ export function FocusCardReviewSession({ brand, cards, copy, onRate }: Readonly<
             <i style={{ width: `${session.progressPercent}%` }} />
           </div>
         </div>
-        <Link className="focus-exit" href="/cards">
+        <Link className="focus-exit" href={exitHref}>
           {copy.focus.exit}
         </Link>
       </header>

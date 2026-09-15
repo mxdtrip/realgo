@@ -66,5 +66,15 @@ export function PatternSessionClient({
     return <main className="focus-session focus-session--loading">{error || errorFallback}</main>;
   }
 
-  return <FocusCardReviewSession brand={brand} cards={toReviewCards(cards)} copy={copy} onRate={persistRating} />;
+  return (
+    <FocusCardReviewSession
+      brand={brand}
+      cards={toReviewCards(cards)}
+      copy={copy}
+      exitHref={`/patterns/${encodeURIComponent(code)}`}
+      modeLabel={copy.focus.practiceMode}
+      onRate={persistRating}
+      sessionScope={`pattern:${code}`}
+    />
+  );
 }

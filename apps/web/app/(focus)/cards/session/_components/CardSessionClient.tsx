@@ -17,6 +17,7 @@ export function CardSessionClient({
   errorFallback,
   retryLabel,
   scope = "due",
+  startFresh = false,
 }: Readonly<{
   brand: string;
   copy: ComponentProps<typeof FocusCardReviewSession>["copy"];
@@ -24,6 +25,7 @@ export function CardSessionClient({
   retryLabel: string;
   /** due — обычное повторение; practice — все карточки активных подпаттернов. */
   scope?: SessionScope;
+  startFresh?: boolean;
 }>) {
   const [cards, setCards] = useState<readonly ReviewCard[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -86,6 +88,15 @@ export function CardSessionClient({
   }
 
   return (
-    <FocusCardReviewSession brand={brand} cards={cards} copy={copy} onRate={persistRating} />
+    <FocusCardReviewSession
+      brand={brand}
+      cards={cards}
+      copy={copy}
+      exitHref={scope === "practice" ? "/cards#practice" : "/cards"}
+      modeLabel={scope === "practice" ? copy.focus.practiceMode : copy.focus.dueMode}
+      onRate={persistRating}
+      sessionScope={scope}
+      startFresh={startFresh}
+    />
   );
 }

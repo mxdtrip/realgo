@@ -75,6 +75,36 @@ func TestServiceGet_ActivityAggregates(t *testing.T) {
 	}
 }
 
+func TestServiceGet_FutureReviewDoesNotLinkToEmptyDueQueue(t *testing.T) {
+	dueAt := time.Date(2026, 7, 2, 9, 30, 0, 0, time.UTC)
+	svc := NewService(fakeRepository{
+		nextReview: &ReviewPreview{
+			ID:          77,
+			EntityType:  "card",
+			Title:       "Two Pointers",
+			PatternName: "Two Pointers",
+			DueAt:       dueAt,
+		},
+	}, fakeWeakRepository{})
+
+	got, err := svc.Get(context.Background(), 42)
+	if err != nil {
+		t.Fatalf("Get returned error: %v", err)
+	}
+	if got.NextAction.Type != nextActionTypeRoadmapStep {
+		t.Fatalf("NextAction.Type = %q, want %q", got.NextAction.Type, nextActionTypeRoadmapStep)
+	}
+	if got.NextAction.Href != "/roadmap" {
+		t.Fatalf("NextAction.Href = %q, want /roadmap", got.NextAction.Href)
+	}
+	if got.NextAction.Title != "На сегодня всё готово" {
+		t.Fatalf("NextAction.Title = %q", got.NextAction.Title)
+	}
+	if got.NextAction.DueAt == nil || !got.NextAction.DueAt.Equal(dueAt) {
+		t.Fatalf("NextAction.DueAt = %v, want %v", got.NextAction.DueAt, dueAt)
+	}
+}
+
 func TestServiceGet_UserWithData(t *testing.T) {
 	dueAt := time.Date(2026, 6, 30, 9, 30, 0, 0, time.UTC)
 	lastRating := "hard"
@@ -122,11 +152,11 @@ func TestServiceGet_UserWithData(t *testing.T) {
 	if got.NextAction.Type != nextActionTypeProblemReview {
 		t.Fatalf("NextAction.Type = %q, want %q", got.NextAction.Type, nextActionTypeProblemReview)
 	}
-	if got.NextAction.Title != "3 повторений на сегодня" {
+	if got.NextAction.Title != "3 повторения на сегодня" {
 		t.Fatalf("NextAction.Title = %q", got.NextAction.Title)
 	}
-	if got.NextAction.Href != "/reviews" {
-		t.Fatalf("NextAction.Href = %q, want /reviews", got.NextAction.Href)
+	if got.NextAction.Href != "/queue" {
+		t.Fatalf("NextAction.Href = %q, want /queue", got.NextAction.Href)
 	}
 	if got.NextAction.DueAt == nil || !got.NextAction.DueAt.Equal(dueAt) {
 		t.Fatalf("NextAction.DueAt = %v, want %v", got.NextAction.DueAt, dueAt)
