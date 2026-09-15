@@ -99,7 +99,7 @@ test.describe("pattern atlas tree", () => {
     // Выбор компании сразу переключает на companies view — этот тест
     // проверяет relevance-бейджи в дереве, поэтому возвращаемся на Tree.
     await selectCompany(page, "Stub Corp");
-    await page.getByRole("tab", { name: "Tree" }).click();
+    await page.getByRole("tab", { name: "Дерево" }).click();
     await expect(page.locator(".atlas-demo-note")).toBeVisible();
 
     await page.getByRole("button", { name: /Binary Search$/ }).click();

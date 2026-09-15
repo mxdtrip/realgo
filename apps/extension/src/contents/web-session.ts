@@ -29,7 +29,6 @@ export const config: PlasmoCSConfig = {
 const ACCESS_KEY = "realgo:auth:access:v1";
 const REFRESH_KEY = "realgo:auth:refresh:v1";
 const CHANGED_EVENT = "realgo:auth-changed";
-
 function syncSession() {
   let accessToken: string | null;
   let refreshToken: string | null;
