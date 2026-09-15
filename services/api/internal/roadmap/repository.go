@@ -93,6 +93,9 @@ func (r *pgRepository) Get(ctx context.Context, userID int64) (Response, error) 
 		generatedAt,
 		atlas,
 	)
+	if err := r.enrichPlan(ctx, userID, companyCode, &resp); err != nil {
+		return Response{}, err
+	}
 	return resp, nil
 }
 
@@ -126,6 +129,7 @@ func (r *pgRepository) Save(ctx context.Context, userID int64, req ConfigRequest
 		WeeklyCapacity:   int32(resp.WeeklyCapacity),
 		AlgorithmVersion: algorithmVersion,
 		Source:           resp.Source,
+		PreserveProgress: req.PreserveProgress,
 	}); err != nil {
 		return Response{}, fmt.Errorf("roadmap: upsert config: %w", err)
 	}
@@ -201,7 +205,116 @@ func (r *pgRepository) prepare(ctx context.Context, userID int64, req ConfigRequ
 		horizon = frozen
 	}
 	resp := responseFromPlan(target, mode, source, horizon, weeklyCapacityDefault, items, false, nil, atlas)
+	companyCode := ""
+	if atlas.Company != nil {
+		companyCode = atlas.Company.Code
+	}
+	if err := r.enrichPlan(ctx, userID, companyCode, &resp); err != nil {
+		return Response{}, nil, err
+	}
 	return resp, items, nil
+}
+
+func (r *pgRepository) enrichPlan(ctx context.Context, userID int64, companyCode string, resp *Response) error {
+	codes := make([]string, 0, resp.SelectedCount)
+	for _, week := range resp.Weeks {
+		for _, item := range week.Items {
+			codes = append(codes, item.Code)
+		}
+	}
+	if len(codes) == 0 {
+		return nil
+	}
+
+	problemRows, err := r.q.ListRoadmapPlanProblems(ctx, db.ListRoadmapPlanProblemsParams{
+		UserID:          userID,
+		CompanyCode:     companyCode,
+		SubpatternCodes: codes,
+	})
+	if err != nil {
+		return fmt.Errorf("roadmap: list plan problems: %w", err)
+	}
+	tasksByCode := make(map[string][]Task, len(codes))
+	for _, row := range problemRows {
+		tasksByCode[row.SubpatternCode] = append(tasksByCode[row.SubpatternCode], Task{
+			ID:         row.ID,
+			Title:      row.Title,
+			URL:        row.Url,
+			Difficulty: row.Difficulty,
+			Tier:       row.Tier,
+			Status:     row.Status,
+		})
+	}
+
+	cardRows, err := r.q.ListRoadmapPlanCardProgress(ctx, db.ListRoadmapPlanCardProgressParams{
+		UserID:          userID,
+		SubpatternCodes: codes,
+	})
+	if err != nil {
+		return fmt.Errorf("roadmap: list plan card progress: %w", err)
+	}
+	cardsByCode := make(map[string]CardProgress, len(codes))
+	for _, row := range cardRows {
+		cardsByCode[row.SubpatternCode] = CardProgress{
+			Total:    int(row.TotalCards),
+			Reviewed: int(row.ReviewedCards),
+			Due:      int(row.DueCards),
+		}
+	}
+
+	for weekIndex := range resp.Weeks {
+		for itemIndex := range resp.Weeks[weekIndex].Items {
+			item := &resp.Weeks[weekIndex].Items[itemIndex]
+			item.Tasks = tasksByCode[item.Code]
+			if item.Tasks == nil {
+				item.Tasks = []Task{}
+			}
+			item.CardProgress = cardsByCode[item.Code]
+			total, completed := len(item.Tasks)+item.CardProgress.Total, item.CardProgress.Reviewed
+			for _, task := range item.Tasks {
+				if task.Status == "solved" || task.Status == "reviewing" {
+					completed++
+				}
+			}
+			if total > 0 {
+				item.PlanProgress = percent(completed, total)
+			} else {
+				item.PlanProgress = item.MasteryPercent
+			}
+		}
+	}
+	recalculatePlanProgress(resp)
+	return nil
+}
+
+func recalculatePlanProgress(resp *Response) {
+	overallSum, itemCount := 0, 0
+	activeAssigned := false
+	for weekIndex := range resp.Weeks {
+		week := &resp.Weeks[weekIndex]
+		if len(week.Items) == 0 {
+			continue
+		}
+		weekSum := 0
+		for _, item := range week.Items {
+			weekSum += item.PlanProgress
+			overallSum += item.PlanProgress
+			itemCount++
+		}
+		week.Progress = int(math.Round(float64(weekSum) / float64(len(week.Items))))
+		switch {
+		case week.Progress >= 100:
+			week.Status = "done"
+		case !activeAssigned:
+			week.Status = "active"
+			activeAssigned = true
+		default:
+			week.Status = "todo"
+		}
+	}
+	if itemCount > 0 {
+		resp.OverallProgress = int(math.Round(float64(overallSum) / float64(itemCount)))
+	}
 }
 
 func (r *pgRepository) loadAtlas(ctx context.Context, userID int64, companyCode, companyName string) (patterns.AtlasResponse, string, error) {
@@ -429,6 +542,8 @@ func itemFromSubpattern(sub patterns.AtlasSubpattern, difficultyCounts map[strin
 			Name:             sub.Name,
 			DifficultyCounts: counts,
 			MasteryPercent:   sub.Mastery.Percent,
+			PlanProgress:     sub.Mastery.Percent,
+			Tasks:            []Task{},
 		},
 		TaxonomyPosition: sub.Position,
 		DifficultyScore:  difficultyScore(counts),

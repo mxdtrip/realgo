@@ -35,6 +35,29 @@ type RoadmapCopy = Readonly<{
   practiceAction: string;
   lockedEyebrow: string;
   lockedTitle: string;
+  aheadEyebrow: string;
+  aheadTitle: string;
+  aheadDescription: string;
+  aheadAction: string;
+  currentPlanEyebrow: string;
+  currentPlanTitle: string;
+  currentPlanDescription: string;
+  paceAhead: string;
+  paceOnTrack: string;
+  paceBehind: string;
+  weekPlanAction: string;
+  weekDoneTitle: string;
+  learnAction: string;
+  tasksTitle: string;
+  cardsTitle: string;
+  solveAction: string;
+  reviewCardsAction: string;
+  completedLabel: string;
+  remainingLabel: string;
+  masteryLabel: string;
+  scheduledLabel: string;
+  nextStepLabel: string;
+  difficultyLabels: Readonly<Record<string, string>>;
   reviewEyebrow?: string;
   reviewTitle?: string;
   empty: string;
@@ -100,6 +123,35 @@ function configFrom(data: RoadmapResponse, mode: RoadmapPriorityMode, preservePr
     priorityMode: mode,
     preserveProgress,
   };
+}
+
+function taskIsComplete(status: string) {
+  return status === "solved" || status === "reviewing";
+}
+
+function planProgress(item: RoadmapWeek["items"][number]) {
+  return Number.isFinite(item.planProgress) ? item.planProgress : item.masteryPercent;
+}
+
+const roadmapDateFormatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" });
+
+function weekDateRange(generatedAt: string | undefined, weekIndex: number) {
+  if (!generatedAt) return null;
+  const start = new Date(generatedAt);
+  if (Number.isNaN(start.getTime())) return null;
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() + weekIndex * 7);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  return `${roadmapDateFormatter.format(start)} — ${roadmapDateFormatter.format(end)}`;
+}
+
+function scheduledWeekIndex(generatedAt: string | undefined, weekCount: number) {
+  if (!generatedAt || weekCount === 0) return 0;
+  const generated = new Date(generatedAt);
+  if (Number.isNaN(generated.getTime())) return 0;
+  const elapsed = Math.max(0, Date.now() - generated.getTime());
+  return Math.min(weekCount - 1, Math.floor(elapsed / (7 * 86_400_000)));
 }
 
 export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
@@ -218,15 +270,31 @@ export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
   const firstActive = weeks.findIndex(
     (week, index) => week.status === "active" && !isWeekLocked(index),
   );
+  const currentWeekIndex = firstActive >= 0 ? firstActive : Math.max(0, weeks.length - 1);
+  const currentWeek = weeks[currentWeekIndex];
+  const expectedWeekIndex = scheduledWeekIndex(shown?.generatedAt, weeks.length);
+  const pace =
+    currentWeekIndex > expectedWeekIndex
+      ? copy.paceAhead
+      : currentWeekIndex < expectedWeekIndex
+        ? copy.paceBehind
+        : copy.paceOnTrack;
+  const currentRange = weekDateRange(shown?.generatedAt, currentWeekIndex);
+  const nextTask = currentWeek?.items
+    .flatMap((item) => (item.tasks ?? []).map((task) => ({ item, task })))
+    .find(({ task }) => !taskIsComplete(task.status));
+  const nextCardItem = currentWeek?.items.find(
+    (item) => (item.cardProgress?.reviewed ?? 0) < (item.cardProgress?.total ?? 0),
+  );
   const countdown = interviewCountdown(shown?.target.interviewDate ?? null);
 
   const renderWeek = (week: RoadmapWeek, index: number) => {
     const stateName = week.status in statuses ? week.status : "todo";
     const locked = isWeekLocked(index);
     const visibleProgress = locked ? 0 : week.progress;
-    const practiceCode = week.topics[0];
+    const hasTopics = week.topics.length > 0;
     return (
-      <li className={`roadmap-step roadmap-step--${stateName}`} key={week.id}>
+      <li className={`roadmap-step roadmap-step--${stateName}`} id={week.id} key={week.id}>
         <div className="roadmap-step__rail">
           <span className="roadmap-step__node">{String(index + 1).padStart(2, "0")}</span>
         </div>
@@ -251,17 +319,22 @@ export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
               <span className="roadmap-step__practice-eyebrow">{copy.lockedEyebrow}</span>
               <strong>{copy.lockedTitle}</strong>
             </div>
-          ) : !practiceCode ? (
+          ) : stateName === "done" ? (
+            <div className="roadmap-step__practice-card roadmap-step__practice-card--done">
+              <span className="roadmap-step__practice-eyebrow">{copy.completedLabel}</span>
+              <strong>{copy.weekDoneTitle}</strong>
+            </div>
+          ) : !hasTopics ? (
             <div className="roadmap-step__practice-card roadmap-step__practice-card--locked">
               <span className="roadmap-step__practice-eyebrow">{copy.reviewEyebrow ?? "review week"}</span>
               <strong>{copy.reviewTitle ?? "Повторение и mock interview"}</strong>
             </div>
           ) : (
-            <Link className="roadmap-step__practice-card" href={`/patterns/${practiceCode}/session`}>
+            <Link className="roadmap-step__practice-card" href="#current-plan">
               <span className="roadmap-step__practice-eyebrow">{copy.practiceEyebrow}</span>
-              <strong>{copy.practiceCta}</strong>
+              <strong>{copy.weekPlanAction}</strong>
               <em>
-                {copy.practiceAction}
+                {copy.nextStepLabel}
                 <CabinetIcon name="arrow" />
               </em>
             </Link>
@@ -332,6 +405,111 @@ export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
 
       {loadState === "loaded" && shown?.configured ? (
         <>
+          {currentWeek && !draft ? (
+            <section className="roadmap-current-plan" id="current-plan" aria-labelledby="current-plan-title">
+              <header className="roadmap-current-plan__head">
+                <div>
+                  <span className="cabinet-eyebrow">{copy.currentPlanEyebrow} · {currentWeek.label}</span>
+                  <h2 id="current-plan-title">{copy.currentPlanTitle}</h2>
+                  <p>{copy.currentPlanDescription}</p>
+                </div>
+                <div className={`roadmap-pace roadmap-pace--${pace === copy.paceBehind ? "behind" : pace === copy.paceAhead ? "ahead" : "track"}`}>
+                  <strong>{pace}</strong>
+                  {currentRange ? <span>{copy.scheduledLabel} · {currentRange}</span> : null}
+                </div>
+              </header>
+
+              <div className="roadmap-current-plan__next">
+                <div>
+                  <span>{copy.nextStepLabel}</span>
+                  <strong>
+                    {nextTask?.task.title ?? nextCardItem?.name ?? copy.weekDoneTitle}
+                  </strong>
+                  <small>
+                    {nextTask
+                      ? `${nextTask.item.name} · ${copy.tasksTitle}`
+                      : nextCardItem
+                        ? `${nextCardItem.cardProgress.reviewed}/${nextCardItem.cardProgress.total} · ${copy.cardsTitle}`
+                        : copy.aheadDescription}
+                  </small>
+                </div>
+                {nextTask ? (
+                  <a className="cabinet-cta" href={nextTask.task.url} target="_blank" rel="noreferrer">
+                    {copy.solveAction}
+                    <CabinetIcon name="arrow" />
+                  </a>
+                ) : nextCardItem ? (
+                  <Link className="cabinet-cta" href={`/patterns/${encodeURIComponent(nextCardItem.code)}/session`}>
+                    {copy.reviewCardsAction}
+                    <CabinetIcon name="arrow" />
+                  </Link>
+                ) : currentWeekIndex + 1 < weeks.length ? (
+                  <Link className="cabinet-cta" href={`#${weeks[currentWeekIndex + 1].id}`}>
+                    {copy.aheadAction}
+                    <CabinetIcon name="arrow" />
+                  </Link>
+                ) : null}
+              </div>
+
+              <div className="roadmap-current-plan__items">
+                {currentWeek.items.map((item, itemIndex) => {
+                  const tasks = item.tasks ?? [];
+                  const completedTasks = tasks.filter((task) => taskIsComplete(task.status)).length;
+                  const cards = item.cardProgress ?? { total: 0, reviewed: 0, due: 0 };
+                  return (
+                    <article className="roadmap-plan-item" key={item.code}>
+                      <div className="roadmap-plan-item__head">
+                        <span>{String(itemIndex + 1).padStart(2, "0")}</span>
+                        <div>
+                          <h3>{item.name}</h3>
+                          <p>{copy.masteryLabel} · {item.masteryPercent}%</p>
+                        </div>
+                        <strong>{planProgress(item)}%</strong>
+                      </div>
+                      <Link className="roadmap-plan-item__learn" href={`/patterns/${encodeURIComponent(item.code)}`}>
+                        {copy.learnAction}
+                        <CabinetIcon name="arrow" />
+                      </Link>
+                      <div className="roadmap-plan-item__group">
+                        <div className="roadmap-plan-item__group-head">
+                          <strong>{copy.tasksTitle}</strong>
+                          <span>{completedTasks}/{tasks.length} {copy.completedLabel}</span>
+                        </div>
+                        {tasks.length > 0 ? (
+                          <ul>
+                            {tasks.map((task) => {
+                              const complete = taskIsComplete(task.status);
+                              return (
+                                <li className={complete ? "is-complete" : ""} key={task.id}>
+                                  <span aria-hidden="true">{complete ? "✓" : "○"}</span>
+                                  <a href={task.url} target="_blank" rel="noreferrer">{task.title}</a>
+                                  <em>{copy.difficultyLabels?.[task.difficulty] ?? task.difficulty}</em>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : (
+                          <p>{copy.remainingLabel}</p>
+                        )}
+                      </div>
+                      <div className="roadmap-plan-item__cards">
+                        <div>
+                          <strong>{copy.cardsTitle}</strong>
+                          <span>{cards.reviewed}/{cards.total} {copy.completedLabel}{cards.due > 0 ? ` · ${cards.due} ${copy.remainingLabel}` : ""}</span>
+                        </div>
+                        {cards.total > 0 && cards.reviewed < cards.total ? (
+                          <Link href={`/patterns/${encodeURIComponent(item.code)}/session`}>
+                            {copy.reviewCardsAction}
+                          </Link>
+                        ) : null}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
           <section className="roadmap-priority-panel" aria-label={copy.priorityTitle ?? "Приоритет тем"}>
             <div className="roadmap-priority-panel__copy">
               <strong>{copy.priorityTitle ?? "Порядок тем"}</strong>

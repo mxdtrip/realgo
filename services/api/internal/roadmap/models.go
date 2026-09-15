@@ -72,6 +72,24 @@ type Item struct {
 	RelevantProblemCount int            `json:"relevantProblemCount"`
 	DifficultyCounts     map[string]int `json:"difficultyCounts"`
 	MasteryPercent       int            `json:"masteryPercent"`
+	PlanProgress         int            `json:"planProgress"`
+	Tasks                []Task         `json:"tasks"`
+	CardProgress         CardProgress   `json:"cardProgress"`
+}
+
+type Task struct {
+	ID         int64  `json:"id"`
+	Title      string `json:"title"`
+	URL        string `json:"url"`
+	Difficulty string `json:"difficulty"`
+	Tier       string `json:"tier"`
+	Status     string `json:"status"`
+}
+
+type CardProgress struct {
+	Total    int `json:"total"`
+	Reviewed int `json:"reviewed"`
+	Due      int `json:"due"`
 }
 
 type planItem struct {

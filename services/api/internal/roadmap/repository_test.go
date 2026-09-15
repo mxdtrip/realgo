@@ -316,3 +316,33 @@ func TestEffectiveMode_HidesUnavailableSignals(t *testing.T) {
 		t.Fatalf("knowledge gaps without history = %q, want balanced", got)
 	}
 }
+
+func TestRecalculatePlanProgress_UsesAssignedWorkAndUnlocksNextWeek(t *testing.T) {
+	resp := Response{Weeks: []Week{
+		{
+			ID: "week_01",
+			Items: []Item{
+				{Code: "first", PlanProgress: 100},
+				{Code: "second", PlanProgress: 100},
+			},
+		},
+		{
+			ID: "week_02",
+			Items: []Item{
+				{Code: "third", PlanProgress: 50},
+			},
+		},
+	}}
+
+	recalculatePlanProgress(&resp)
+
+	if resp.Weeks[0].Progress != 100 || resp.Weeks[0].Status != "done" {
+		t.Fatalf("week 1 = %+v, want completed", resp.Weeks[0])
+	}
+	if resp.Weeks[1].Progress != 50 || resp.Weeks[1].Status != "active" {
+		t.Fatalf("week 2 = %+v, want active at 50%%", resp.Weeks[1])
+	}
+	if resp.OverallProgress != 83 {
+		t.Fatalf("overallProgress = %d, want 83", resp.OverallProgress)
+	}
+}

@@ -60,8 +60,75 @@ ON CONFLICT (user_id) DO UPDATE SET
     weekly_capacity = EXCLUDED.weekly_capacity,
     algorithm_version = EXCLUDED.algorithm_version,
     source = EXCLUDED.source,
-    generated_at = NOW(),
+    generated_at = CASE
+        WHEN sqlc.arg(preserve_progress)::boolean THEN user_roadmap_configs.generated_at
+        ELSE NOW()
+    END,
     updated_at = NOW();
+
+-- Stable, deliberately small task set for every subpattern included in a
+-- personal plan. The rank does not depend on user progress, so solving a task
+-- never replaces it with another one and turns the plan into an endless list.
+-- name: ListRoadmapPlanProblems :many
+WITH ranked AS (
+    SELECT
+        sp.code AS subpattern_code,
+        pr.id,
+        pr.title,
+        pr.url,
+        COALESCE(pr.difficulty, '')::text AS difficulty,
+        COALESCE(ps.tier, '')::text AS tier,
+        COALESCE(upp.status, 'not_started')::text AS status,
+        ROW_NUMBER() OVER (
+            PARTITION BY sp.code
+            ORDER BY
+                CASE ps.tier
+                    WHEN 'foundational' THEN 0
+                    WHEN 'core' THEN 1
+                    WHEN 'advanced' THEN 2
+                    ELSE 3
+                END,
+                CASE LOWER(COALESCE(pr.difficulty, ''))
+                    WHEN 'easy' THEN 0
+                    WHEN 'medium' THEN 1
+                    WHEN 'hard' THEN 2
+                    ELSE 3
+                END,
+                COALESCE(cp.evidence_count, 0) DESC,
+                ps.position NULLS LAST,
+                pr.id
+        ) AS task_rank
+    FROM patterns sp
+    JOIN problem_subpatterns ps ON ps.subpattern_id = sp.id
+    JOIN problems pr ON pr.id = ps.problem_id
+    LEFT JOIN user_problem_progress upp
+        ON upp.problem_id = pr.id AND upp.user_id = sqlc.arg(user_id)::bigint
+    LEFT JOIN companies co ON co.code = NULLIF(sqlc.arg(company_code)::text, '')
+    LEFT JOIN company_problems cp
+        ON cp.problem_id = pr.id AND cp.company_id = co.id
+    WHERE sp.code = ANY(sqlc.arg(subpattern_codes)::text[])
+      AND (sqlc.arg(company_code)::text = '' OR cp.problem_id IS NOT NULL)
+)
+SELECT subpattern_code, id, title, url, difficulty, tier, status
+FROM ranked
+WHERE task_rank <= 3
+ORDER BY subpattern_code, task_rank;
+
+-- name: ListRoadmapPlanCardProgress :many
+SELECT
+    sp.code AS subpattern_code,
+    COUNT(c.id)::integer AS total_cards,
+    COUNT(c.id) FILTER (WHERE rs.last_rating IS NOT NULL)::integer AS reviewed_cards,
+    COUNT(c.id) FILTER (WHERE rs.next_review_at <= NOW())::integer AS due_cards
+FROM patterns sp
+LEFT JOIN cards c
+    ON c.pattern_id = sp.id
+   AND (c.user_id IS NULL OR c.user_id = sqlc.arg(user_id)::bigint)
+LEFT JOIN review_schedules rs
+    ON rs.card_id = c.id AND rs.user_id = sqlc.arg(user_id)::bigint
+WHERE sp.code = ANY(sqlc.arg(subpattern_codes)::text[])
+GROUP BY sp.code
+ORDER BY sp.code;
 
 -- name: DeleteUserRoadmapPlanItems :exec
 DELETE FROM user_roadmap_plan_items WHERE user_id = $1;

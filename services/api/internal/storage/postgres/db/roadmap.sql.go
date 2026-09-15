@@ -121,6 +121,153 @@ func (q *Queries) InsertUserRoadmapPlanItem(ctx context.Context, arg InsertUserR
 	return err
 }
 
+const listRoadmapPlanCardProgress = `-- name: ListRoadmapPlanCardProgress :many
+SELECT
+    sp.code AS subpattern_code,
+    COUNT(c.id)::integer AS total_cards,
+    COUNT(c.id) FILTER (WHERE rs.last_rating IS NOT NULL)::integer AS reviewed_cards,
+    COUNT(c.id) FILTER (WHERE rs.next_review_at <= NOW())::integer AS due_cards
+FROM patterns sp
+LEFT JOIN cards c
+    ON c.pattern_id = sp.id
+   AND (c.user_id IS NULL OR c.user_id = $1::bigint)
+LEFT JOIN review_schedules rs
+    ON rs.card_id = c.id AND rs.user_id = $1::bigint
+WHERE sp.code = ANY($2::text[])
+GROUP BY sp.code
+ORDER BY sp.code
+`
+
+type ListRoadmapPlanCardProgressParams struct {
+	UserID          int64
+	SubpatternCodes []string
+}
+
+type ListRoadmapPlanCardProgressRow struct {
+	SubpatternCode string
+	TotalCards     int32
+	ReviewedCards  int32
+	DueCards       int32
+}
+
+func (q *Queries) ListRoadmapPlanCardProgress(ctx context.Context, arg ListRoadmapPlanCardProgressParams) ([]ListRoadmapPlanCardProgressRow, error) {
+	rows, err := q.db.Query(ctx, listRoadmapPlanCardProgress, arg.UserID, arg.SubpatternCodes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoadmapPlanCardProgressRow
+	for rows.Next() {
+		var i ListRoadmapPlanCardProgressRow
+		if err := rows.Scan(
+			&i.SubpatternCode,
+			&i.TotalCards,
+			&i.ReviewedCards,
+			&i.DueCards,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoadmapPlanProblems = `-- name: ListRoadmapPlanProblems :many
+WITH ranked AS (
+    SELECT
+        sp.code AS subpattern_code,
+        pr.id,
+        pr.title,
+        pr.url,
+        COALESCE(pr.difficulty, '')::text AS difficulty,
+        COALESCE(ps.tier, '')::text AS tier,
+        COALESCE(upp.status, 'not_started')::text AS status,
+        ROW_NUMBER() OVER (
+            PARTITION BY sp.code
+            ORDER BY
+                CASE ps.tier
+                    WHEN 'foundational' THEN 0
+                    WHEN 'core' THEN 1
+                    WHEN 'advanced' THEN 2
+                    ELSE 3
+                END,
+                CASE LOWER(COALESCE(pr.difficulty, ''))
+                    WHEN 'easy' THEN 0
+                    WHEN 'medium' THEN 1
+                    WHEN 'hard' THEN 2
+                    ELSE 3
+                END,
+                COALESCE(cp.evidence_count, 0) DESC,
+                ps.position NULLS LAST,
+                pr.id
+        ) AS task_rank
+    FROM patterns sp
+    JOIN problem_subpatterns ps ON ps.subpattern_id = sp.id
+    JOIN problems pr ON pr.id = ps.problem_id
+    LEFT JOIN user_problem_progress upp
+        ON upp.problem_id = pr.id AND upp.user_id = $1::bigint
+    LEFT JOIN companies co ON co.code = NULLIF($2::text, '')
+    LEFT JOIN company_problems cp
+        ON cp.problem_id = pr.id AND cp.company_id = co.id
+    WHERE sp.code = ANY($3::text[])
+      AND ($2::text = '' OR cp.problem_id IS NOT NULL)
+)
+SELECT subpattern_code, id, title, url, difficulty, tier, status
+FROM ranked
+WHERE task_rank <= 3
+ORDER BY subpattern_code, task_rank
+`
+
+type ListRoadmapPlanProblemsParams struct {
+	UserID          int64
+	CompanyCode     string
+	SubpatternCodes []string
+}
+
+type ListRoadmapPlanProblemsRow struct {
+	SubpatternCode string
+	ID             int64
+	Title          string
+	Url            string
+	Difficulty     string
+	Tier           string
+	Status         string
+}
+
+// Stable, deliberately small task set for every subpattern included in a
+// personal plan. The rank does not depend on user progress, so solving a task
+// never replaces it with another one and turns the plan into an endless list.
+func (q *Queries) ListRoadmapPlanProblems(ctx context.Context, arg ListRoadmapPlanProblemsParams) ([]ListRoadmapPlanProblemsRow, error) {
+	rows, err := q.db.Query(ctx, listRoadmapPlanProblems, arg.UserID, arg.CompanyCode, arg.SubpatternCodes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoadmapPlanProblemsRow
+	for rows.Next() {
+		var i ListRoadmapPlanProblemsRow
+		if err := rows.Scan(
+			&i.SubpatternCode,
+			&i.ID,
+			&i.Title,
+			&i.Url,
+			&i.Difficulty,
+			&i.Tier,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserRoadmapItems = `-- name: ListUserRoadmapItems :many
 SELECT
     ri.position,
@@ -284,7 +431,10 @@ ON CONFLICT (user_id) DO UPDATE SET
     weekly_capacity = EXCLUDED.weekly_capacity,
     algorithm_version = EXCLUDED.algorithm_version,
     source = EXCLUDED.source,
-    generated_at = NOW(),
+    generated_at = CASE
+        WHEN $8::boolean THEN user_roadmap_configs.generated_at
+        ELSE NOW()
+    END,
     updated_at = NOW()
 `
 
@@ -296,6 +446,7 @@ type UpsertUserRoadmapConfigParams struct {
 	WeeklyCapacity   int32
 	AlgorithmVersion int32
 	Source           string
+	PreserveProgress bool
 }
 
 func (q *Queries) UpsertUserRoadmapConfig(ctx context.Context, arg UpsertUserRoadmapConfigParams) error {
@@ -307,6 +458,7 @@ func (q *Queries) UpsertUserRoadmapConfig(ctx context.Context, arg UpsertUserRoa
 		arg.WeeklyCapacity,
 		arg.AlgorithmVersion,
 		arg.Source,
+		arg.PreserveProgress,
 	)
 	return err
 }

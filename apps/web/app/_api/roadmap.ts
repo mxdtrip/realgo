@@ -25,6 +25,22 @@ export type RoadmapItem = {
   relevantProblemCount: number;
   difficultyCounts: Record<string, number>;
   masteryPercent: number;
+  planProgress: number;
+  tasks: RoadmapTask[];
+  cardProgress: {
+    total: number;
+    reviewed: number;
+    due: number;
+  };
+};
+
+export type RoadmapTask = {
+  id: number;
+  title: string;
+  url: string;
+  difficulty: string;
+  tier: string;
+  status: string;
 };
 
 export type RoadmapWeek = {
