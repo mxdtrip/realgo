@@ -33,9 +33,13 @@ Scope: A02, A03, A04, A05, A06, A08, A09, A10, A13, A14, A15, A16, A17, A19, A20
 
 Staging applies 000039 to its existing 000038 schema. Production keeps its own 000033 reset migration and adds the compatible 000035–000039 auth prerequisites. No production screenshot/attachment migration or admin UI is imported. Generated queries are built independently against each branch's schema. Do not merge the two historical migrations numbered 000033 blindly.
 
-## Edge prerequisite
+## Public edge verification (2026-09-16)
 
-The native VPS Caddy currently overwrites CSP and Referrer-Policy. The reviewed patch changes CSP to a fallback (`?Content-Security-Policy`) and uses `no-referrer` for the three application hosts, retaining unrelated mail-host configuration. Validate and reload the system service only after the owner's administrative approval. Application code alone cannot close A13/A15 at the public edge while it replaces the response headers.
+Browser checks on both public domains confirm that the nonce CSP reaches Chromium and blocks parser-inserted scripts without a nonce. Reset URLs are scrubbed and auth documents use no-store. The edge adds its older CSP and Referrer-Policy values alongside upstream headers; it does not remove the upstream strict policy. The final Referrer-Policy value is no-referrer. A prepared Caddy fallback/no-referrer patch removes the redundant policies but is optional cleanup and has not been applied to the system service.
+
+## Later staging exception
+
+PR #108 subsequently introduced immediate registration for non-production environments. This intentional exception bypasses verification on test/local and makes new/existing addresses distinguishable (A09 registration remains an exception on test). Production retains the full verified registration contract. The immediate browser path must use the same HttpOnly cookie serializer as login/verified registration; the regression test TestSecurityUnverifiedRegistrationUsesBrowserCookie protects this requirement.
 
 ## Validation
 
