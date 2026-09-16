@@ -17,6 +17,15 @@
 
 name: realgo-staging
 
+# Compose evaluates extension fields even though they do not create runtime
+# resources. This makes a staging deploy fail closed instead of silently using
+# the insecure local DB/Redis defaults or starting a broken FRP tunnel.
+x-staging-required-env:
+  db-password: ${DB_PASSWORD:?DB_PASSWORD must be set for staging}
+  redis-password: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set for staging}
+  frp-vps-host: ${FRP_VPS_HOST:?FRP_VPS_HOST must be set for staging}
+  frp-token: ${FRP_TOKEN:?FRP_TOKEN must be set for staging}
+
 services:
   mail-relay:
     build:
@@ -43,11 +52,14 @@ services:
       mail-relay:
         condition: service_started
     environment:
+      # Staging is explicitly non-production: registration does not require
+      # email verification, while logs still use the server-friendly format.
+      APP_ENV: staging
       MAIL_ENABLED: ${MAIL_ENABLED:-false}
       MAIL_SMTP_HOST: mail-relay
       MAIL_SMTP_PORT: "2526"
       MAIL_SMTP_TLS_MODE: none
-      MAIL_BASE_URL: ${MAIL_BASE_URL:-https://test.realgo.dev}
+      MAIL_BASE_URL: ${MAIL_BASE_URL:-https://staging.realgo.dev}
       MAIL_SMTP_TIMEOUT: ${MAIL_SMTP_TIMEOUT:-10s}
 
   # Staging's content comes from a restored prod DB snapshot, not from the

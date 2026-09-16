@@ -441,6 +441,9 @@ services:
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?AUTH_JWT_SECRET must be set}
       AUTH_ACCESS_TTL: ${AUTH_ACCESS_TTL:-15m}
       AUTH_REFRESH_TTL: ${AUTH_REFRESH_TTL:-720h}
+      # Exact browser origin used for CSRF validation and auth cookies. Prod
+      # and staging override this in their compose overlays.
+      MAIL_BASE_URL: ${MAIL_BASE_URL:-http://localhost:8080}
       GOADMIN_USERNAME: ${GOADMIN_USERNAME:-}
       GOADMIN_PASSWORD: ${GOADMIN_PASSWORD:-}
       # "Sign in with Yandex ID" (optional: empty disables POST /auth/yandex,

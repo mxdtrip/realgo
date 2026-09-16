@@ -25,7 +25,7 @@ Scope: A02, A03, A04, A05, A06, A08, A09, A10, A13, A14, A15, A16, A17, A19, A20
 - All previous sessions must log in again. Existing users and learning data are retained. Legacy pending registrations must restart because they lack a browser challenge.
 - Web localStorage contains a non-secret session selector only. Refresh credentials are never included in browser auth JSON. The extension uses its own login instead of importing website credentials; the extension source/build is updated.
 - SMTP delivery is at-least-once: provider acceptance followed by a process crash can duplicate the same message. Jobs retry within a bounded lifetime; successful and expired jobs are removed. Queue encryption depends on the server signing key remaining stable; drain queued mail before key rotation.
-- For local cookie auth, set MAIL_BASE_URL to the exact browser origin (for example http://localhost:3000); cross-origin requests require credentials and the two X-Realgo headers. Production uses https://realgo.dev and staging https://test.realgo.dev.
+- For local cookie auth, set MAIL_BASE_URL to the exact browser origin (for example http://localhost:3000); cross-origin requests require credentials and the two X-Realgo headers. Production uses https://realgo.dev and staging https://staging.realgo.dev.
 - API availability now includes a session lookup in PostgreSQL. Storage failures fail closed without treating a transient outage as credential revocation.
 - Do not roll back to the vulnerable auth implementation. Use a forward fix; old Redis credentials are not an authority in the new version.
 

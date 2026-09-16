@@ -54,7 +54,7 @@ type Mail struct {
 	Port     int           `yaml:"smtp_port" env:"MAIL_SMTP_PORT" env-default:"2526"`
 	Username string        `yaml:"smtp_username" env:"MAIL_SMTP_USERNAME"`
 	Password string        `yaml:"smtp_password" env:"MAIL_SMTP_PASSWORD"`
-	BaseURL  string        `yaml:"base_url" env:"MAIL_BASE_URL" env-default:"https://test.realgo.dev"`
+	BaseURL  string        `yaml:"base_url" env:"MAIL_BASE_URL" env-default:"http://localhost:8080"`
 	Timeout  time.Duration `yaml:"smtp_timeout" env:"MAIL_SMTP_TIMEOUT" env-default:"10s"`
 	TLSMode  string        `yaml:"smtp_tls_mode" env:"MAIL_SMTP_TLS_MODE" env-default:"none"`
 }

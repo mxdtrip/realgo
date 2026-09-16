@@ -17,6 +17,7 @@ jobs:
   deploy:
     needs: verify
     runs-on: [self-hosted, linux, appbox]
+    environment: staging
     permissions:
       contents: read
     steps:
@@ -24,15 +25,18 @@ jobs:
 
       - name: Build & start staging stack
         env:
+          APP_ENV: staging
           APP_VERSION: staging-${{ github.run_number }}
           COMMIT_SHA: ${{ github.sha }}
           AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
           MAIL_ENABLED: ${{ secrets.SMTP2GO_SMTP_USERNAME != '' && secrets.SMTP2GO_SMTP_PASSWORD != '' }}
           SMTP2GO_SMTP_HOST: mail.smtp2go.com
           SMTP2GO_SMTP_PORT: "2525"
           SMTP2GO_SMTP_USERNAME: ${{ secrets.SMTP2GO_SMTP_USERNAME }}
           SMTP2GO_SMTP_PASSWORD: ${{ secrets.SMTP2GO_SMTP_PASSWORD }}
-          MAIL_BASE_URL: https://test.realgo.dev
+          MAIL_BASE_URL: https://staging.realgo.dev
           MAIL_SMTP_TIMEOUT: 10s
           # OAuth public ids are passed to the web build; the matching secrets
           # are consumed only by the API container. Empty repository secrets
@@ -41,6 +45,8 @@ jobs:
           YANDEX_CLIENT_SECRET: ${{ secrets.YANDEX_CLIENT_SECRET }}
           GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}
           GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
+          GOADMIN_USERNAME: ${{ secrets.GOADMIN_USERNAME }}
+          GOADMIN_PASSWORD: ${{ secrets.GOADMIN_PASSWORD }}
           FRP_VPS_HOST: ${{ secrets.FRP_VPS_HOST }}
           FRP_TOKEN: ${{ secrets.FRP_TOKEN }}
           # No SEED_USERS_PASSWORD here on purpose: staging runs on a restored

@@ -3,6 +3,8 @@
 .env.*
 config.yaml
 !.env.example
+!.env.staging.example
+!.env.production.example
 !**/.env.example
 *.local
 *.pem
