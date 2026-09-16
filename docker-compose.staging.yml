@@ -42,6 +42,8 @@ services:
     depends_on:
       mail-relay:
         condition: service_started
+      seed-company-atlas:
+        condition: service_completed_successfully
     environment:
       MAIL_ENABLED: ${MAIL_ENABLED:-false}
       MAIL_SMTP_HOST: mail-relay
@@ -79,6 +81,32 @@ services:
     profiles: ["seeds"]
   seed-users:
     profiles: ["seeds"]
+
+  # The restored snapshot deliberately does not run general demo seeds: they
+  # can alter user-facing fixture data. Company discovery and the Atlas are an
+  # exception: these scripts only upsert the public dataset layer and derive
+  # its relevance rows. They preserve users, progress, manual/community rows
+  # and cards, while ensuring a fresh restored staging database has a usable
+  # company catalog before the API accepts traffic.
+  seed-company-atlas:
+    image: freeburger-seeds:local
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      seed-image:
+        condition: service_completed_successfully
+    working_dir: /seeds
+    volumes:
+      - ./services/api/seeds:/seeds:ro
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-freeburger}?sslmode=disable
+    command: >-
+      sh -ec 'python seed_atlas.py atlas_content.yaml atlas_problem_links.yaml atlas_demo_companies.yaml
+      && python seed_atlas_corpus.py atlas_corpus_problems.yaml
+      && python seed_atlas_corpus.py atlas_gap_ledger_problems.yaml
+      && python seed_company_problems.py atlas_company_problems.csv.gz
+      && python seed_gfg_company_problems.py atlas_gfg_company_problems.csv.gz'
+    restart: "no"
 
   postgres:
     ports: !override
