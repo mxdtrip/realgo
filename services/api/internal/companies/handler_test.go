@@ -94,6 +94,10 @@ func (failingSearcher) Search(context.Context, string, int) ([]Company, error) {
 	return nil, errors.New("boom")
 }
 
+func (failingSearcher) List(context.Context) ([]Company, error) {
+	return nil, errors.New("boom")
+}
+
 func TestSearch_RepositoryErrorIs500(t *testing.T) {
 	h := NewHandler(failingSearcher{})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/companies/search?query=goo", nil)

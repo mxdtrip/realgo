@@ -2,9 +2,9 @@ import { expect, test } from "@playwright/test";
 
 // The reworked cabinet mechanics: /reviews is the journal of problems solved
 // on platforms (status, hints used, self-rating), /problems tracks the
-// practice set of subpatterns per stage. /cards is the original mock-driven
-// launcher (unrelated to this rework). Backed by the PROBLEMS / PRACTICE
-// fixtures in auth-stub.mjs.
+// practice set of subpatterns per stage. /cards separates due repetition from
+// active-subpattern practice. Backed by the PROBLEMS / PRACTICE fixtures in
+// auth-stub.mjs.
 
 const AKEY = "realgo:auth:access:v1";
 const RKEY = "realgo:auth:session:v2";
@@ -33,11 +33,11 @@ test.describe("/reviews — журнал решённых задач", () => {
 
     const kokoRow = journal.getByRole("row", { name: /Koko Eating Bananas/ });
     // Difficulty renders as bare colored text, not a pill.
-    await expect(kokoRow.locator(".difficulty-text--medium")).toHaveText("medium");
+    await expect(kokoRow.locator(".difficulty-text--medium")).toHaveText("средняя");
     // Hints used comes from the assistant log join.
     await expect(kokoRow.getByText("2", { exact: true })).toBeVisible();
     // Self-rating from the extension popup.
-    await expect(kokoRow.locator(".review-badge--warning")).toHaveText("hard");
+    await expect(kokoRow.locator(".review-badge--warning")).toHaveText("тяжело");
 
     // Pattern cell deep-links into the Atlas node.
     await expect(page.getByRole("link", { name: "Binary Search on Answer" })).toHaveAttribute(
@@ -54,6 +54,50 @@ test.describe("/reviews — журнал решённых задач", () => {
     await page.getByRole("button", { name: /освоена/ }).click();
     await expect(journal.getByText("Stub Problem: Two Sum")).toBeVisible();
     await expect(journal.getByText("Stub Problem: Koko Eating Bananas")).toHaveCount(0);
+  });
+
+  test("mobile journal becomes readable cards instead of a clipped table", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openAuthed(page, "/reviews");
+
+    const row = page.locator("table.data-table tbody tr").first();
+    await expect(row).toBeVisible();
+    await expect(row.locator("td").nth(1)).toHaveCSS("display", "grid");
+    await expect(page.locator(".reviews-journal-table")).toHaveCSS("overflow", "visible");
+  });
+});
+
+test.describe("/queue — очередь повторений", () => {
+  test("shows all due types and lets a problem review be completed", async ({ page }) => {
+    await openAuthed(page, "/queue");
+
+    await expect(page.getByRole("heading", { name: "Повторения на сегодня" })).toBeVisible();
+    await expect(page.locator(".review-queue-card")).toHaveCount(3);
+    const problem = page.locator(".review-queue-card", { hasText: "Koko Eating Bananas" });
+    const openProblem = problem.getByRole("link", { name: /Открыть задачу/ });
+    await expect(openProblem).toHaveAttribute(
+      "href",
+      "https://example.test/koko",
+    );
+    await expect(page.getByRole("link", { name: /Повторить карточки/ })).toHaveAttribute(
+      "href",
+      "/cards/session",
+    );
+
+    await openProblem.evaluate((element) => {
+      element.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    });
+    await openProblem.click();
+    const dialog = page.getByRole("dialog", { name: "Koko Eating Bananas" });
+    await expect(dialog.getByRole("heading", { name: "Как вспомнилась задача?" })).toBeVisible();
+
+    const rate = page.waitForRequest(
+      (request) => request.method() === "POST" && request.url().includes("/me/reviews/501/rate"),
+    );
+    await dialog.getByRole("button", { name: /Нормально/ }).click();
+    await rate;
+    await expect(dialog.getByText("Повторение сохранено")).toBeVisible();
+    await expect(problem).toHaveCount(0);
   });
 });
 
@@ -79,7 +123,7 @@ test.describe("/problems — практика подпаттернов", () => {
     await page.getByRole("button", { name: /освоен/ }).click();
     await expect(page.getByText("Lower / Upper Bound")).toBeVisible();
     await expect(page.getByText("Binary Search on Answer")).toHaveCount(0);
-    await page.getByRole("button", { name: /^all/ }).click();
+    await page.getByRole("button", { name: /^все/ }).click();
 
     // Removing one row must not disable every other row. Hold the first
     // request open, then verify a second row can be removed concurrently.
@@ -130,14 +174,51 @@ test.describe("/dashboard — лаунчер практики", () => {
 
     const launcher = page.locator(".next-up");
     await expect(launcher.getByText("Практика по активным подпаттернам")).toBeVisible();
-    // 3 practice subpatterns · 2 session cards · ~3 min from the stub.
+    // One of the two cards already has an attempt, so the launcher shows one remaining.
     await expect(launcher.locator(".next-up__meta")).toContainText("3");
-    await expect(launcher.locator(".next-up__meta")).toContainText("2");
+    await expect(launcher.locator(".next-up__meta")).toContainText("1");
     await expect(launcher.getByRole("link", { name: /начать практику/ })).toHaveAttribute(
       "href",
       "/cards/session?scope=practice",
     );
     await expect(page.locator(".review-when").first()).toContainText(/просрочено на 3 дня/);
+    await expect(page.locator(".dashboard-next-action")).toContainText("2 повторения на сегодня");
+    await expect(page.locator(".dashboard-next-action").getByRole("link", { name: /Начать/ })).toHaveAttribute(
+      "href",
+      "/queue",
+    );
+    const roadmapProgress = page.getByRole("link", { name: /прогресс плана/i });
+    await expect(roadmapProgress).toContainText("67%");
+    await expect(roadmapProgress).toContainText("Открыть план");
+    await expect(roadmapProgress).toHaveAttribute("href", "/roadmap");
+  });
+
+  test("finished day never links the primary action to an empty due session", async ({ page }) => {
+    await page.route("**/api/v1/me/dashboard", async (route) => {
+      const response = await route.fetch();
+      const payload = await response.json();
+      payload.data.stats = payload.data.stats.map((stat) =>
+        stat.key === "today_queue" ? { ...stat, value: 0, displayValue: "0" } : stat,
+      );
+      payload.data.nextAction = {
+        type: "roadmap_step",
+        title: "На сегодня всё готово",
+        description: "Следующее повторение: Two Pointers",
+        href: "/roadmap",
+        dueAt: "2026-09-17T09:00:00Z",
+      };
+      await route.fulfill({ response, json: payload });
+    });
+
+    await openAuthed(page, "/dashboard");
+
+    const next = page.locator(".dashboard-next-action");
+    await expect(next).toContainText("На сегодня всё готово");
+    await expect(next.getByRole("link", { name: "Продолжить по плану" })).toHaveAttribute(
+      "href",
+      "/roadmap",
+    );
+    await expect(next.getByRole("link", { name: "Посмотреть очередь" })).toHaveCount(0);
   });
 });
 

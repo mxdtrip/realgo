@@ -34,8 +34,56 @@ func NewReviewHandler(svc service.ReviewService) *ReviewHandler {
 // RegisterReviewRoutes подключает маршруты для reviews.
 func RegisterReviewRoutes(r chi.Router, h *ReviewHandler) {
 	r.Get("/queue", h.GetQueue)
+	r.Post("/problems/{problemId}/attempt", h.RecordProblemAttempt)
 	r.Post("/{reviewId}/rate", h.RateReview)
 	r.Get("/stats", h.GetStats)
+}
+
+// RecordProblemAttempt: POST /me/reviews/problems/{problemId}/attempt
+func (h *ReviewHandler) RecordProblemAttempt(w http.ResponseWriter, r *http.Request) {
+	userID, err := getUserID(r)
+	if err != nil {
+		response.Fail(w, http.StatusUnauthorized, "UNAUTHORIZED", "user not authenticated")
+		return
+	}
+
+	problemID, err := strconv.ParseInt(chi.URLParam(r, "problemId"), 10, 64)
+	if err != nil || problemID <= 0 {
+		response.Fail(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid problemId")
+		return
+	}
+
+	var req request.ProblemAttemptRequest
+	if !httpjson.DecodeStrict(w, r, &req, "VALIDATION_ERROR") {
+		return
+	}
+	if !req.Valid() {
+		response.Fail(w, http.StatusBadRequest, "VALIDATION_ERROR", "outcome must be not_solved, hard, normal, or easy")
+		return
+	}
+
+	attemptedAt, err := time.Parse(time.RFC3339, req.AttemptedAt)
+	if err != nil {
+		response.Fail(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid attemptedAt format, expected ISO 8601")
+		return
+	}
+
+	data, err := h.svc.RecordProblemAttempt(r.Context(), userID, problemID, req.Outcome, attemptedAt)
+	if errors.Is(err, service.ErrReviewNotFound) {
+		response.Fail(w, http.StatusNotFound, "NOT_FOUND", "problem not found")
+		return
+	}
+	if errors.Is(err, service.ErrInvalidRating) {
+		response.Fail(w, http.StatusBadRequest, "VALIDATION_ERROR", service.ErrInvalidRating.Error())
+		return
+	}
+	if err != nil {
+		slog.Error("reviews: RecordProblemAttempt failed", slog.Any("err", err), slog.Int64("user_id", userID), slog.Int64("problem_id", problemID))
+		response.Fail(w, http.StatusInternalServerError, "INTERNAL_ERROR", "could not record problem attempt")
+		return
+	}
+
+	response.JSON(w, http.StatusOK, data)
 }
 
 // GetQueue: GET /me/reviews/queue

@@ -66,6 +66,7 @@
 | Dashboard | `GET /me/dashboard` | Сводка главной страницы |
 | Reviews | `GET /me/reviews/queue` | Очередь повторений |
 | Reviews | `POST /me/reviews/{reviewId}/rate` | Оценить повторение |
+| Reviews | `POST /me/reviews/problems/{problemId}/attempt` | Сохранить ручную попытку задачи из roadmap |
 | Problems | `GET /me/problems` | Список задач |
 | Problems | `GET /me/problems/{problemId}` | Детали одной задачи |
 | Problems | `POST /me/problems` | Сохранить задачу вручную или из extension |
@@ -85,6 +86,7 @@
 | Quiz | `POST /me/quiz/generate` | AI-генерация вопроса квиза |
 | Assistant | `POST /assistant/hint` | Подсказка ассистента по задаче (3 уровня: nudge/approach/reveal) |
 | Roadmap | `GET /me/roadmap` | План подготовки |
+| Roadmap | `POST /me/roadmap/tasks/{problemId}/access` | Заменить или пропустить недоступную задачу плана |
 | Roadmap | `POST /me/roadmap/preview` | Предпросмотр приоритизации без сохранения |
 | Roadmap | `PUT /me/roadmap` | Сохранить/перестроить персональный план |
 | Roadmap | `GET /roadmaps/neetcode_150` | Справочник NeetCode 150 (публичный, без auth) |
@@ -98,17 +100,24 @@
 
 ### `POST /auth/register`
 
-Создаёт аккаунт. После регистрации frontend отправляет пользователя в onboarding.
+В `local` и других непроизводственных окружениях создаёт аккаунт и сессию
+сразу, после чего frontend отправляет пользователя в onboarding. В
+`production` сначала сохраняет краткоживущую заявку и отправляет код на
+почту; сессия создаётся только после `POST /auth/email-verification/confirm`.
 
 Request:
 
 ```json
 {
   "email": "user@example.com",
-  "password": "strong-password",
-  "locale": "ru",
-  "timezone": "Europe/Moscow"
+  "password": "strong-password"
 }
+```
+
+Production-ответ до подтверждения почты:
+
+```json
+{ "data": { "status": "verification_requested" } }
 ```
 
 Response:
@@ -313,6 +322,15 @@ Response:
         "displayValue": "68%",
         "hint": "готовность к интервью",
         "tone": "success"
+      },
+      {
+        "key": "roadmap_progress",
+        "label": "roadmap progress",
+        "value": 67,
+        "displayValue": "67%",
+        "hint": "план подготовки · Google",
+        "tone": "accent",
+        "href": "/roadmap"
       }
     ],
     "reviewPreview": [
@@ -395,6 +413,25 @@ Request:
 }
 ```
 
+### `POST /me/reviews/problems/{problemId}/attempt`
+
+Ручной результат задачи из roadmap, в том числе для пользователей без
+браузерного расширения.
+
+Request:
+
+```json
+{
+  "outcome": "normal",
+  "attemptedAt": "2026-06-30T10:15:00Z"
+}
+```
+
+`outcome`: `not_solved | hard | normal | easy`. Оценки `hard`, `normal` и
+`easy` завершают задачу и проходят через общий FSRS scheduler. `not_solved`
+сохраняет статус `in_progress`, но намеренно не подставляет синтетическую
+оценку в FSRS и не закрывает задачу в плане.
+
 Response:
 
 ```json
@@ -414,6 +451,7 @@ Response:
 Repetition Scheduler) через библиотеку
 [`go-fsrs/v3`](https://github.com/open-spaced-repetition/go-fsrs) (`v3.3.1`).
 Все пути планирования — `POST /extension/events`, `POST /me/reviews/{id}/rate`,
+`POST /me/reviews/problems/{problemId}/attempt` (кроме `not_solved`),
 `POST /me/cards/{id}/rate` и quiz-answer — прогоняются через **единый
 scheduler**, поэтому одна и та же конфигурация параметров управляет всеми
 сущностями (задачами, карточками, паттернами).
@@ -450,7 +488,7 @@ Placeholder-значения вроде `stability=0.1` или `difficulty=5.0` 
 запрещены: они создают видимость «карточки с историей», которой нет.
 
 **Первый rate.** Любой путь (`/extension/events`, `/me/cards/{id}/rate`,
-quiz-answer, `/me/reviews/{id}/rate`) при первом рейтинге прогоняет карточку
+quiz-answer, `/me/reviews/{id}/rate`, ручная оценка задачи из roadmap) при первом рейтинге прогоняет карточку
 через единый FSRS-scheduler, который честно вычисляет `S0`/`D0` (initial
 stability/difficulty) и переводит её из `New` в `Learning`/`Review`.
 Placeholder из insert-шага перезаписывается в той же HTTP-транзакции.
@@ -873,6 +911,24 @@ Enums:
 ```text
 roadmap.status: todo | active | done
 ```
+
+### `POST /me/roadmap/tasks/{problemId}/access`
+
+Не даёт закрытой или платной задаче заблокировать путь по Roadmap. Решение
+сохраняется только для активного плана: подготовка к другой компании остаётся
+без изменений.
+
+```json
+{ "action": "replace" }
+```
+
+`action`: `replace | skip`.
+
+- `replace` подбирает следующую доступную задачу того же подпаттерна, стараясь
+  сохранить сложность и уровень; при отсутствии кандидата возвращает `409
+  NO_REPLACEMENT`.
+- `skip` сохраняет слот как «без доступа». Он остаётся видимым и не считается
+  решённым, но не блокирует карточки и следующий этап.
 
 ## Browser extension integration
 

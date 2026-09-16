@@ -32,8 +32,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const copy = COPY[mode];
 
   const [email, setEmail] = useState("");
-  const [nickname, setNickname] = useState("");
-  const [nicknameFocused, setNicknameFocused] = useState(false);
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -62,9 +60,13 @@ export function AuthForm({ mode }: { mode: Mode }) {
         const authUser = await auth.login(email.trim(), password);
         router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
       } else {
-		await auth.register(email.trim(), password, nickname.trim());
-		window.sessionStorage.setItem("realgo:pending-verification-email", email.trim());
-		router.push("/verify-email");
+        const authUser = await auth.register(email.trim(), password);
+        if (authUser) {
+          router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
+        } else {
+          window.sessionStorage.setItem("realgo:pending-verification-email", email.trim());
+          router.push("/verify-email");
+        }
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Что-то пошло не так. Попробуйте ещё раз.");
@@ -79,27 +81,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
-        {mode === "register" ? (
-          <label>
-            <span className="auth-field-label">Никнейм</span>
-            <span className="auth-input">
-              <NicknameIcon />
-              <input
-                autoComplete="nickname"
-                maxLength={32}
-                minLength={3}
-                placeholder="Никнейм"
-                required
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                onBlur={() => setNicknameFocused(false)}
-                onFocus={() => setNicknameFocused(true)}
-                disabled={pending}
-              />
-            </span>
-            {nicknameFocused ? <span className="auth-field-hint">3–32 символа: буквы, цифры, _ или -</span> : null}
-          </label>
-        ) : null}
         <label>
           <span className="auth-field-label">Email</span>
           <span className="auth-input">
@@ -236,7 +217,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
             (mode === "register" &&
               (!termsAccepted ||
                 !personalDataConsent ||
-                !nickname.trim() ||
                 password.length < 8 ||
                 password !== passwordConfirmation))
           }
@@ -277,15 +257,6 @@ function LockIcon() {
     <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 20 20">
       <rect height="9" rx="2" width="12" x="4" y="8" />
       <path d="M6.5 8V6a3.5 3.5 0 0 1 7 0v2" />
-    </svg>
-  );
-}
-
-function NicknameIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 20 20">
-      <circle cx="10" cy="6.25" r="3" />
-      <path d="M3.5 17c.6-3.1 2.75-4.65 6.5-4.65S15.9 13.9 16.5 17" />
     </svg>
   );
 }

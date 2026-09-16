@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
 )
 
@@ -139,8 +141,36 @@ func (f fakeRepository) Get(context.Context, int64) (Response, error) {
 	return f.data, nil
 }
 
+func (f fakeRepository) List(context.Context, int64) ([]Summary, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return []Summary{}, nil
+}
+
+func (f fakeRepository) Activate(context.Context, int64, string) (Response, error) {
+	if f.err != nil {
+		return Response{}, f.err
+	}
+	return f.data, nil
+}
+
 func (f fakeRepository) Clear(context.Context, int64) error {
 	return f.clearErr
+}
+
+func (f fakeRepository) CompleteTheory(_ context.Context, _ int64, code string) (TheoryCompletion, error) {
+	if f.err != nil {
+		return TheoryCompletion{}, f.err
+	}
+	return TheoryCompletion{Code: code, CompletedAt: "2026-09-15T12:00:00Z"}, nil
+}
+
+func (f fakeRepository) ResolveTaskAccess(_ context.Context, _ int64, problemID int64, action string) (TaskAccessResolution, error) {
+	if f.err != nil {
+		return TaskAccessResolution{}, f.err
+	}
+	return TaskAccessResolution{Action: action, OriginalProblemID: problemID}, nil
 }
 
 func (f fakeRepository) Preview(context.Context, int64, ConfigRequest) (Response, error) {
@@ -236,5 +266,85 @@ func TestPut_Success(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+}
+
+func TestCompleteTheory_Success(t *testing.T) {
+	h := NewHandler(fakeRepository{})
+	router := chi.NewRouter()
+	router.Put("/api/v1/me/roadmap/patterns/{code}/theory", h.CompleteTheory)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/me/roadmap/patterns/two_pointers/theory", nil)
+	req = req.WithContext(auth.ContextWithUserID(req.Context(), 10))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	var body struct {
+		Data TheoryCompletion `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("invalid json: %v", err)
+	}
+	if body.Data.Code != "two_pointers" || body.Data.CompletedAt == "" {
+		t.Fatalf("unexpected completion: %+v", body.Data)
+	}
+}
+
+func TestCompleteTheory_NotFound(t *testing.T) {
+	h := NewHandler(fakeRepository{err: ErrSubpatternNotFound})
+	router := chi.NewRouter()
+	router.Put("/api/v1/me/roadmap/patterns/{code}/theory", h.CompleteTheory)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/me/roadmap/patterns/missing/theory", nil)
+	req = req.WithContext(auth.ContextWithUserID(req.Context(), 10))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusNotFound)
+	}
+}
+
+func TestResolveTaskAccess_Success(t *testing.T) {
+	h := NewHandler(fakeRepository{})
+	router := chi.NewRouter()
+	router.Post("/api/v1/me/roadmap/tasks/{problemID}/access", h.ResolveTaskAccess)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/roadmap/tasks/73/access", strings.NewReader(`{"action":"skip"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(auth.ContextWithUserID(req.Context(), 10))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	var body struct {
+		Data TaskAccessResolution `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("invalid json: %v", err)
+	}
+	if body.Data.Action != "skip" || body.Data.OriginalProblemID != 73 {
+		t.Fatalf("unexpected resolution: %+v", body.Data)
+	}
+}
+
+func TestResolveTaskAccess_RejectsUnknownAction(t *testing.T) {
+	h := NewHandler(fakeRepository{})
+	router := chi.NewRouter()
+	router.Post("/api/v1/me/roadmap/tasks/{problemID}/access", h.ResolveTaskAccess)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/roadmap/tasks/73/access", strings.NewReader(`{"action":"later"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(auth.ContextWithUserID(req.Context(), 10))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadRequest)
 	}
 }

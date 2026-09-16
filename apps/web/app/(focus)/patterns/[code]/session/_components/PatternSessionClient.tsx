@@ -16,12 +16,14 @@ export function PatternSessionClient({
   copy,
   emptyMessage,
   errorFallback,
+  fromRoadmap = false,
 }: Readonly<{
   code: string;
   brand: string;
   copy: ComponentProps<typeof FocusCardReviewSession>["copy"];
   emptyMessage: string;
   errorFallback: string;
+  fromRoadmap?: boolean;
 }>) {
   const [cards, setCards] = useState<SessionSourceCard[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -66,5 +68,21 @@ export function PatternSessionClient({
     return <main className="focus-session focus-session--loading">{error || errorFallback}</main>;
   }
 
-  return <FocusCardReviewSession brand={brand} cards={toReviewCards(cards)} copy={copy} onRate={persistRating} />;
+  return (
+    <FocusCardReviewSession
+      brand={brand}
+      cards={toReviewCards(cards)}
+      copy={copy}
+      exitHref={fromRoadmap ? "/roadmap#current-plan" : `/patterns/${encodeURIComponent(code)}`}
+      returnLabel={fromRoadmap ? copy.focus.returnToRoadmap : undefined}
+      modeLabel={copy.focus.practiceMode}
+      onRate={persistRating}
+      // Roadmap cards are a required step of the current plan. They must not
+      // inherit a completed self-study session for the same pattern from
+      // localStorage: that would show a false "completed" screen before the
+      // learner has rated any card for this roadmap step.
+      sessionScope={fromRoadmap ? `roadmap:${code}` : `pattern:${code}`}
+      startFresh={fromRoadmap}
+    />
+  );
 }

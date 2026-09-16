@@ -12,6 +12,7 @@ import {
   type AtlasSubpattern,
   type RelevanceLevel,
 } from "../../../_api/atlas";
+import { getRoadmaps } from "../../../_api/roadmap";
 import { ApiError } from "../../../_api/types";
 import { CabinetPanel } from "../../_components";
 import type { getDictionary } from "../../../_content/i18n";
@@ -141,6 +142,7 @@ function familyDifficulty(subs: readonly AtlasSubpattern[], copy: AtlasCopy) {
 export function PatternAtlasClient({ copy }: Readonly<{ copy: AtlasCopy }>) {
   const [atlas, setAtlas] = useState<AtlasResponse | null>(null);
   const [companies, setCompanies] = useState<AtlasCompany[]>([]);
+  const [planCompanyCodes, setPlanCompanyCodes] = useState<string[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [error, setError] = useState("");
   const [reloadVersion, setReloadVersion] = useState(0);
@@ -184,6 +186,18 @@ export function PatternAtlasClient({ copy }: Readonly<{ copy: AtlasCopy }>) {
       .then((data) => setCompanies(data.companies))
       .catch(() => {
         /* селектор просто останется пустым — атлас работает и без него */
+      });
+    getRoadmaps(controller.signal)
+      .then((plans) => {
+        const orderedCodes = plans
+          .slice()
+          .sort((first, second) => Number(second.active) - Number(first.active))
+          .flatMap((plan) => (plan.company?.code ? [plan.company.code] : []));
+        setPlanCompanyCodes([...new Set(orderedCodes)]);
+      })
+      .catch(() => {
+        // Atlas remains useful if an older API does not provide multiple plans.
+        setPlanCompanyCodes([]);
       });
     return () => controller.abort();
   }, []);
@@ -320,10 +334,16 @@ export function PatternAtlasClient({ copy }: Readonly<{ copy: AtlasCopy }>) {
     : copy.companyNone;
 
   const companyQueryNormalized = companyQuery.trim().toLowerCase();
-  const filteredCompanies = useMemo(() => {
-    if (!companyQueryNormalized) return companies;
-    return companies.filter((item) => item.name.toLowerCase().includes(companyQueryNormalized));
-  }, [companies, companyQueryNormalized]);
+  const [planCompanies, catalogCompanies] = useMemo(() => {
+    const visible = companyQueryNormalized
+      ? companies.filter((item) => item.name.toLowerCase().includes(companyQueryNormalized))
+      : companies;
+    const fromPlan = new Set(planCompanyCodes);
+    return [
+      visible.filter((item) => fromPlan.has(item.code)),
+      visible.filter((item) => !fromPlan.has(item.code)),
+    ];
+  }, [companies, companyQueryNormalized, planCompanyCodes]);
 
   return (
     <main className="cabinet-page">
@@ -449,7 +469,12 @@ export function PatternAtlasClient({ copy }: Readonly<{ copy: AtlasCopy }>) {
                   {copy.companyNone}
                 </button>
               </li>
-              {filteredCompanies.map((item) => (
+              {planCompanies.length > 0 ? (
+                <li className="atlas-company__group" role="presentation">
+                  {copy.companyPlansTitle}
+                </li>
+              ) : null}
+              {planCompanies.map((item) => (
                 <li key={item.code}>
                   <button
                     type="button"
@@ -464,7 +489,27 @@ export function PatternAtlasClient({ copy }: Readonly<{ copy: AtlasCopy }>) {
                   </button>
                 </li>
               ))}
-              {filteredCompanies.length === 0 ? (
+              {catalogCompanies.length > 0 && planCompanies.length > 0 ? (
+                <li className="atlas-company__group" role="presentation">
+                  {copy.companyCatalogTitle}
+                </li>
+              ) : null}
+              {catalogCompanies.map((item) => (
+                <li key={item.code}>
+                  <button
+                    type="button"
+                    className={
+                      company === item.code ? "atlas-company__option is-active" : "atlas-company__option"
+                    }
+                    role="option"
+                    aria-selected={company === item.code}
+                    onClick={() => pickCompany(item.code)}
+                  >
+                    {item.name}
+                  </button>
+                </li>
+              ))}
+              {planCompanies.length + catalogCompanies.length === 0 ? (
                 <li className="atlas-company__empty">{copy.companyPickerEmpty}</li>
               ) : null}
             </ul>

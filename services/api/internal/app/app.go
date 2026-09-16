@@ -107,13 +107,14 @@ func Run(ctx context.Context) error {
 	})
 
 	deps := server.Deps{
-		Logger:      logger,
-		Postgres:    pg,
-		Redis:       rdb,
-		Auth:        authSvc,
-		Mailer:      mailer,
-		MailBaseURL: cfg.Mail.BaseURL,
-		Scheduler:   sched,
+		Logger:                logger,
+		Postgres:              pg,
+		Redis:                 rdb,
+		Auth:                  authSvc,
+		Mailer:                mailer,
+		MailBaseURL:           cfg.Mail.BaseURL,
+		SkipEmailVerification: cfg.Env != "production",
+		Scheduler:             sched,
 	}
 	if cfg.Enabled() {
 		geminiProvider := ai.NewGeminiProvider(cfg.AI)

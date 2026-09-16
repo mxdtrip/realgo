@@ -3,7 +3,7 @@
 // Личная база задач: GET /me/problems (journal of everything the extension
 // captured plus manually saved problems). Mirrors services/api/internal/problems.
 
-import { apiFetchEnvelope } from "./client";
+import { apiFetch, apiFetchEnvelope } from "./client";
 
 export type ProblemStatus = "saved" | "reviewing" | "mastered" | "archived";
 export type ProblemPlatform = "leetcode" | "geeksforgeeks" | "hackerrank" | "codeforces" | "custom";
@@ -50,4 +50,26 @@ export function getProblems(params: GetProblemsParams = {}, signal?: AbortSignal
   query.set("limit", String(params.limit ?? 100));
   if (params.cursor) query.set("cursor", params.cursor);
   return apiFetchEnvelope<ProblemListItem[], ProblemsMeta>(`/me/problems?${query}`, { signal });
+}
+
+export type ProblemAttemptOutcome = "not_solved" | "hard" | "normal" | "easy";
+
+export type ProblemAttemptResult = {
+  problemId: number;
+  outcome: ProblemAttemptOutcome;
+  status: "in_progress" | "reviewing" | string;
+};
+
+export function recordProblemAttempt(
+  problemId: number,
+  outcome: ProblemAttemptOutcome,
+  attemptedAt = new Date().toISOString(),
+) {
+  return apiFetch<ProblemAttemptResult>(
+    `/me/reviews/problems/${encodeURIComponent(String(problemId))}/attempt`,
+    {
+      method: "POST",
+      body: { outcome, attemptedAt },
+    },
+  );
 }

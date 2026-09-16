@@ -11,6 +11,45 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activateLatestUserRoadmapConfig = `-- name: ActivateLatestUserRoadmapConfig :one
+UPDATE user_roadmap_configs
+SET is_active = TRUE, updated_at = NOW()
+WHERE (user_id, plan_key) = (
+    SELECT candidate.user_id, candidate.plan_key
+    FROM user_roadmap_configs candidate
+    WHERE candidate.user_id = $1
+    ORDER BY candidate.updated_at DESC
+    LIMIT 1
+)
+RETURNING plan_key
+`
+
+func (q *Queries) ActivateLatestUserRoadmapConfig(ctx context.Context, userID int64) (string, error) {
+	row := q.db.QueryRow(ctx, activateLatestUserRoadmapConfig, userID)
+	var plan_key string
+	err := row.Scan(&plan_key)
+	return plan_key, err
+}
+
+const activateUserRoadmapConfig = `-- name: ActivateUserRoadmapConfig :one
+UPDATE user_roadmap_configs
+SET is_active = TRUE, updated_at = NOW()
+WHERE user_id = $1 AND plan_key = $2
+RETURNING plan_key
+`
+
+type ActivateUserRoadmapConfigParams struct {
+	UserID  int64
+	PlanKey string
+}
+
+func (q *Queries) ActivateUserRoadmapConfig(ctx context.Context, arg ActivateUserRoadmapConfigParams) (string, error) {
+	row := q.db.QueryRow(ctx, activateUserRoadmapConfig, arg.UserID, arg.PlanKey)
+	var plan_key string
+	err := row.Scan(&plan_key)
+	return plan_key, err
+}
+
 const clearRoadmapTarget = `-- name: ClearRoadmapTarget :exec
 UPDATE users
 SET target_company = NULL, interview_date = NULL, target_topics = '{}', updated_at = NOW()
@@ -22,8 +61,52 @@ func (q *Queries) ClearRoadmapTarget(ctx context.Context, id int64) error {
 	return err
 }
 
+const completeRoadmapTheory = `-- name: CompleteRoadmapTheory :one
+INSERT INTO user_pattern_learning_progress (
+    user_id, subpattern_id, theory_completed_at, created_at, updated_at
+)
+SELECT
+    $1::bigint,
+    p.id,
+    NOW(),
+    NOW(),
+    NOW()
+FROM patterns p
+WHERE p.code = $2::text
+  AND p.kind = 'subpattern'
+ON CONFLICT (user_id, subpattern_id) DO UPDATE SET
+    theory_completed_at = COALESCE(
+        user_pattern_learning_progress.theory_completed_at,
+        EXCLUDED.theory_completed_at
+    ),
+    updated_at = NOW()
+RETURNING theory_completed_at
+`
+
+type CompleteRoadmapTheoryParams struct {
+	UserID         int64
+	SubpatternCode string
+}
+
+func (q *Queries) CompleteRoadmapTheory(ctx context.Context, arg CompleteRoadmapTheoryParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, completeRoadmapTheory, arg.UserID, arg.SubpatternCode)
+	var theory_completed_at pgtype.Timestamptz
+	err := row.Scan(&theory_completed_at)
+	return theory_completed_at, err
+}
+
+const deactivateUserRoadmapConfigs = `-- name: DeactivateUserRoadmapConfigs :exec
+UPDATE user_roadmap_configs SET is_active = FALSE
+WHERE user_id = $1 AND is_active
+`
+
+func (q *Queries) DeactivateUserRoadmapConfigs(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deactivateUserRoadmapConfigs, userID)
+	return err
+}
+
 const deleteUserRoadmapConfig = `-- name: DeleteUserRoadmapConfig :exec
-DELETE FROM user_roadmap_configs WHERE user_id = $1
+DELETE FROM user_roadmap_configs WHERE user_id = $1 AND is_active
 `
 
 func (q *Queries) DeleteUserRoadmapConfig(ctx context.Context, userID int64) error {
@@ -32,11 +115,17 @@ func (q *Queries) DeleteUserRoadmapConfig(ctx context.Context, userID int64) err
 }
 
 const deleteUserRoadmapPlanItems = `-- name: DeleteUserRoadmapPlanItems :exec
-DELETE FROM user_roadmap_plan_items WHERE user_id = $1
+DELETE FROM user_roadmap_plan_items
+WHERE user_id = $1 AND plan_key = $2
 `
 
-func (q *Queries) DeleteUserRoadmapPlanItems(ctx context.Context, userID int64) error {
-	_, err := q.db.Exec(ctx, deleteUserRoadmapPlanItems, userID)
+type DeleteUserRoadmapPlanItemsParams struct {
+	UserID  int64
+	PlanKey string
+}
+
+func (q *Queries) DeleteUserRoadmapPlanItems(ctx context.Context, arg DeleteUserRoadmapPlanItemsParams) error {
+	_, err := q.db.Exec(ctx, deleteUserRoadmapPlanItems, arg.UserID, arg.PlanKey)
 	return err
 }
 
@@ -60,21 +149,25 @@ func (q *Queries) GetRoadmapUserTarget(ctx context.Context, id int64) (GetRoadma
 }
 
 const getUserRoadmapConfig = `-- name: GetUserRoadmapConfig :one
-SELECT user_id, company_code, priority_mode, horizon_weeks, weekly_capacity,
-       algorithm_version, source, generated_at
+SELECT user_id, plan_key, company_code, company_name, interview_date, priority_mode,
+       horizon_weeks, weekly_capacity, algorithm_version, source, generated_at, is_active
 FROM user_roadmap_configs
-WHERE user_id = $1
+WHERE user_id = $1 AND is_active
 `
 
 type GetUserRoadmapConfigRow struct {
 	UserID           int64
+	PlanKey          string
 	CompanyCode      pgtype.Text
+	CompanyName      string
+	InterviewDate    pgtype.Timestamptz
 	PriorityMode     string
 	HorizonWeeks     int32
 	WeeklyCapacity   int32
 	AlgorithmVersion int32
 	Source           string
 	GeneratedAt      pgtype.Timestamptz
+	IsActive         bool
 }
 
 func (q *Queries) GetUserRoadmapConfig(ctx context.Context, userID int64) (GetUserRoadmapConfigRow, error) {
@@ -82,28 +175,80 @@ func (q *Queries) GetUserRoadmapConfig(ctx context.Context, userID int64) (GetUs
 	var i GetUserRoadmapConfigRow
 	err := row.Scan(
 		&i.UserID,
+		&i.PlanKey,
 		&i.CompanyCode,
+		&i.CompanyName,
+		&i.InterviewDate,
 		&i.PriorityMode,
 		&i.HorizonWeeks,
 		&i.WeeklyCapacity,
 		&i.AlgorithmVersion,
 		&i.Source,
 		&i.GeneratedAt,
+		&i.IsActive,
+	)
+	return i, err
+}
+
+const getUserRoadmapConfigByKey = `-- name: GetUserRoadmapConfigByKey :one
+SELECT user_id, plan_key, company_code, company_name, interview_date, priority_mode,
+       horizon_weeks, weekly_capacity, algorithm_version, source, generated_at, is_active
+FROM user_roadmap_configs
+WHERE user_id = $1 AND plan_key = $2
+`
+
+type GetUserRoadmapConfigByKeyParams struct {
+	UserID  int64
+	PlanKey string
+}
+
+type GetUserRoadmapConfigByKeyRow struct {
+	UserID           int64
+	PlanKey          string
+	CompanyCode      pgtype.Text
+	CompanyName      string
+	InterviewDate    pgtype.Timestamptz
+	PriorityMode     string
+	HorizonWeeks     int32
+	WeeklyCapacity   int32
+	AlgorithmVersion int32
+	Source           string
+	GeneratedAt      pgtype.Timestamptz
+	IsActive         bool
+}
+
+func (q *Queries) GetUserRoadmapConfigByKey(ctx context.Context, arg GetUserRoadmapConfigByKeyParams) (GetUserRoadmapConfigByKeyRow, error) {
+	row := q.db.QueryRow(ctx, getUserRoadmapConfigByKey, arg.UserID, arg.PlanKey)
+	var i GetUserRoadmapConfigByKeyRow
+	err := row.Scan(
+		&i.UserID,
+		&i.PlanKey,
+		&i.CompanyCode,
+		&i.CompanyName,
+		&i.InterviewDate,
+		&i.PriorityMode,
+		&i.HorizonWeeks,
+		&i.WeeklyCapacity,
+		&i.AlgorithmVersion,
+		&i.Source,
+		&i.GeneratedAt,
+		&i.IsActive,
 	)
 	return i, err
 }
 
 const insertUserRoadmapPlanItem = `-- name: InsertUserRoadmapPlanItem :exec
 INSERT INTO user_roadmap_plan_items (
-    user_id, subpattern_id, week_index, position, selected
+    user_id, plan_key, subpattern_id, week_index, position, selected
 )
-SELECT $1, p.id, $2, $3, $4
+SELECT $1, $2, p.id, $3, $4, $5
 FROM patterns p
-WHERE p.code = $5 AND p.kind = 'subpattern'
+WHERE p.code = $6 AND p.kind = 'subpattern'
 `
 
 type InsertUserRoadmapPlanItemParams struct {
 	UserID         int64
+	PlanKey        string
 	WeekIndex      int32
 	Position       int32
 	Selected       bool
@@ -113,12 +258,263 @@ type InsertUserRoadmapPlanItemParams struct {
 func (q *Queries) InsertUserRoadmapPlanItem(ctx context.Context, arg InsertUserRoadmapPlanItemParams) error {
 	_, err := q.db.Exec(ctx, insertUserRoadmapPlanItem,
 		arg.UserID,
+		arg.PlanKey,
 		arg.WeekIndex,
 		arg.Position,
 		arg.Selected,
 		arg.SubpatternCode,
 	)
 	return err
+}
+
+const listRoadmapPlanCardProgress = `-- name: ListRoadmapPlanCardProgress :many
+SELECT
+    sp.code AS subpattern_code,
+    COUNT(c.id)::integer AS total_cards,
+    COUNT(c.id) FILTER (WHERE rs.last_rating IS NOT NULL)::integer AS reviewed_cards,
+    COUNT(c.id) FILTER (WHERE rs.next_review_at <= NOW())::integer AS due_cards,
+    COUNT(c.id) FILTER (WHERE rs.last_rating IN ('hard', 'normal'))::integer AS reinforcement_cards,
+    (MIN(rs.next_review_at) FILTER (WHERE rs.last_rating IS NOT NULL))::timestamptz AS next_review_at
+FROM patterns sp
+LEFT JOIN cards c
+    ON c.pattern_id = sp.id
+   AND (c.user_id IS NULL OR c.user_id = $1::bigint)
+LEFT JOIN review_schedules rs
+    ON rs.card_id = c.id AND rs.user_id = $1::bigint
+WHERE sp.code = ANY($2::text[])
+GROUP BY sp.code
+ORDER BY sp.code
+`
+
+type ListRoadmapPlanCardProgressParams struct {
+	UserID          int64
+	SubpatternCodes []string
+}
+
+type ListRoadmapPlanCardProgressRow struct {
+	SubpatternCode     string
+	TotalCards         int32
+	ReviewedCards      int32
+	DueCards           int32
+	ReinforcementCards int32
+	NextReviewAt       pgtype.Timestamptz
+}
+
+func (q *Queries) ListRoadmapPlanCardProgress(ctx context.Context, arg ListRoadmapPlanCardProgressParams) ([]ListRoadmapPlanCardProgressRow, error) {
+	rows, err := q.db.Query(ctx, listRoadmapPlanCardProgress, arg.UserID, arg.SubpatternCodes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoadmapPlanCardProgressRow
+	for rows.Next() {
+		var i ListRoadmapPlanCardProgressRow
+		if err := rows.Scan(
+			&i.SubpatternCode,
+			&i.TotalCards,
+			&i.ReviewedCards,
+			&i.DueCards,
+			&i.ReinforcementCards,
+			&i.NextReviewAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoadmapPlanProblems = `-- name: ListRoadmapPlanProblems :many
+WITH ranked AS (
+    SELECT
+        sp.code AS subpattern_code,
+        pr.id,
+        pr.title,
+        pr.url,
+        COALESCE(pr.difficulty, '')::text AS difficulty,
+        COALESCE(ps.tier, '')::text AS tier,
+        COALESCE(upp.status, 'not_started')::text AS status,
+        rs.last_rating,
+        rs.next_review_at,
+        COALESCE(rs.review_count, 0)::integer AS review_count,
+        ROW_NUMBER() OVER (
+            PARTITION BY sp.code
+            ORDER BY
+                CASE ps.tier
+                    WHEN 'foundational' THEN 0
+                    WHEN 'core' THEN 1
+                    WHEN 'advanced' THEN 2
+                    ELSE 3
+                END,
+                CASE LOWER(COALESCE(pr.difficulty, ''))
+                    WHEN 'easy' THEN 0
+                    WHEN 'medium' THEN 1
+                    WHEN 'hard' THEN 2
+                    ELSE 3
+                END,
+                COALESCE(cp.evidence_count, 0) DESC,
+                ps.position NULLS LAST,
+                pr.id
+        ) AS task_rank
+    FROM patterns sp
+    JOIN problem_subpatterns ps ON ps.subpattern_id = sp.id
+    JOIN problems pr ON pr.id = ps.problem_id
+    LEFT JOIN user_problem_progress upp
+        ON upp.problem_id = pr.id AND upp.user_id = $1::bigint
+    LEFT JOIN review_schedules rs
+        ON rs.problem_id = pr.id AND rs.user_id = $1::bigint
+    LEFT JOIN companies co ON co.code = NULLIF($2::text, '')
+    LEFT JOIN company_problems cp
+        ON cp.problem_id = pr.id AND cp.company_id = co.id
+    WHERE sp.code = ANY($3::text[])
+      AND ($2::text = '' OR cp.problem_id IS NOT NULL)
+)
+SELECT subpattern_code, id, title, url, difficulty, tier, status,
+       last_rating, next_review_at, review_count
+FROM ranked
+WHERE task_rank <= 3
+ORDER BY subpattern_code, task_rank
+`
+
+type ListRoadmapPlanProblemsParams struct {
+	UserID          int64
+	CompanyCode     string
+	SubpatternCodes []string
+}
+
+type ListRoadmapPlanProblemsRow struct {
+	SubpatternCode string
+	ID             int64
+	Title          string
+	Url            string
+	Difficulty     string
+	Tier           string
+	Status         string
+	LastRating     pgtype.Text
+	NextReviewAt   pgtype.Timestamptz
+	ReviewCount    int32
+}
+
+// Stable, deliberately small task set for every subpattern included in a
+// personal plan. The rank does not depend on user progress, so solving a task
+// never replaces it with another one and turns the plan into an endless list.
+func (q *Queries) ListRoadmapPlanProblems(ctx context.Context, arg ListRoadmapPlanProblemsParams) ([]ListRoadmapPlanProblemsRow, error) {
+	rows, err := q.db.Query(ctx, listRoadmapPlanProblems, arg.UserID, arg.CompanyCode, arg.SubpatternCodes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoadmapPlanProblemsRow
+	for rows.Next() {
+		var i ListRoadmapPlanProblemsRow
+		if err := rows.Scan(
+			&i.SubpatternCode,
+			&i.ID,
+			&i.Title,
+			&i.Url,
+			&i.Difficulty,
+			&i.Tier,
+			&i.Status,
+			&i.LastRating,
+			&i.NextReviewAt,
+			&i.ReviewCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoadmapTheoryProgress = `-- name: ListRoadmapTheoryProgress :many
+SELECT p.code AS subpattern_code, lp.theory_completed_at
+FROM user_pattern_learning_progress lp
+JOIN patterns p ON p.id = lp.subpattern_id
+WHERE lp.user_id = $1::bigint
+  AND p.code = ANY($2::text[])
+ORDER BY p.code
+`
+
+type ListRoadmapTheoryProgressParams struct {
+	UserID          int64
+	SubpatternCodes []string
+}
+
+type ListRoadmapTheoryProgressRow struct {
+	SubpatternCode    string
+	TheoryCompletedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListRoadmapTheoryProgress(ctx context.Context, arg ListRoadmapTheoryProgressParams) ([]ListRoadmapTheoryProgressRow, error) {
+	rows, err := q.db.Query(ctx, listRoadmapTheoryProgress, arg.UserID, arg.SubpatternCodes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoadmapTheoryProgressRow
+	for rows.Next() {
+		var i ListRoadmapTheoryProgressRow
+		if err := rows.Scan(&i.SubpatternCode, &i.TheoryCompletedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserRoadmapConfigs = `-- name: ListUserRoadmapConfigs :many
+SELECT plan_key, company_code, company_name, interview_date, priority_mode,
+       generated_at, is_active
+FROM user_roadmap_configs
+WHERE user_id = $1
+ORDER BY is_active DESC, updated_at DESC, company_name
+`
+
+type ListUserRoadmapConfigsRow struct {
+	PlanKey       string
+	CompanyCode   pgtype.Text
+	CompanyName   string
+	InterviewDate pgtype.Timestamptz
+	PriorityMode  string
+	GeneratedAt   pgtype.Timestamptz
+	IsActive      bool
+}
+
+func (q *Queries) ListUserRoadmapConfigs(ctx context.Context, userID int64) ([]ListUserRoadmapConfigsRow, error) {
+	rows, err := q.db.Query(ctx, listUserRoadmapConfigs, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserRoadmapConfigsRow
+	for rows.Next() {
+		var i ListUserRoadmapConfigsRow
+		if err := rows.Scan(
+			&i.PlanKey,
+			&i.CompanyCode,
+			&i.CompanyName,
+			&i.InterviewDate,
+			&i.PriorityMode,
+			&i.GeneratedAt,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listUserRoadmapItems = `-- name: ListUserRoadmapItems :many
@@ -202,9 +598,14 @@ SELECT p.code, p.name, p.position AS taxonomy_position,
        i.week_index, i.position, i.selected
 FROM user_roadmap_plan_items i
 JOIN patterns p ON p.id = i.subpattern_id
-WHERE i.user_id = $1
+WHERE i.user_id = $1 AND i.plan_key = $2
 ORDER BY i.position
 `
+
+type ListUserRoadmapPlanItemsParams struct {
+	UserID  int64
+	PlanKey string
+}
 
 type ListUserRoadmapPlanItemsRow struct {
 	Code             string
@@ -215,8 +616,8 @@ type ListUserRoadmapPlanItemsRow struct {
 	Selected         bool
 }
 
-func (q *Queries) ListUserRoadmapPlanItems(ctx context.Context, userID int64) ([]ListUserRoadmapPlanItemsRow, error) {
-	rows, err := q.db.Query(ctx, listUserRoadmapPlanItems, userID)
+func (q *Queries) ListUserRoadmapPlanItems(ctx context.Context, arg ListUserRoadmapPlanItemsParams) ([]ListUserRoadmapPlanItemsRow, error) {
+	rows, err := q.db.Query(ctx, listUserRoadmapPlanItems, arg.UserID, arg.PlanKey)
 	if err != nil {
 		return nil, err
 	}
@@ -270,43 +671,57 @@ func (q *Queries) SetRoadmapTarget(ctx context.Context, arg SetRoadmapTargetPara
 
 const upsertUserRoadmapConfig = `-- name: UpsertUserRoadmapConfig :exec
 INSERT INTO user_roadmap_configs (
-    user_id, company_code, priority_mode, horizon_weeks, weekly_capacity,
-    algorithm_version, source, generated_at, updated_at
+    user_id, plan_key, company_code, company_name, interview_date, priority_mode,
+    horizon_weeks, weekly_capacity, algorithm_version, source, generated_at, updated_at, is_active
 ) VALUES (
-    $1, $2, $3,
-    $4, $5,
-    $6, $7, NOW(), NOW()
+    $1, $2, $3, $4,
+    $5, $6, $7,
+    $8, $9, $10, NOW(), NOW(), TRUE
 )
-ON CONFLICT (user_id) DO UPDATE SET
+ON CONFLICT (user_id, plan_key) DO UPDATE SET
     company_code = EXCLUDED.company_code,
+    company_name = EXCLUDED.company_name,
+    interview_date = EXCLUDED.interview_date,
     priority_mode = EXCLUDED.priority_mode,
     horizon_weeks = EXCLUDED.horizon_weeks,
     weekly_capacity = EXCLUDED.weekly_capacity,
     algorithm_version = EXCLUDED.algorithm_version,
     source = EXCLUDED.source,
-    generated_at = NOW(),
-    updated_at = NOW()
+    generated_at = CASE
+        WHEN $11::boolean THEN user_roadmap_configs.generated_at
+        ELSE NOW()
+    END,
+    updated_at = NOW(),
+    is_active = TRUE
 `
 
 type UpsertUserRoadmapConfigParams struct {
 	UserID           int64
+	PlanKey          string
 	CompanyCode      pgtype.Text
+	CompanyName      string
+	InterviewDate    pgtype.Timestamptz
 	PriorityMode     string
 	HorizonWeeks     int32
 	WeeklyCapacity   int32
 	AlgorithmVersion int32
 	Source           string
+	PreserveProgress bool
 }
 
 func (q *Queries) UpsertUserRoadmapConfig(ctx context.Context, arg UpsertUserRoadmapConfigParams) error {
 	_, err := q.db.Exec(ctx, upsertUserRoadmapConfig,
 		arg.UserID,
+		arg.PlanKey,
 		arg.CompanyCode,
+		arg.CompanyName,
+		arg.InterviewDate,
 		arg.PriorityMode,
 		arg.HorizonWeeks,
 		arg.WeeklyCapacity,
 		arg.AlgorithmVersion,
 		arg.Source,
+		arg.PreserveProgress,
 	)
 	return err
 }

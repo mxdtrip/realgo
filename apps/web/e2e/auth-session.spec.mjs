@@ -105,7 +105,7 @@ test.describe("bug #2 — cabinet logo & session hardening", () => {
     await expect(account).toBeVisible();
     await account.click();
     await expect(page.locator(".site-auth .user-menu")).toBeVisible();
-    await expect(page.locator(".site-auth .user-menu")).toContainText("log out");
+    await expect(page.locator(".site-auth .user-menu")).toContainText("Выйти");
   });
 
   test("revoked session (refresh 401) clears tokens", async ({ page }) => {

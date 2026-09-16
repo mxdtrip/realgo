@@ -629,8 +629,8 @@ export function SortingMemoryHero() {
         </a>
         <nav className="site-nav" aria-label={copy.navAria}>
           {copy.nav.map((item) => (
-            <a href={`#${item.toLowerCase()}`} key={item}>
-              {item}
+            <a href={`#${item.id}`} key={item.id}>
+              {item.label}
             </a>
           ))}
         </nav>
@@ -670,6 +670,7 @@ export function SortingMemoryHero() {
           )}
         </div>
       </header>
+
 
       <div className={codeError ? "code-editor has-error" : "code-editor"}>
         <pre className="code-lines" aria-hidden="true" ref={codeLinesRef}>

@@ -26,6 +26,10 @@ func (s *stubReviewService) RateReview(ctx context.Context, reviewID, userID int
 	return v1response.RateReviewData{}, nil
 }
 
+func (s *stubReviewService) RecordProblemAttempt(ctx context.Context, userID, problemID int64, outcome string, attemptedAt time.Time) (v1response.ProblemAttemptData, error) {
+	return v1response.ProblemAttemptData{ProblemID: problemID, Outcome: outcome, Status: "reviewing"}, nil
+}
+
 func (s *stubReviewService) GetStats(ctx context.Context, userID int64) (v1response.StatsResponse, error) {
 	return v1response.StatsResponse{}, nil
 }
@@ -83,6 +87,36 @@ func TestRateReview_Unauthorized(t *testing.T) {
 	}
 }
 
+func TestRecordProblemAttempt_AcceptsEveryOutcome(t *testing.T) {
+	h := NewReviewHandler(&stubReviewService{})
+	for _, outcome := range []string{"not_solved", "hard", "normal", "easy"} {
+		body := strings.NewReader(`{"outcome":"` + outcome + `","attemptedAt":"2026-06-30T10:00:00Z"}`)
+		req := withUser(httptest.NewRequest(http.MethodPost, "/me/reviews/problems/7/attempt", body), 1)
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		routeReviewHandler(h).ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("outcome=%s: expected 200, got %d: %s", outcome, w.Code, w.Body.String())
+		}
+	}
+}
+
+func TestRecordProblemAttempt_RejectsInvalidOutcome(t *testing.T) {
+	h := NewReviewHandler(&stubReviewService{})
+	body := strings.NewReader(`{"outcome":"skipped","attemptedAt":"2026-06-30T10:00:00Z"}`)
+	req := withUser(httptest.NewRequest(http.MethodPost, "/me/reviews/problems/7/attempt", body), 1)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	routeReviewHandler(h).ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestRequest_Valid(t *testing.T) {
 	tests := []struct {
 		rating   string
@@ -100,6 +134,17 @@ func TestRequest_Valid(t *testing.T) {
 		if got := req.Valid(); got != tt.expected {
 			t.Errorf("rating=%s: expected %v, got %v", tt.rating, tt.expected, got)
 		}
+	}
+}
+
+func TestProblemAttemptRequest_Valid(t *testing.T) {
+	for _, outcome := range []string{"not_solved", "hard", "normal", "easy"} {
+		if !((request.ProblemAttemptRequest{Outcome: outcome}).Valid()) {
+			t.Errorf("outcome=%s must be valid", outcome)
+		}
+	}
+	if (request.ProblemAttemptRequest{Outcome: "skipped"}).Valid() {
+		t.Fatal("skipped must not be a valid attempt outcome")
 	}
 }
 

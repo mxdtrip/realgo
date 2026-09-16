@@ -436,6 +436,15 @@ type User struct {
 	EmailVerifiedAt       pgtype.Timestamptz
 }
 
+// Durable first-pass learning progress for subpatterns; spaced repetitions remain in review_schedules.
+type UserPatternLearningProgress struct {
+	UserID            int64
+	SubpatternID      int64
+	TheoryCompletedAt pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+}
+
 type UserPracticePattern struct {
 	UserID    int64
 	PatternID int64
@@ -465,6 +474,10 @@ type UserRoadmapConfig struct {
 	Source           string
 	GeneratedAt      pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
+	PlanKey          string
+	CompanyName      string
+	InterviewDate    pgtype.Timestamptz
+	IsActive         bool
 }
 
 type UserRoadmapPlanItem struct {
@@ -473,4 +486,15 @@ type UserRoadmapPlanItem struct {
 	WeekIndex    int32
 	Position     int32
 	Selected     bool
+	PlanKey      string
+}
+
+type UserRoadmapTaskAccessOverride struct {
+	UserID               int64
+	PlanKey              string
+	ProblemID            int64
+	ReplacementProblemID pgtype.Int8
+	Status               string
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
 }

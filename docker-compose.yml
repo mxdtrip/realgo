@@ -205,9 +205,9 @@ services:
         # Empty = relative same-origin API calls (/api/v1/...). The browser hits
         # realgo.dev and Caddy proxies /api/* to the api container, so no CORS.
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
-        # CI may provide a human release name / explicit SHA. Empty values are
-        # deliberate: Dockerfile falls back to git-<short SHA> and HEAD.
-        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-}
+        # CI may override the release name, while local builds use the current
+        # product version. The commit SHA remains available for exact tracing.
+        NEXT_PUBLIC_APP_VERSION: ${APP_VERSION:-0.5.0}
         NEXT_PUBLIC_COMMIT_SHA: ${COMMIT_SHA:-}
         # "Войти через Яндекс ID" button; empty hides it. Must be the same
         # value as the api's YANDEX_CLIENT_ID below.

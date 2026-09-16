@@ -282,6 +282,7 @@ export function CabinetMobileNav({
     <div className="cabinet-mobile-nav">
       <button
         ref={triggerRef}
+        data-tour="nav-mobile"
         className="cabinet-mobile-nav__trigger"
         type="button"
         aria-label={open ? "Закрыть навигацию" : "Открыть навигацию"}

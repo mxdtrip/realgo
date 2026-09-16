@@ -22,6 +22,7 @@ const SEQUENCE_TIMEOUT_MS = 1600;
 // event.code вместо event.key: работает одинаково на en/ru раскладках.
 const GO_TARGETS: Record<string, string> = {
   KeyD: "/dashboard",
+  KeyQ: "/queue",
   KeyR: "/reviews",
   KeyP: "/problems",
   KeyC: "/cards",

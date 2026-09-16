@@ -46,6 +46,12 @@ type RateReviewData struct {
 	Status       string    `json:"status"` // completed
 }
 
+type ProblemAttemptData struct {
+	ProblemID int64  `json:"problemId"`
+	Outcome   string `json:"outcome"`
+	Status    string `json:"status"` // in_progress or reviewing
+}
+
 // StatsResponse для GET /me/reviews/stats
 type StatsResponse struct {
 	TotalReviews  int `json:"totalReviews"`

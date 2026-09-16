@@ -26,7 +26,6 @@ for (const method of ['apiFetch', 'apiFetchEnvelope']) {
 
 test('registration waits for its browser-bound email challenge', async ({ page }) => {
   await page.goto('/register');
-  await page.locator('input[autocomplete="nickname"]').fill('security_test');
   await page.locator('input[type=email]').fill('security@example.invalid');
   await page.locator('input[type=password]').nth(0).fill('Password123!');
   await page.locator('input[type=password]').nth(1).fill('Password123!');

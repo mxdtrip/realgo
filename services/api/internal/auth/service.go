@@ -56,6 +56,50 @@ func NewService(queries *db.Queries, redis *goredis.Client, cfg Config) *Service
 	}
 }
 
+// RegisterWithoutEmailVerification creates an already verified account and a
+// browser session. Only explicitly configured non-production servers call it.
+func (s *Service) RegisterWithoutEmailVerification(ctx context.Context, email, password string) (db.User, TokenPair, error) {
+	normalized, err := normalizeEmail(email)
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	if err = validatePassword(password); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	hash, err := hashPassword(password)
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	tx, err := s.queries.BeginTx(ctx)
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := s.queries.WithTx(tx)
+	user, err := q.CreateUser(ctx, db.CreateUserParams{
+		Email:        normalized,
+		PasswordHash: pgtype.Text{String: hash, Valid: true},
+	})
+	if isUniqueViolation(err) {
+		return db.User{}, TokenPair{}, ErrEmailTaken
+	}
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	if err = q.MarkUserEmailVerified(ctx, user.ID); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	tokens, err := s.createSession(ctx, tx, user.ID, s.now())
+	if err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return db.User{}, TokenPair{}, err
+	}
+	return user, tokens, nil
+}
+
 // CompleteRegistration atomically consumes the pending code and creates the
 // account. No code, no row in users, no access or refresh token.
 func (s *Service) CompleteRegistration(ctx context.Context, email, code, challenge string) (db.User, TokenPair, error) {

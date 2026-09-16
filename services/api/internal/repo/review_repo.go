@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/mxdtrip/realgo/services/api/internal/entity"
 )
@@ -28,4 +29,8 @@ type ReviewRepository interface {
 	// EnsureScheduleForProblem гарантирует наличие расписания для задачи
 	// (создаёт при отсутствии, идемпотентно) и возвращает его id.
 	EnsureScheduleForProblem(ctx context.Context, userID, problemID int64) (int64, error)
+
+	// MarkProblemAttempted records an unsuccessful manual attempt without
+	// feeding a synthetic rating into FSRS.
+	MarkProblemAttempted(ctx context.Context, userID, problemID int64, attemptedAt time.Time) (string, error)
 }
