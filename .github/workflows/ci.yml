@@ -90,12 +90,14 @@ jobs:
         run: ./scripts/check-migrations.sh
 
       - name: Check Docker Compose config
-        working-directory: .
+        # The API job defaults to services/api; Compose files live at repo root.
+        working-directory: ${{ github.workspace }}
         env:
           AUTH_JWT_SECRET: ci-secret-with-more-than-32-random-looking-characters
         run: docker compose config --quiet
 
       - name: Check staging Docker Compose config
+        working-directory: ${{ github.workspace }}
         env:
           AUTH_JWT_SECRET: ci-secret-with-more-than-32-random-looking-characters
           DB_PASSWORD: ci-database-password
