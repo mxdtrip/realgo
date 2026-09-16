@@ -5,11 +5,23 @@ import { expect, test } from "@playwright/test";
 // Backed by the CARD_SESSION fixtures in auth-stub.mjs.
 
 const AKEY = "realgo:auth:access:v1";
-const RKEY = "realgo:auth:refresh:v1";
+const RKEY = "realgo:auth:session:v2";
 const SESSION_KEYS = [
   "realgo:card-review-session:v2:due",
   "realgo:card-review-session:v2:practice",
 ];
+
+async function seedAuthSession(page, kind) {
+  await page.evaluate(
+    ([accessKey, sessionKey, tokenKind]) => {
+      localStorage.removeItem(accessKey);
+      const session = `${tokenKind}.session`;
+      localStorage.setItem(sessionKey, session);
+      document.cookie = `realgo-refresh-${session}=${tokenKind}.refresh; Path=/; SameSite=Strict`;
+    },
+    [AKEY, RKEY, kind],
+  );
+}
 
 async function openSession(page, { token = null } = {}) {
   await page.goto("/cards");
@@ -17,8 +29,10 @@ async function openSession(page, { token = null } = {}) {
     ([a, r, sessionKeys, kind]) => {
       sessionKeys.forEach((sessionKey) => localStorage.removeItem(sessionKey));
       if (kind) {
-        localStorage.setItem(a, `${kind}.access`);
-        localStorage.setItem(r, `${kind}.refresh`);
+        localStorage.removeItem(a);
+        const session = `${kind}.session`;
+        localStorage.setItem(r, session);
+        document.cookie = `realgo-refresh-${session}=${kind}.refresh; Path=/; SameSite=Strict`;
       } else {
         localStorage.removeItem(a);
         localStorage.removeItem(r);
@@ -32,13 +46,7 @@ async function openSession(page, { token = null } = {}) {
 test.describe("card review session (api)", () => {
   test("cards overview separates due repetition from subpattern practice", async ({ page }) => {
     await page.goto("/cards");
-    await page.evaluate(
-      ([a, r]) => {
-        localStorage.setItem(a, "LIVE.access");
-        localStorage.setItem(r, "LIVE.refresh");
-      },
-      [AKEY, RKEY],
-    );
+    await seedAuthSession(page, "LIVE");
     await page.goto("/cards");
 
     const due = page.locator(".cards-mode-card--due");
@@ -93,10 +101,9 @@ test.describe("card review session (api)", () => {
 
   test("explicit practice restart ignores a completed local session", async ({ page }) => {
     await page.goto("/cards");
+    await seedAuthSession(page, "LIVE");
     await page.evaluate(
-      ([accessKey, refreshKey]) => {
-        localStorage.setItem(accessKey, "LIVE.access");
-        localStorage.setItem(refreshKey, "LIVE.refresh");
+      () => {
         localStorage.setItem(
           "realgo:card-review-session:v2:practice",
           JSON.stringify({
@@ -106,7 +113,6 @@ test.describe("card review session (api)", () => {
           }),
         );
       },
-      [AKEY, RKEY],
     );
 
     await page.goto("/cards/session?scope=practice&restart=1");

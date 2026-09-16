@@ -105,11 +105,18 @@ func clientIP(r *http.Request) string {
 	if !isTrustedProxy(remote) {
 		return remote
 	}
-	if forwarded := firstForwardedFor(r.Header.Get("Forwarded")); forwarded != "" {
-		return forwarded
-	}
-	if forwarded := firstXForwardedFor(r.Header.Get("X-Forwarded-For")); forwarded != "" {
-		return forwarded
+	// The edge writes X-Forwarded-For. RFC Forwarded is untrusted input.
+	// Walk from the nearest hop and stop at the first untrusted address.
+	chain := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
+	for i := len(chain) - 1; i >= 0; i-- {
+		hop := hostOnly(strings.TrimSpace(chain[i]))
+		if net.ParseIP(hop) == nil {
+			return remote
+		}
+		remote = hop
+		if !isTrustedProxy(hop) {
+			return hop
+		}
 	}
 	return remote
 }
@@ -145,29 +152,4 @@ func isTrustedProxy(host string) bool {
 		}
 	}
 	return false
-}
-
-func firstXForwardedFor(header string) string {
-	for _, part := range strings.Split(header, ",") {
-		if host := hostOnly(strings.TrimSpace(part)); net.ParseIP(host) != nil {
-			return host
-		}
-	}
-	return ""
-}
-
-func firstForwardedFor(header string) string {
-	for _, part := range strings.Split(header, ",") {
-		for _, param := range strings.Split(part, ";") {
-			key, value, ok := strings.Cut(strings.TrimSpace(param), "=")
-			if !ok || !strings.EqualFold(key, "for") {
-				continue
-			}
-			host := hostOnly(strings.Trim(strings.TrimSpace(value), `"`))
-			if net.ParseIP(host) != nil {
-				return host
-			}
-		}
-	}
-	return ""
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -25,9 +26,13 @@ func requireAuth(svc *auth.Service) func(http.Handler) http.Handler {
 				response.Fail(w, http.StatusUnauthorized, "UNAUTHORIZED", "missing bearer token")
 				return
 			}
-			userID, err := svc.ParseAccessToken(token)
+			userID, err := svc.ValidateAccessToken(r.Context(), token)
 			if err != nil {
-				slog.Warn("server: requireAuth failed", slog.Any("err", err))
+				if !errors.Is(err, auth.ErrInvalidToken) {
+					response.Fail(w, http.StatusServiceUnavailable, "auth_unavailable", "authentication service temporarily unavailable")
+					return
+				}
+				slog.Warn("server: requireAuth failed", slog.String("reason", "invalid_token"))
 				response.Fail(w, http.StatusUnauthorized, "INVALID_TOKEN", "invalid or expired token")
 				return
 			}
@@ -39,6 +44,9 @@ func requireAuth(svc *auth.Service) func(http.Handler) http.Handler {
 
 func bearerToken(r *http.Request) (string, bool) {
 	const prefix = "Bearer "
+	if len(r.Header.Values("Authorization")) != 1 {
+		return "", false
+	}
 	header := r.Header.Get("Authorization")
 	if !strings.HasPrefix(header, prefix) {
 		return "", false

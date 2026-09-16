@@ -1,15 +1,16 @@
 import { expect, test } from "@playwright/test";
 
 const AKEY = "realgo:auth:access:v1";
-const RKEY = "realgo:auth:refresh:v1";
+const RKEY = "realgo:auth:session:v2";
 const TOUR_KEY = "realgo.cabinet.tour";
 
 async function authenticate(page) {
   await page.goto("/dashboard");
   await page.evaluate(
     ([accessKey, refreshKey, tourKey]) => {
-      localStorage.setItem(accessKey, "LIVE.access");
-      localStorage.setItem(refreshKey, "LIVE.refresh");
+      localStorage.removeItem(accessKey);
+      localStorage.setItem(refreshKey, String("LIVE.refresh").split(".")[0]+".session");
+      document.cookie = "realgo-refresh-"+String("LIVE.refresh").split(".")[0]+".session="+String("LIVE.refresh").split(".")[0]+".refresh; Path=/; SameSite=Strict";
       localStorage.setItem(tourKey, "done");
     },
     [AKEY, RKEY, TOUR_KEY],
@@ -62,10 +63,13 @@ test("onboarding selects multiple companies from comma input and the catalog", a
   await page.getByLabel("Все компании в базе ReAlgo").getByRole("button", { name: "Yandex" }).click();
 
   await page.getByRole("button", { name: "Далее" }).click();
+  await page.getByRole("button", { name: "Месяц интервью: вперёд" }).click();
+  const dayList = page.getByRole("listbox", { name: "День интервью" });
+  await dayList.getByRole("option", { name: "15", exact: true }).click();
   const before = await page.locator(".onboarding-wheels-result").innerText();
   await page.getByRole("button", { name: "День интервью: вперёд" }).click();
   await expect(page.locator(".onboarding-wheels-result")).not.toHaveText(before);
-  const selectedDay = page.getByRole("option", { selected: true }).first();
+  const selectedDay = dayList.getByRole("option", { selected: true });
   const dayAfterArrow = Number(await selectedDay.innerText());
   await page.getByRole("listbox", { name: "День интервью" }).hover();
   await page.mouse.wheel(0, -800);

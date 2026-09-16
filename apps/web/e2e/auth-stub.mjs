@@ -42,7 +42,7 @@ const USER = {
 const tokens = (kind) => ({
   // JWT-shaped enough for the web client's cross-tab subject comparison.
   access_token: `${kind}.eyJzdWIiOiIxIn0.signature`,
-  refresh_token: `${kind}.refresh`,
+  session_id: `${kind}.session`,
   token_type: "Bearer",
   expires_in: 900,
 });
@@ -710,9 +710,10 @@ const server = createServer((req, res) => {
   // The web app hits this cross-origin (page :3000 -> api :8080) with a JSON
   // content-type, so the browser sends a preflight. No credentials are used
   // (Bearer header, not cookies), so a wildcard origin is safe and simplest.
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "http://127.0.0.1:3300");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Realgo-Client, X-Realgo-Session");
   res.setHeader("Access-Control-Expose-Headers", "X-Request-Id");
 
   const path = new URL(req.url, `http://127.0.0.1:${PORT}`).pathname;
@@ -742,10 +743,21 @@ const server = createServer((req, res) => {
       /* leave body empty */
     }
 
-    if (req.method === "POST" && (path === `${PREFIX}/auth/login` || path === `${PREFIX}/auth/register`)) {
+    if (req.method === "POST" && path === `${PREFIX}/auth/login`) {
+      res.setHeader("Set-Cookie", "realgo-refresh-LIVE.session=LIVE.refresh; HttpOnly; Path=/; SameSite=Strict");
       return ok(res, { user: USER, tokens: tokens("LIVE") });
     }
 
+    if (req.method === "POST" && path === `${PREFIX}/auth/register`) {
+      return send(res, 202, { data: {status:"verification_requested",challenge:"stub-browser-bound-registration-challenge"} });
+    }
+    if (req.method === "POST" && path === `${PREFIX}/auth/email-verification/confirm`) {
+      if (body.code !== "123456" || body.challenge !== "stub-browser-bound-registration-challenge") return fail(res,400,"invalid_code","invalid code");
+      res.setHeader("Set-Cookie", "realgo-refresh-LIVE.session=LIVE.refresh; HttpOnly; Path=/; SameSite=Strict");
+      return send(res,201,{data:{user:USER,tokens:tokens("LIVE")}});
+    }
+    if (req.method === "POST" && ["/auth/password-reset/request","/auth/email-verification/request"].some(p=>path===PREFIX+p)) return send(res,202,{data:{status:"accepted"}});
+    if (req.method === "POST" && path === PREFIX+"/auth/password-reset/confirm") return ok(res,{status:"password_reset"});
     if (req.method === "GET" && path === `${PREFIX}/users/me`) {
       const bearer = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
       const kind = kindOf(bearer);
@@ -780,7 +792,9 @@ const server = createServer((req, res) => {
     }
 
     if (req.method === "POST" && path === `${PREFIX}/auth/refresh`) {
-      const kind = kindOf(body.refresh_token);
+      const selector = req.headers["x-realgo-session"] || "";
+      const cookie = (req.headers.cookie || "").split("; ").find((item) => item.startsWith(`realgo-refresh-${selector}=`));
+      const kind = kindOf(cookie?.split("=")[1]);
       if (kind === "LIVE") return ok(res, { tokens: tokens("LIVE") });
       if (kind === "FLAKY") return fail(res, 500, "server_error", "stub transient failure");
       return fail(res, 401, "invalid_refresh", "stub: refresh rejected");

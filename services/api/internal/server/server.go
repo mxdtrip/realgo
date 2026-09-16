@@ -43,10 +43,9 @@ type Deps struct {
 	Auth        *auth.Service
 	Mailer      mail.Sender
 	MailBaseURL string
-	// RequireEmailVerification is enabled only in production. Local and
-	// staging environments create a session immediately so their test flows do
-	// not depend on a transactional mail provider.
-	RequireEmailVerification bool
+	// SkipEmailVerification is an explicit non-production escape hatch. The
+	// zero value keeps registration secure for tests and any future callers.
+	SkipEmailVerification bool
 	// Scheduler is the single FSRS scheduler shared by every code path that
 	// plans a review (extension ingest, manual review-rate, card-rate,
 	// quiz-rate). Created once in app.Run from config.FSRS so that one set of
@@ -137,9 +136,10 @@ func New(deps Deps) *chi.Mux {
 	extensionStatusHandler := extension.NewStatusHandler(extension.NewStatusService(extension.NewStatusRepository(deps.Postgres.Pool)))
 
 	r.Route("/api/v1", func(r chi.Router) {
-		ah := &authHandler{svc: deps.Auth, mailer: deps.Mailer, mailBaseURL: deps.MailBaseURL, requireEmailVerification: deps.RequireEmailVerification}
+		ah := &authHandler{svc: deps.Auth, mailer: deps.Mailer, mailBaseURL: deps.MailBaseURL, skipEmailVerification: deps.SkipEmailVerification}
 		authRateLimit := rateLimit(deps.Redis, "auth", 20, time.Minute)
 		r.Route("/auth", func(r chi.Router) {
+			r.Use(ah.browserSessionGuard)
 			r.With(rateLimit(deps.Redis, "registration", 5, time.Hour)).Post("/register", ah.register)
 			r.With(authRateLimit).Post("/login", ah.login)
 			r.With(rateLimit(deps.Redis, "password-reset-request", 5, time.Hour)).Post("/password-reset/request", ah.requestPasswordReset)

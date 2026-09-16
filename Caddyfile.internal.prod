@@ -14,9 +14,8 @@
 
 :80 {
 	header {
-		Content-Security-Policy "frame-ancestors 'none'"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
-		Referrer-Policy "strict-origin-when-cross-origin"
+		Referrer-Policy "no-referrer"
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 	}
@@ -29,14 +28,16 @@
 			header @allowed_origin Access-Control-Allow-Origin "{http.request.header.Origin}"
 			header @allowed_origin Access-Control-Allow-Credentials "true"
 			header @allowed_origin Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-			header @allowed_origin Access-Control-Allow-Headers "Authorization, Content-Type"
+			header @allowed_origin Access-Control-Allow-Headers "Authorization, Content-Type, X-Realgo-Client, X-Realgo-Session"
 			header @allowed_origin Access-Control-Max-Age "86400"
 			header @allowed_origin Vary "Origin"
 
 			@preflight method OPTIONS
 			respond @preflight 204
 
-			reverse_proxy vpngw:8080
+			reverse_proxy vpngw:8080 {
+				header_up -Forwarded
+			}
 		}
 	}
 

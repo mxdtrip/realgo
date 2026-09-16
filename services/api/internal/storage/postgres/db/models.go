@@ -23,6 +23,21 @@ type AiRequestLog struct {
 	PromptVersion pgtype.Text
 }
 
+type AuthMailJob struct {
+	ID          int64
+	Payload     []byte
+	Attempts    int32
+	AvailableAt pgtype.Timestamptz
+	ExpiresAt   pgtype.Timestamptz
+}
+
+type AuthSession struct {
+	ID          string
+	UserID      int64
+	RefreshHash string
+	ExpiresAt   pgtype.Timestamptz
+}
+
 type Card struct {
 	ID              int64
 	UserID          pgtype.Int8
@@ -238,14 +253,15 @@ type PatternLearningMaterial struct {
 }
 
 type PendingRegistration struct {
-	ID           int64
-	Email        string
-	PasswordHash string
-	Nickname     pgtype.Text
-	CodeHash     string
-	ExpiresAt    pgtype.Timestamptz
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	ID            int64
+	Email         string
+	PasswordHash  string
+	Nickname      pgtype.Text
+	CodeHash      string
+	ExpiresAt     pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	ChallengeHash string
 }
 
 type Platform struct {
@@ -471,4 +487,14 @@ type UserRoadmapPlanItem struct {
 	Position     int32
 	Selected     bool
 	PlanKey      string
+}
+
+type UserRoadmapTaskAccessOverride struct {
+	UserID               int64
+	PlanKey              string
+	ProblemID            int64
+	ReplacementProblemID pgtype.Int8
+	Status               string
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
 }

@@ -1,21 +1,23 @@
 import { expect, test } from "@playwright/test";
 
 const AKEY = "realgo:auth:access:v1";
-const RKEY = "realgo:auth:refresh:v1";
+const RKEY = "realgo:auth:session:v2";
 const TOUR_KEY = "realgo.cabinet.tour";
 
 async function enterCabinet(page, path = "/settings") {
   await page.goto(path);
   await page.evaluate(
     ([accessKey, refreshKey, tourKey]) => {
-      localStorage.setItem(accessKey, "LIVE.access");
-      localStorage.setItem(refreshKey, "LIVE.refresh");
+      localStorage.removeItem(accessKey);
+      localStorage.setItem(refreshKey, String("LIVE.refresh").split(".")[0]+".session");
+      document.cookie = "realgo-refresh-"+String("LIVE.refresh").split(".")[0]+".session="+String("LIVE.refresh").split(".")[0]+".refresh; Path=/; SameSite=Strict";
       localStorage.setItem(tourKey, "done");
     },
     [AKEY, RKEY, TOUR_KEY],
   );
   await page.goto(path);
   await expect(page.locator(".cabinet-content")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: /e2e/i }).first()).toBeVisible();
 }
 
 test.describe("audit regressions 11-19", () => {

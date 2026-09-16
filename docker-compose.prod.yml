@@ -7,6 +7,31 @@
 # unbuildable image here would break that for everyone (as it briefly did).
 
 services:
+  mail-relay:
+    networks: [mail-delivery, mail-egress]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+    build:
+      context: ./services/smtp-relay
+    restart: unless-stopped
+    environment:
+      RELAY_SMTP_HOST: ${SMTP2GO_SMTP_HOST:-mail.smtp2go.com}
+      RELAY_SMTP_PORT: ${SMTP2GO_SMTP_PORT:-2525}
+      RELAY_SMTP_TLS_MODE: ${SMTP2GO_SMTP_TLS_MODE:-starttls}
+      RELAY_SMTP_USERNAME: ${SMTP2GO_SMTP_USERNAME:?SMTP2GO_SMTP_USERNAME must be set}
+      RELAY_SMTP_PASSWORD: ${SMTP2GO_SMTP_PASSWORD:?SMTP2GO_SMTP_PASSWORD must be set}
+      RELAY_CLIENT_HOST: vpngw
+      SENDER_ADDRESS: noreply@realgo.dev
+      SMTP_LISTEN_HOST: 0.0.0.0
+      SMTP_LISTEN_PORT: "2526"
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.mjs"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   # Demo identities stay available in the base local stack, but are not
   # started by the production `prod-demo` profile. Run this separate profile
   # explicitly only when a disposable public demo really needs seeded users.
@@ -57,13 +82,29 @@ services:
     # own service block has no network attachment of its own to expose from.
     expose:
       - "8080"
+    networks:
+      default:
+      mail-delivery:
 
   api:
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
     network_mode: "service:vpngw"
     environment:
       APP_ENV: production
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      MAIL_BASE_URL: ${MAIL_BASE_URL:-https://realgo.dev}
+      MAIL_SMTP_TIMEOUT: ${MAIL_SMTP_TIMEOUT:-10s}
+      MAIL_SMTP_HOST: mail-relay
+      MAIL_SMTP_PORT: "2526"
+      MAIL_SMTP_USERNAME: ""
+      MAIL_SMTP_PASSWORD: ""
+      MAIL_SMTP_TLS_MODE: none
     depends_on:
       vpngw:
+        condition: service_healthy
+      mail-relay:
         condition: service_healthy
 
   # The product presentation runs in prod exactly as it does locally — the base
@@ -90,8 +131,6 @@ services:
   # Everything else is identical to the base file; keep the two in sync.
   ready:
     depends_on: !override
-      startup-clock:
-        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
       seed-roadmap:
@@ -121,3 +160,8 @@ services:
   caddy:
     volumes:
       - ./Caddyfile.internal.prod:/etc/caddy/Caddyfile:ro
+
+networks:
+  mail-delivery:
+    internal: true
+  mail-egress: {}

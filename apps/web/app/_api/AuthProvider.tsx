@@ -4,10 +4,10 @@
 // mount, exposes login/register/logout, and re-syncs when the token store
 // changes (including from another tab).
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import * as authApi from "./auth";
-import { authChangedEvent, hasSession } from "./tokens";
+import { authChangedEvent, hasSession, refreshTokenStorageKey } from "./tokens";
 import { ApiError } from "./types";
 import type { AuthUser } from "./types";
 
@@ -36,8 +36,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
 
+  const syncGeneration = useRef(0);
+
   // Load (or clear) the session-backed user. Runs on mount and on auth changes.
   const sync = useCallback(async () => {
+    const generation = ++syncGeneration.current;
     if (!hasSession()) {
       setUser(null);
       setStatus("anonymous");
@@ -45,9 +48,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       const me = await authApi.getMe();
+      if (generation !== syncGeneration.current) return;
       setUser(me);
       setStatus("authenticated");
     } catch (e) {
+      if (generation !== syncGeneration.current) return;
       if (e instanceof ApiError && e.status === 401) {
         setUser(null);
         setStatus("anonymous");
@@ -70,10 +75,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void sync();
     const onChange = () => void sync();
     window.addEventListener(authChangedEvent, onChange);
-    window.addEventListener("storage", onChange);
+    const onStorage = (event: StorageEvent) => { if (event.key === refreshTokenStorageKey || event.key === null) void sync(); };
+    window.addEventListener("storage", onStorage);
     return () => {
       window.removeEventListener(authChangedEvent, onChange);
-      window.removeEventListener("storage", onChange);
+      window.removeEventListener("storage", onStorage);
     };
   }, [sync]);
 

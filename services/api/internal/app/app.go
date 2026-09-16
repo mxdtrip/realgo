@@ -89,6 +89,7 @@ func Run(ctx context.Context) error {
 	var mailer mail.Sender
 	if smtpMailer != nil {
 		mailer = smtpMailer
+		go authSvc.RunMailWorker(ctx, mailer, cfg.Mail.BaseURL)
 		logger.Info("transactional mail enabled", slog.String("from", mail.SenderAddress), slog.String("smtp_host", cfg.Mail.Host), slog.Int("smtp_port", cfg.Mail.Port))
 	} else {
 		logger.Warn("transactional mail disabled: MAIL_ENABLED is false")
@@ -106,14 +107,14 @@ func Run(ctx context.Context) error {
 	})
 
 	deps := server.Deps{
-		Logger:                   logger,
-		Postgres:                 pg,
-		Redis:                    rdb,
-		Auth:                     authSvc,
-		Mailer:                   mailer,
-		MailBaseURL:              cfg.Mail.BaseURL,
-		RequireEmailVerification: cfg.Env == "production",
-		Scheduler:                sched,
+		Logger:                logger,
+		Postgres:              pg,
+		Redis:                 rdb,
+		Auth:                  authSvc,
+		Mailer:                mailer,
+		MailBaseURL:           cfg.Mail.BaseURL,
+		SkipEmailVerification: cfg.Env != "production",
+		Scheduler:             sched,
 	}
 	if cfg.Enabled() {
 		geminiProvider := ai.NewGeminiProvider(cfg.AI)
