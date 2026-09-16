@@ -157,7 +157,7 @@ func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 			writeAuthError(w, err, "Register", slog.String("email_hash", emailLogHash(req.Email)))
 			return
 		}
-		response.JSON(w, http.StatusCreated, authResponse{User: newUserResponse(user), Tokens: tokens})
+		response.JSON(w, http.StatusCreated, authResponse{User: newUserResponse(user), Tokens: h.browserTokens(w, r, tokens)})
 		return
 	}
 	if h.mailUnavailable(w) {
