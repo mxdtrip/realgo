@@ -95,6 +95,17 @@ jobs:
           AUTH_JWT_SECRET: ci-secret-with-more-than-32-random-looking-characters
         run: docker compose config --quiet
 
+      - name: Check staging Docker Compose config
+        env:
+          AUTH_JWT_SECRET: ci-secret-with-more-than-32-random-looking-characters
+          DB_PASSWORD: ci-database-password
+          REDIS_PASSWORD: ci-redis-password
+          SMTP2GO_SMTP_USERNAME: ci-user
+          SMTP2GO_SMTP_PASSWORD: ci-password
+          FRP_VPS_HOST: 127.0.0.1
+          FRP_TOKEN: ci-frp-token
+        run: docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo config --quiet
+
   web:
     name: Web
     runs-on: ubuntu-latest
