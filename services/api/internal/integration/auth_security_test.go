@@ -17,9 +17,41 @@ import (
 	"time"
 
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/server"
 	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 	"github.com/stretchr/testify/require"
 )
+
+func TestSecurityUnverifiedRegistrationUsesBrowserCookie(t *testing.T) {
+	h := newContractHarness(t)
+	email := uniqueEmail("unverified-cookie")
+	t.Cleanup(func() { h.cleanupUser(email) })
+	handler := server.New(server.Deps{
+		Postgres: h.pg, Redis: h.rdb, Auth: h.auth,
+		Mailer: h.mailer, MailBaseURL: "https://test.realgo.dev",
+		SkipEmailVerification: true,
+	})
+	r := httptest.NewRequest("POST", "/api/v1/auth/register", strings.NewReader(fmt.Sprintf(`{"email":%q,"password":"Password123!"}`, email)))
+	r.RemoteAddr = h.remote
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Origin", "https://test.realgo.dev")
+	r.Header.Set("X-Realgo-Client", "web")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	require.Equal(t, http.StatusCreated, w.Code)
+	require.NotContains(t, w.Body.String(), "refresh_token")
+	cookies := w.Result().Cookies()
+	require.Len(t, cookies, 1)
+	cookie := cookies[0]
+	require.True(t, cookie.HttpOnly)
+	require.True(t, cookie.Secure)
+	require.Equal(t, http.SameSiteStrictMode, cookie.SameSite)
+	require.Empty(t, cookie.Domain)
+	require.True(t, strings.HasPrefix(cookie.Name, "__Host-realgo-refresh-"))
+	// Cookie is an actual renewable session credential, not just a response flag.
+	_, err := h.auth.Refresh(h.ctx, cookie.Value)
+	require.NoError(t, err)
+}
 
 func TestSecurityRegistrationChallengeIsolation(t *testing.T) {
 	h := newContractHarness(t)
