@@ -9,15 +9,14 @@ import type { AuthTokens, AuthUser } from "./types";
 
 type AuthResponse = { user: AuthUser; tokens: AuthTokens };
 
-/** POST /auth/register → creates the account and starts a session. */
-export async function register(email: string, password: string): Promise<AuthUser> {
-  const data = await apiFetch<AuthResponse>("/auth/register", {
-    method: "POST",
-    auth: false,
-    body: { email, password },
-  });
-  setTokens(data.tokens);
-  return data.user;
+/** POST /auth/register → starts a pending email verification, without a session. */
+export async function register(email: string, password: string, nickname = ""): Promise<void> {
+	const data = await apiFetch<{ status: string; challenge: string }>("/auth/register", {
+		method: "POST",
+		auth: false,
+		body: { email, password, nickname },
+	});
+  window.sessionStorage.setItem("realgo:registration-challenge", data.challenge);
 }
 
 /** POST /auth/login → authenticates and starts a session. */
@@ -31,22 +30,44 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return data.user;
 }
 
-/** POST /auth/password-reset/request — always returns a generic success. */
 export async function requestPasswordReset(email: string): Promise<void> {
-  await apiFetch<{ status: string }>("/auth/password-reset/request", {
-    method: "POST",
-    auth: false,
-    body: { email },
-  });
+  await apiFetch<{ status: string }>("/auth/password-reset/request", { method: "POST", auth: false, body: { email } });
 }
 
-/** POST /auth/password-reset/confirm — consumes a one-time reset token. */
 export async function confirmPasswordReset(token: string, newPassword: string): Promise<void> {
-  await apiFetch<{ status: string }>("/auth/password-reset/confirm", {
+  await apiFetch<{ status: string }>("/auth/password-reset/confirm", { method: "POST", auth: false, body: { token, new_password: newPassword } });
+}
+
+export async function requestEmailVerification(email: string): Promise<void> {
+	await apiFetch<{ status: string }>("/auth/email-verification/request", { method: "POST", auth: false, body: { email, challenge: window.sessionStorage.getItem("realgo:registration-challenge") ?? "" } });
+}
+
+export async function confirmEmailVerification(email: string, code: string): Promise<AuthUser> {
+	const data = await apiFetch<AuthResponse>("/auth/email-verification/confirm", { method: "POST", auth: false, body: { email, code, challenge: window.sessionStorage.getItem("realgo:registration-challenge") ?? "" } });
+	setTokens(data.tokens);
+	return data.user;
+}
+
+/** POST /auth/yandex → exchanges a Yandex ID authorization code and starts a session. */
+export async function loginWithYandex(code: string, redirectUri: string): Promise<AuthUser> {
+  const data = await apiFetch<AuthResponse>("/auth/yandex", {
     method: "POST",
     auth: false,
-    body: { token, new_password: newPassword },
+    body: { code, redirect_uri: redirectUri },
   });
+  setTokens(data.tokens);
+  return data.user;
+}
+
+/** POST /auth/github → exchanges a GitHub OAuth App authorization code and starts a session. */
+export async function loginWithGithub(code: string, redirectUri: string): Promise<AuthUser> {
+  const data = await apiFetch<AuthResponse>("/auth/github", {
+    method: "POST",
+    auth: false,
+    body: { code, redirect_uri: redirectUri },
+  });
+  setTokens(data.tokens);
+  return data.user;
 }
 
 /** GET /users/me → the current authenticated user. */
@@ -63,7 +84,7 @@ export async function logout(): Promise<void> {
       await apiFetch<{ status: string }>("/auth/logout", {
         method: "POST",
         auth: false,
-        body: { refresh_token: refresh },
+        body: {},
       });
     } catch {
       // A failed revocation must not block local logout.

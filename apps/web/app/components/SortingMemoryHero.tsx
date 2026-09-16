@@ -496,8 +496,9 @@ export function SortingMemoryHero() {
       setAuthError("");
       try {
         if (authMode === "signup") {
-          const authUser = await auth.register(authEmail.trim(), authPassword);
-          router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
+          await auth.register(authEmail.trim(), authPassword);
+ window.sessionStorage.setItem("realgo:pending-verification-email",authEmail.trim());
+ router.push("/verify-email");
         } else {
           const authUser = await auth.login(authEmail.trim(), authPassword);
           router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");

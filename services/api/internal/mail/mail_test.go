@@ -137,7 +137,7 @@ func TestSMTPSendToFakeRelayUsesResetHeadersAndBody(t *testing.T) {
 		if acceptErr != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		reader := bufio.NewReader(conn)
 		write := func(value string) { _, _ = conn.Write([]byte(value + "\r\n")) }
 		write("220 fake relay")

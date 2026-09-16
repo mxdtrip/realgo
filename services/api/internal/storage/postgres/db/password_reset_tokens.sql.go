@@ -12,15 +12,12 @@ import (
 )
 
 const consumePasswordResetToken = `-- name: ConsumePasswordResetToken :one
-UPDATE password_reset_tokens
-SET used_at = NOW()
+UPDATE password_reset_tokens SET used_at = NOW()
 WHERE token_hash = $1::char(64)
-  AND used_at IS NULL
-  AND expires_at > NOW()
+  AND used_at IS NULL AND expires_at > NOW()
 RETURNING user_id
 `
 
-// The update is atomic, so a link can only be consumed once.
 func (q *Queries) ConsumePasswordResetToken(ctx context.Context, tokenHash string) (int64, error) {
 	row := q.db.QueryRow(ctx, consumePasswordResetToken, tokenHash)
 	var user_id int64
@@ -29,20 +26,8 @@ func (q *Queries) ConsumePasswordResetToken(ctx context.Context, tokenHash strin
 }
 
 const createPasswordResetToken = `-- name: CreatePasswordResetToken :exec
-WITH revoked AS (
-  UPDATE password_reset_tokens
-  SET used_at = NOW()
-  WHERE user_id = $1::bigint
-    AND used_at IS NULL
-  RETURNING id
-)
 INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
-SELECT
-  $1::bigint,
-  $2::char(64),
-  $3::timestamptz
-FROM (SELECT COUNT(*) FROM revoked) AS revocation_complete
-ON CONFLICT DO NOTHING
+VALUES ($1::bigint, $2::char(64), $3::timestamptz)
 `
 
 type CreatePasswordResetTokenParams struct {
@@ -51,7 +36,6 @@ type CreatePasswordResetTokenParams struct {
 	ExpiresAt pgtype.Timestamptz
 }
 
-// Reissuing a token invalidates all previous unused links for this account.
 func (q *Queries) CreatePasswordResetToken(ctx context.Context, arg CreatePasswordResetTokenParams) error {
 	_, err := q.db.Exec(ctx, createPasswordResetToken, arg.UserID, arg.TokenHash, arg.ExpiresAt)
 	return err

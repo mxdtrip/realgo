@@ -1,15 +1,6 @@
 import net from 'node:net';
-
-const host = process.env.SMTP_LISTEN_HOST === '127.0.0.1' ? '127.0.0.1' : 'localhost';
-const port = Number.parseInt(process.env.SMTP_LISTEN_PORT || '2526', 10);
-
-const socket = net.connect({ host, port });
-socket.setTimeout(3000, () => socket.destroy(new Error('timeout')));
-socket.once('connect', () => {
-  socket.end();
-  process.exit(0);
-});
-socket.once('error', (error) => {
-  console.error(error.message);
-  process.exit(1);
-});
+const socket = net.connect(2526, '127.0.0.1');
+socket.setTimeout(3000);
+socket.once('connect', () => { socket.destroy(); process.exit(0); });
+socket.once('error', () => process.exit(1));
+socket.once('timeout', () => process.exit(1));

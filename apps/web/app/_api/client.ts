@@ -23,19 +23,12 @@ const API_BASE = configuredApiBase ? configuredApiBase.replace(/\/$/, "") : "";
 const API_PREFIX = "/api/v1";
 const REFRESH_LEASE_KEY = "realgo:auth-refresh-lease:v1";
 const REFRESH_LEASE_TTL_MS = 30_000;
-// Two tabs that both observe an expired lease write their own owner id, then
-// wait this long before re-reading to see whose write survived. 40ms worked
-// locally but was too tight under CI's noisier scheduling/storage IPC, so
-// both tabs sometimes still saw themselves as owner (2 refreshes instead of
-// 1). This path only runs for browsers without the Web Locks API (Safari,
-// embedded webviews), so the extra latency here is not user-visible in the
-// common case.
-const REFRESH_LEASE_SETTLE_MS = 200;
+const REFRESH_LEASE_SETTLE_MS = 40;
 const REFRESH_LEASE_RETRY_MS = 100;
 
 export type RequestOptions = {
   method?: string;
-  /** JSON-serialisable body; omit for GET. */
+  /** JSON-serialisable body or FormData; omit for GET. */
   body?: unknown;
   /** Attach the Bearer access token (default true). */
   auth?: boolean;
@@ -48,20 +41,29 @@ async function rawEnvelopeRequest<T, M = unknown>(
   options: RequestOptions,
   token: string | null,
 ): Promise<ApiEnvelope<T, M>> {
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (options.body !== undefined) headers["Content-Type"] = "application/json";
+  const headers: Record<string, string> = { Accept: "application/json", "X-Realgo-Client": "web" };
+  const session = getRefreshToken();
+  if (session) headers["X-Realgo-Session"] = session;
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+  if (options.body !== undefined && !isFormData) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const method = options.method ?? (options.body !== undefined ? "POST" : "GET");
   const endpoint = `${API_PREFIX}${path}`;
   const networkBreadcrumbId = recordNetworkStart(method, endpoint);
+  const body: BodyInit | undefined = isFormData
+    ? (options.body as FormData)
+    : options.body !== undefined
+      ? JSON.stringify(options.body)
+      : undefined;
 
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${API_PREFIX}${path}`, {
       method,
+      credentials: "include",
       headers,
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body,
       signal: options.signal,
     });
   } catch {
@@ -260,7 +262,7 @@ async function exchangeRefreshToken(refresh: string): Promise<string> {
   try {
     const data = await rawRequest<{ tokens: AuthTokens }>(
       "/auth/refresh",
-      { method: "POST", body: { refresh_token: refresh } },
+      { method: "POST", body: {} },
       null,
     );
     if (getRefreshToken() !== refresh) {
@@ -268,7 +270,7 @@ async function exchangeRefreshToken(refresh: string): Promise<string> {
       // was in flight. Never resurrect or overwrite that newer account.
       throw new ApiError("Сессия изменилась. Повторите действие.", 409, "session_changed");
     }
-    setTokens(data.tokens);
+    setTokens(data.tokens, false);
     return data.tokens.access_token;
   } catch (e) {
     // Only a genuine auth rejection (401) means the refresh token is dead — clear
@@ -300,15 +302,24 @@ function accessTokenSubject(token: string | null): string | null {
  */
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const withAuth = options.auth ?? true;
-  const token = withAuth ? getAccessToken() : null;
+  const session = getRefreshToken();
+  let token = withAuth ? getAccessToken() : null;
+  if (withAuth && session && !token) {
+    token = await refreshAccessToken();
+    if (session !== getRefreshToken()) throw new ApiError("Сессия изменилась. Повторите действие.", 409, "session_changed");
+  }
 
   try {
-    return await rawRequest<T>(path, options, token);
+    const result = await rawRequest<T>(path, options, token);
+    if (withAuth && session !== getRefreshToken()) throw new ApiError("Сессия изменилась. Повторите действие.", 409, "session_changed");
+    return result;
   } catch (e) {
     if (!(e instanceof ApiError) || e.status !== 401 || !withAuth || !getRefreshToken()) {
       throw e;
     }
+    if (!session || session !== getRefreshToken()) throw new ApiError("Сессия изменилась. Повторите действие.", 409, "session_changed");
     const fresh = await refreshAccessToken();
+    if (session !== getRefreshToken()) throw new ApiError("Сессия изменилась. Повторите действие.", 409, "session_changed");
     return rawRequest<T>(path, options, fresh);
   }
 }
@@ -322,15 +333,24 @@ export async function apiFetchEnvelope<T, M = unknown>(
   options: RequestOptions = {},
 ): Promise<ApiEnvelope<T, M>> {
   const withAuth = options.auth ?? true;
-  const token = withAuth ? getAccessToken() : null;
+  const session = getRefreshToken();
+  let token = withAuth ? getAccessToken() : null;
+  if (withAuth && session && !token) {
+    token = await refreshAccessToken();
+    if (session !== getRefreshToken()) throw new ApiError("Сессия изменилась. Повторите действие.", 409, "session_changed");
+  }
 
   try {
-    return await rawEnvelopeRequest<T, M>(path, options, token);
+    const result = await rawEnvelopeRequest<T, M>(path, options, token);
+    if (withAuth && session !== getRefreshToken()) throw new ApiError("Сессия изменилась. Повторите действие.", 409, "session_changed");
+    return result;
   } catch (e) {
     if (!(e instanceof ApiError) || e.status !== 401 || !withAuth || !getRefreshToken()) {
       throw e;
     }
+    if (!session || session !== getRefreshToken()) throw new ApiError("Сессия изменилась. Повторите действие.", 409, "session_changed");
     const fresh = await refreshAccessToken();
+    if (session !== getRefreshToken()) throw new ApiError("Сессия изменилась. Повторите действие.", 409, "session_changed");
     return rawEnvelopeRequest<T, M>(path, options, fresh);
   }
 }

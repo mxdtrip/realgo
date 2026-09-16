@@ -23,6 +23,21 @@ type AiRequestLog struct {
 	PromptVersion pgtype.Text
 }
 
+type AuthMailJob struct {
+	ID          int64
+	Payload     []byte
+	Attempts    int32
+	AvailableAt pgtype.Timestamptz
+	ExpiresAt   pgtype.Timestamptz
+}
+
+type AuthSession struct {
+	ID          string
+	UserID      int64
+	RefreshHash string
+	ExpiresAt   pgtype.Timestamptz
+}
+
 type Card struct {
 	ID              int64
 	UserID          pgtype.Int8
@@ -52,6 +67,15 @@ type CompanyProblem struct {
 	SourceType    string
 }
 
+type EmailVerificationCode struct {
+	ID        int64
+	UserID    int64
+	CodeHash  string
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
 type ExtensionEvent struct {
 	ID               int64
 	UserID           pgtype.Int8
@@ -66,6 +90,15 @@ type ExtensionEvent struct {
 	IdempotencyKey   pgtype.Text
 	RawPayload       []byte
 	CreatedAt        pgtype.Timestamptz
+}
+
+type OauthAccount struct {
+	ID             int64
+	UserID         int64
+	Provider       string
+	ProviderUserID string
+	Email          pgtype.Text
+	CreatedAt      pgtype.Timestamptz
 }
 
 type PasswordResetToken struct {
@@ -113,6 +146,18 @@ type PatternLearningMaterial struct {
 	DontConfuseWith []byte
 	UpdatedAt       pgtype.Timestamptz
 	MiniExample     string
+}
+
+type PendingRegistration struct {
+	ID            int64
+	Email         string
+	PasswordHash  string
+	Nickname      pgtype.Text
+	CodeHash      string
+	ExpiresAt     pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	ChallengeHash string
 }
 
 type Platform struct {
@@ -261,7 +306,7 @@ type TaxonomyVersion struct {
 type User struct {
 	ID                    int64
 	Email                 string
-	PasswordHash          string
+	PasswordHash          pgtype.Text
 	Timezone              pgtype.Text
 	Plan                  pgtype.Text
 	InterviewDate         pgtype.Timestamptz
@@ -279,6 +324,8 @@ type User struct {
 	Platform              pgtype.Text
 	IsDemo                bool
 	NotifyStreakReminder  bool
+	Nickname              pgtype.Text
+	EmailVerifiedAt       pgtype.Timestamptz
 }
 
 type UserPracticePattern struct {

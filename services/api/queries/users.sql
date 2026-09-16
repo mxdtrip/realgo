@@ -1,6 +1,12 @@
 -- name: CreateUser :one
+INSERT INTO users (email, password_hash, nickname)
+VALUES ($1, $2, $3)
+RETURNING *;
+
+-- name: CreateOAuthUser :one
+-- An OAuth-only signup (e.g. Yandex ID): no local password is set.
 INSERT INTO users (email, password_hash)
-VALUES ($1, $2)
+VALUES ($1, NULL)
 RETURNING *;
 
 -- name: GetUserByEmail :one
@@ -29,6 +35,11 @@ DELETE FROM ai_request_logs WHERE user_id = sqlc.arg(user_id)::bigint;
 -- name: UpdateUserPassword :execrows
 UPDATE users
 SET password_hash = $2, updated_at = NOW()
+WHERE id = $1;
+
+-- name: MarkUserEmailVerified :exec
+UPDATE users
+SET email_verified_at = NOW(), updated_at = NOW()
 WHERE id = $1;
 
 -- name: UpdateUserProfile :one
