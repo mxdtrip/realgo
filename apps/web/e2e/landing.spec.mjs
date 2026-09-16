@@ -46,3 +46,17 @@ test.describe("landing FAQ", () => {
     await expect(page.locator("#faq-button-1")).toHaveAttribute("aria-expanded", "true");
   });
 });
+
+test("hackathon notice stays dismissed on later visits", async ({ page }) => {
+  await page.goto("/");
+
+  const notice = page.getByRole("complementary", {
+    name: "Уведомление о победе в хакатоне Kodik Launchpad",
+  });
+  await expect(notice).toBeVisible({ timeout: 4_000 });
+  await page.getByRole("button", { name: "Закрыть уведомление" }).click();
+  await expect(notice).toHaveCount(0);
+
+  await page.reload();
+  await expect(notice).toHaveCount(0);
+});
