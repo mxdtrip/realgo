@@ -104,6 +104,21 @@ func TestContractReviewQueueInvalidCursorReturnsValidationError(t *testing.T) {
 	requireErrorEnvelope(t, resp, http.StatusBadRequest, "VALIDATION_ERROR")
 }
 
+// TestContractReviewQueueInvalidStatusReturnsValidationError: проверяет, что запрос
+// GET /api/v1/me/reviews/queue с невалидным значением status возвращает HTTP 400
+// и ошибку VALIDATION_ERROR. Это контрактный тест — фиксирует поведение API
+// на границе домена, а не пользовательский сценарий.
+func TestContractReviewQueueInvalidStatusReturnsValidationError(t *testing.T) {
+	h := newContractHarness(t)
+	email := uniqueEmail("queue-invalid-cursor")
+	t.Cleanup(func() { h.cleanupUser(email) })
+	tokens := h.register(t, email, "Password123!")
+	t.Cleanup(func() { h.deleteRefreshTokens(tokens.refresh) })
+
+	resp := h.request(t, http.MethodGet, "/api/v1/me/reviews/queue?status=unknown", tokens.access, nil)
+	requireErrorEnvelope(t, resp, http.StatusBadRequest, "VALIDATION_ERROR")
+}
+
 func (h *contractHarness) insertProblem(t *testing.T, slug, title string) int64 {
 	t.Helper()
 

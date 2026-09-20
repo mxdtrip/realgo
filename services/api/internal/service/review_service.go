@@ -17,6 +17,8 @@ import (
 var (
 	ErrReviewNotFound = errors.New("review not found")
 	ErrInvalidRating  = errors.New("invalid rating: must be hard, normal, or easy")
+	// ErrInvalidStatus возвращается GetQueue, если status не входит в допустимый whitelist: "due" или "upcoming".
+	ErrInvalidStatus = errors.New("invalid queue status")
 )
 
 const maxReviewSaveAttempts = 3
@@ -75,7 +77,13 @@ func (s *reviewService) RecordProblemAttempt(ctx context.Context, userID, proble
 	return response.ProblemAttemptData{ProblemID: problemID, Outcome: outcome, Status: "reviewing"}, nil
 }
 
+// GetQueue проверяет допустимость статуса очереди и запрашивает элементы в репозитории.
+// Допустимы строго статусы "due" и "upcoming". При любом другом значении возвращает ErrInvalidStatus
+// без обращения к репозиторию. Запрашивает на один элемент больше limit для вычисления nextCursor.
 func (s *reviewService) GetQueue(ctx context.Context, userID int64, status string, cursor entity.ReviewQueueCursor, limit int32) (response.QueueResponse, error) {
+	if status != "due" && status != "upcoming" {
+		return response.QueueResponse{}, ErrInvalidStatus
+	}
 	// Запрашиваем на одну запись больше limit — если она пришла, значит есть
 	// следующая страница, и её же используем как источник nextCursor.
 	items, err := s.repo.QueueReviews(ctx, userID, status, cursor, limit+1)

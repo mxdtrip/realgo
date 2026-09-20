@@ -99,11 +99,6 @@ func (h *ReviewHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 	if status == "" {
 		status = "due"
 	}
-	if !validQueueStatus(status) {
-		slog.Warn("reviews: GetQueue failed", slog.Int64("user_id", userID), slog.String("status", status))
-		response.Fail(w, http.StatusBadRequest, "VALIDATION_ERROR", "status must be due or upcoming")
-		return
-	}
 
 	limit := parseLimit(r, defaultQueueLimit)
 

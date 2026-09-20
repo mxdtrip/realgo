@@ -122,6 +122,51 @@ func TestReviewService_GetQueue_RepoError(t *testing.T) {
 	}
 }
 
+// TestReviewService_GetQueue_StatusValidation: проверяет, что GetQueue допускает
+// только статусы из whitelist ("due", "upcoming") и возвращает ErrInvalidStatus
+// для любых других значений. При невалидном статусе репозиторий не должен
+// вызываться (repo.called == false).
+func TestReviewService_GetQueue_StatusValidation(t *testing.T) {
+	tests := []struct {
+		name       string
+		status     string
+		wantErr    bool
+		wantCalled bool
+	}{
+		{"valid: due", "due", false, true},
+		{"valid: upcoming", "upcoming", false, true},
+		{"invalid: empty string", "", true, false},
+		{"invalid: all", "all", true, false},
+		{"invalid: completed", "completed", true, false},
+		{"invalid: skipped", "skipped", true, false},
+		{"invalid: unknown", "invalid", true, false},
+		{"invalid: uppercase due", "DUE", true, false},
+		{"invalid: whitespace padded", " upcoming ", true, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mock := &mockReviewRepository{}
+			svc := service.NewReviewService(mock, scheduler.NewFSRSAdapter(), nil)
+			_, err := svc.GetQueue(context.Background(), 1, tt.status, entity.FirstReviewQueueCursor(), 10)
+
+			if tt.wantErr {
+				if !errors.Is(err, service.ErrInvalidStatus) {
+					t.Errorf("GetQueue(%q): got err=%v, want ErrInvalidStatus", tt.status, err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("GetQueue(%q): unexpected error: %v", tt.status, err)
+				}
+			}
+
+			if mock.called != tt.wantCalled {
+				t.Errorf("GetQueue(%q): repo.called=%v, want %v", tt.status, mock.called, tt.wantCalled)
+			}
+		})
+	}
+}
+
 func TestReviewService_RateReview_ReviewNotFound(t *testing.T) {
 	mockRepo := &mockReviewRepository{
 		err: repo.ErrReviewNotFound,
