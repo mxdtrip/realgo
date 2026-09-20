@@ -14,12 +14,15 @@ import (
 	"github.com/mxdtrip/realgo/services/api/internal/controller/v1/request"
 	v1response "github.com/mxdtrip/realgo/services/api/internal/controller/v1/response"
 	"github.com/mxdtrip/realgo/services/api/internal/entity"
+	"github.com/mxdtrip/realgo/services/api/internal/service"
 )
 
-type stubReviewService struct{}
+type stubReviewService struct {
+	getQueueErr error
+}
 
 func (s *stubReviewService) GetQueue(ctx context.Context, userID int64, status string, cursor entity.ReviewQueueCursor, limit int32) (v1response.QueueResponse, error) {
-	return v1response.QueueResponse{}, nil
+	return v1response.QueueResponse{}, s.getQueueErr
 }
 
 func (s *stubReviewService) RateReview(ctx context.Context, reviewID, userID int64, rating string, reviewedAt time.Time) (v1response.RateReviewData, error) {
@@ -36,6 +39,25 @@ func (s *stubReviewService) GetStats(ctx context.Context, userID int64) (v1respo
 
 func (s *stubReviewService) RateByProblemID(ctx context.Context, userID, problemID int64, rating string, reviewedAt time.Time) error {
 	return nil
+}
+
+// TestGetQueue_StatusValidation_ErrorMapping проверяет, что при получении ошибки
+// service.ErrInvalidStatus от сервиса хендлер маппит её в HTTP 400 Bad Request
+// с кодом ошибки VALIDATION_ERROR.
+func TestGetQueue_StatusValidation_ErrorMapping(t *testing.T) {
+	h := NewReviewHandler(&stubReviewService{
+		getQueueErr: service.ErrInvalidStatus,
+	})
+	req := httptest.NewRequest(http.MethodGet, "/me/reviews/queue?status=unknown", nil)
+	req = withUser(req, 1)
+	w := httptest.NewRecorder()
+	routeReviewHandler(h).ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d, body=%s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "VALIDATION_ERROR") {
+		t.Errorf("expected VALIDATION_ERROR in body, got %s", w.Body.String())
+	}
 }
 
 func TestRateReview_InvalidRating(t *testing.T) {

@@ -86,7 +86,10 @@ func (h *ReviewHandler) RecordProblemAttempt(w http.ResponseWriter, r *http.Requ
 	response.JSON(w, http.StatusOK, data)
 }
 
-// GetQueue: GET /me/reviews/queue
+// GetQueue обрабатывает GET /me/reviews/queue и возвращает очередь повторений.
+// При пустом параметре status подставляет значение по умолчанию "due".
+// Возвращает 400 VALIDATION_ERROR при невалидном cursor или значении status, отличном от "due" или "upcoming".
+// При системных сбоях возвращает 500 INTERNAL_ERROR.
 func (h *ReviewHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {
@@ -114,6 +117,10 @@ func (h *ReviewHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.svc.GetQueue(r.Context(), userID, status, cursor, limit)
 	if err != nil {
+		if errors.Is(err, service.ErrInvalidStatus) {
+			response.Fail(w, http.StatusBadRequest, "VALIDATION_ERROR", "status must be due or upcoming")
+			return
+		}
 		slog.Error("reviews: GetQueue failed", slog.Any("err", err), slog.Int64("user_id", userID))
 		response.Fail(w, http.StatusInternalServerError, "INTERNAL_ERROR", "could not load review queue")
 		return
@@ -215,8 +222,4 @@ func parseLimit(r *http.Request, defaultVal int32) int32 {
 		return maxQueueLimit
 	}
 	return int32(limit)
-}
-
-func validQueueStatus(status string) bool {
-	return status == "due" || status == "upcoming"
 }
