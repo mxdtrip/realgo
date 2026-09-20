@@ -213,13 +213,16 @@ func getUserID(r *http.Request) (int64, error) {
 	return userID, nil
 }
 
+// parseLimit извлекает параметр limit из query-параметров, проверяет допустимый диапазон
+// и возвращает безопасное значение int32 не более maxQueueLimit.
 func parseLimit(r *http.Request, defaultVal int32) int32 {
-	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
-	if err != nil || limit <= 0 {
+	parsed, err := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32)
+	if err != nil || parsed <= 0 {
 		return defaultVal
 	}
+	limit := int32(parsed)
 	if limit > maxQueueLimit {
 		return maxQueueLimit
 	}
-	return int32(limit)
+	return limit
 }
