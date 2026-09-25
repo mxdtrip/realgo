@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Политика конфиденциальности",
+  description:
+    "Какие данные обрабатывает ReAlgo, с какой целью и на каком основании, сроки хранения, файлы cookie и права пользователя.",
+  alternates: { canonical: "/privacy" },
 };
 
 const sections = [
