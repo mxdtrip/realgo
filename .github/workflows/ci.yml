@@ -48,6 +48,9 @@ jobs:
       - name: Generate sqlc
         run: go tool sqlc generate
 
+      - name: Generate and validate Swagger
+        run: make swagger-check
+
       - name: Check generated files
         run: git diff --exit-code
 

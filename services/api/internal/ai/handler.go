@@ -70,6 +70,151 @@ func validateTarget(problemID, patternID *int64) string {
 //	the result.
 //
 // 404 when problem_id does not exist. 503 when no AI provider is configured.
+// swagger:operation POST /api/v1/me/cards/generate post_api_v1_me_cards_generate
+//
+// ---
+// tags:
+// - AI
+// summary: Запустить AI-генерацию карточек по задаче
+// operationId: post_api_v1_me_cards_generate
+// description: 'Только problem_id. Ответ 202 при запуске/ожидании; 200 когда статус уже ready. Если AI не настроен:
+//   503 AI_UNAVAILABLE. card_type принимается, но сейчас handler его не использует. Лимит: 10 запросов за 60 секунд
+//   на метод/путь и identity; зависит от наличия Redis. Запуск генерации не проверяет прогресс пользователя; доступ
+//   к результату при поллинге ограничен отдельно. Генерация сама по себе не добавляет задачу в user_problem_progress.'
+// x-rate-limit:
+//   requests: 10
+//   windowSeconds: 60
+//   identity: ID пользователя из контекста после requireAuth.
+//   separatePerMethodAndPath: true
+// security:
+// - BearerAuth: []
+// consumes:
+// - application/json
+// parameters:
+// - name: body
+//   in: body
+//   required: true
+//   schema:
+//     $ref: '#/definitions/AiGenerateCardRequest'
+//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// responses:
+//   '202':
+//     description: Успешный ответ
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//       X-RateLimit-Limit:
+//         description: Лимит текущего bucket.
+//         type: integer
+//       X-RateLimit-Remaining:
+//         description: Остаток в текущем bucket.
+//         type: integer
+//     schema:
+//       type: object
+//       properties:
+//         data:
+//           type: object
+//           properties:
+//             status:
+//               type: string
+//           required:
+//           - status
+//         meta:
+//           $ref: '#/definitions/CommonMeta'
+//       required:
+//       - data
+//   '200':
+//     description: Карточки уже готовы (status=ready)
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//       X-RateLimit-Limit:
+//         description: Лимит текущего bucket.
+//         type: integer
+//       X-RateLimit-Remaining:
+//         description: Остаток в текущем bucket.
+//         type: integer
+//     schema:
+//       type: object
+//       properties:
+//         data:
+//           type: object
+//           properties:
+//             status:
+//               type: string
+//           required:
+//           - status
+//         meta:
+//           $ref: '#/definitions/CommonMeta'
+//       required:
+//       - data
+//   '400':
+//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '401':
+//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '404':
+//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '413':
+//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '429':
+//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//       Retry-After:
+//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
+//         type: integer
+//         minimum: 1
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '500':
+//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '503':
+//     description: 'Сервис или зависимость временно недоступны; коды: AI_BUSY, AI_UNAVAILABLE, auth_unavailable, rate_limit_unavailable'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '504':
+//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
+// produces:
+// - application/json
+
 func (h *Handler) GenerateCard(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -122,6 +267,111 @@ func (h *Handler) GenerateCard(w http.ResponseWriter, r *http.Request) {
 }
 
 // GenerateQuiz handles POST /me/quiz/generate.
+// swagger:operation POST /api/v1/me/quiz/generate post_api_v1_me_quiz_generate
+//
+// ---
+// tags:
+// - AI
+// summary: Запросить AI-квиз (заглушка)
+// operationId: post_api_v1_me_quiz_generate
+// description: 'Заглушка: сохраняет AI request log и возвращает 202 queued с request_id и пояснением, что генерация
+//   ещё недоступна. Готовые вопросы этим handler не создаются. Лимит: 10 запросов за 60 секунд на метод/путь и identity;
+//   зависит от наличия Redis.'
+// x-rate-limit:
+//   requests: 10
+//   windowSeconds: 60
+//   identity: ID пользователя из контекста после requireAuth.
+//   separatePerMethodAndPath: true
+// security:
+// - BearerAuth: []
+// consumes:
+// - application/json
+// parameters:
+// - name: body
+//   in: body
+//   required: true
+//   schema:
+//     $ref: '#/definitions/AiGenerateQuizRequest'
+//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// responses:
+//   '202':
+//     description: Успешный ответ
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//       X-RateLimit-Limit:
+//         description: Лимит текущего bucket.
+//         type: integer
+//       X-RateLimit-Remaining:
+//         description: Остаток в текущем bucket.
+//         type: integer
+//     schema:
+//       type: object
+//       properties:
+//         data:
+//           $ref: '#/definitions/QuizGenerationQueued'
+//         meta:
+//           $ref: '#/definitions/CommonMeta'
+//       required:
+//       - data
+//   '400':
+//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '401':
+//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '413':
+//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '429':
+//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//       Retry-After:
+//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
+//         type: integer
+//         minimum: 1
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '500':
+//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '503':
+//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, rate_limit_unavailable'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '504':
+//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
+// produces:
+// - application/json
+
 func (h *Handler) GenerateQuiz(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

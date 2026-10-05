@@ -56,73 +56,338 @@ var (
 	}
 )
 
+// Request documents the ReportsRequest JSON shape.
+//
+// Example: {"schemaVersion":2,"description":"При открытии карточек не отображается список.","reportedAt":"2026-10-05T16:00:00Z","page":{"route":"/cards","viewport":{"width":1920,"height":1080},"locale":"ru","timezone":"Asia/Yekaterinburg","online":true},"browser":{"name":"Firefox","version":"157.0","engine":"Gecko"},"os":{"name":"Linux","version":""},"network":null,"breadcrumbs":[],"errors":[],"release":{"version":"dev","commit":"d86d771f0751c7c1174fb2dc318c377eeeb3b297"}}
+//
+// swagger:model ReportsRequest
+// swagger:additionalProperties false
 type Request struct {
-	SchemaVersion int           `json:"schemaVersion"`
-	Description   string        `json:"description"`
-	ReportedAt    string        `json:"reportedAt"`
-	Page          Page          `json:"page"`
-	Browser       Client        `json:"browser"`
-	OS            Client        `json:"os"`
-	Network       *Network      `json:"network"`
-	Breadcrumbs   []Breadcrumb  `json:"breadcrumbs"`
-	Errors        []ClientError `json:"errors"`
-	Release       Release       `json:"release"`
+	// SchemaVersion is the schemaVersion JSON field.
+	//
+	// Required: true
+	// Enum: [2]
+	SchemaVersion int `json:"schemaVersion"`
+	// Длина проверяется после trim.
+	//
+	// Required: true
+	// Min Length: 4
+	// Max Length: 2000
+	Description string `json:"description"`
+	// swagger:name reportedAt
+	// ReportedAt is the reportedAt JSON field.
+	//
+	// Required: true
+	// Max Length: 40
+	// swagger:strfmt date-time
+	ReportedAt string `json:"reportedAt"`
+	// Page is the page JSON field.
+	//
+	// Required: true
+	Page Page `json:"page"`
+	// swagger:name browser
+	// Browser is the browser JSON field.
+	//
+	// Required: true
+	// Additional Properties: false
+	// swagger:type SwaggerBrowserClient
+	Browser Client `json:"browser"`
+	// OS is the os JSON field.
+	//
+	// Required: true
+	OS Client `json:"os"`
+	// Network is the network JSON field.
+	//
+	// Required: false
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	Network *Network `json:"network"`
+	// Breadcrumbs is the breadcrumbs JSON field.
+	//
+	// Required: false
+	// Max Items: 10
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	Breadcrumbs []Breadcrumb `json:"breadcrumbs"`
+	// Errors is the errors JSON field.
+	//
+	// Required: false
+	// Max Items: 3
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	Errors []ClientError `json:"errors"`
+	// Release is the release JSON field.
+	//
+	// Required: true
+	Release Release `json:"release"`
 }
 
+// Page documents the ReportsPage JSON shape.
+//
+// swagger:model ReportsPage
+// swagger:additionalProperties false
 type Page struct {
-	Route    string   `json:"route"`
+	// Route is the route JSON field.
+	//
+	// Required: true
+	// Max Length: 512
+	// Pattern: ^/
+	Route string `json:"route"`
+	// Viewport is the viewport JSON field.
+	//
+	// Required: true
 	Viewport Viewport `json:"viewport"`
-	Locale   string   `json:"locale"`
-	Timezone string   `json:"timezone"`
-	Online   bool     `json:"online"`
+	// Locale is the locale JSON field.
+	//
+	// Required: true
+	// Min Length: 1
+	// Max Length: 32
+	Locale string `json:"locale"`
+	// Timezone is the timezone JSON field.
+	//
+	// Required: true
+	// Min Length: 1
+	// Max Length: 100
+	Timezone string `json:"timezone"`
+	// Online is the online JSON field.
+	//
+	// Required: false
+	Online bool `json:"online"`
 }
 
+// Viewport documents the ReportsViewport JSON shape.
+//
+// swagger:model ReportsViewport
+// swagger:additionalProperties false
 type Viewport struct {
-	Width  int `json:"width"`
+	// Width is the width JSON field.
+	//
+	// Required: true
+	// Minimum: 1
+	// Maximum: 32768
+	Width int `json:"width"`
+	// Height is the height JSON field.
+	//
+	// Required: true
+	// Minimum: 1
+	// Maximum: 32768
 	Height int `json:"height"`
 }
 
+// Client documents the ReportsClient JSON shape.
+//
+// swagger:model ReportsClient
+// swagger:additionalProperties false
 type Client struct {
-	Name    string `json:"name"`
+	// Name is the name JSON field.
+	//
+	// Required: true
+	// Min Length: 1
+	// Max Length: 80
+	Name string `json:"name"`
+	// Version is the version JSON field.
+	//
+	// Required: false
+	// Max Length: 80
 	Version string `json:"version"`
-	Engine  string `json:"engine,omitempty"`
+	// Engine is the engine JSON field.
+	//
+	// Required: false
+	// Max Length: 80
+	Engine string `json:"engine,omitempty"`
 }
 
+// Network documents the ReportsNetwork JSON shape.
+//
+// swagger:model ReportsNetwork
+// swagger:additionalProperties false
 type Network struct {
-	Method         string          `json:"method"`
-	Endpoint       string          `json:"endpoint"`
-	Status         json.RawMessage `json:"status"`
-	StatusText     string          `json:"statusText,omitempty"`
-	ResponseTimeMS int64           `json:"responseTimeMs"`
-	StartedAt      string          `json:"startedAt"`
-	RequestID      string          `json:"requestId,omitempty"`
+	// Method is the method JSON field.
+	//
+	// Required: true
+	// Min Length: 1
+	// Max Length: 16
+	Method string `json:"method"`
+	// Endpoint is the endpoint JSON field.
+	//
+	// Required: true
+	// Max Length: 512
+	// Pattern: ^/
+	Endpoint string `json:"endpoint"`
+	// swagger:name status
+	// Status is the status JSON field.
+	//
+	// Required: true
+	// Swagger 2.0 cannot validate this scalar union; the handler accepts the listed alternatives.
+	// Extensions:
+	// ---
+	// x-doc-raw-json: true
+	// x-oneOf:
+	// - type: integer
+	//   minimum: 100
+	//   maximum: 599
+	// - type: string
+	//   enum:
+	//   - pending
+	//   - network_error
+	//   - aborted
+	// ---
+	// swagger:type object
+	Status json.RawMessage `json:"status"`
+	// StatusText is the statusText JSON field.
+	//
+	// Required: false
+	StatusText string `json:"statusText,omitempty"`
+	// ResponseTimeMS is the responseTimeMs JSON field.
+	//
+	// Required: false
+	// Minimum: 0
+	// Maximum: 3600000
+	ResponseTimeMS int64 `json:"responseTimeMs"`
+	// swagger:name startedAt
+	// StartedAt is the startedAt JSON field.
+	//
+	// Required: true
+	// swagger:strfmt date-time
+	StartedAt string `json:"startedAt"`
+	// RequestID is the requestId JSON field.
+	//
+	// Required: false
+	// Max Length: 200
+	RequestID string `json:"requestId,omitempty"`
 }
 
+// Breadcrumb documents the ReportsBreadcrumb JSON shape.
+//
+// navigation требует to (route до 512 байт); click требует target (до 140 байт); network требует method (до 16 байт), url (route до 512 байт) и status.
+//
+// swagger:model ReportsBreadcrumb
+// swagger:additionalProperties false
 type Breadcrumb struct {
-	Time           string          `json:"time"`
-	Type           string          `json:"type"`
-	To             string          `json:"to,omitempty"`
-	Target         string          `json:"target,omitempty"`
-	Method         string          `json:"method,omitempty"`
-	URL            string          `json:"url,omitempty"`
-	Status         json.RawMessage `json:"status,omitempty"`
-	ResponseTimeMS *int64          `json:"responseTimeMs,omitempty"`
-	RequestID      string          `json:"requestId,omitempty"`
+	// Time is the time JSON field.
+	//
+	// Required: true
+	// Min Length: 1
+	// Max Length: 32
+	Time string `json:"time"`
+	// Type is the type JSON field.
+	//
+	// Required: true
+	// Enum: ["navigation", "click", "network"]
+	Type string `json:"type"`
+	// To is the to JSON field.
+	//
+	// Required: false
+	To string `json:"to,omitempty"`
+	// Target is the target JSON field.
+	//
+	// Required: false
+	Target string `json:"target,omitempty"`
+	// Method is the method JSON field.
+	//
+	// Required: false
+	Method string `json:"method,omitempty"`
+	// URL is the url JSON field.
+	//
+	// Required: false
+	URL string `json:"url,omitempty"`
+	// swagger:name status
+	// Status is the status JSON field.
+	//
+	// Required: false
+	// Swagger 2.0 cannot validate this scalar union; the handler accepts the listed alternatives.
+	// Extensions:
+	// ---
+	// x-doc-raw-json: true
+	// x-oneOf:
+	// - type: integer
+	//   minimum: 100
+	//   maximum: 599
+	// - type: string
+	//   enum:
+	//   - pending
+	//   - network_error
+	//   - aborted
+	// ---
+	// swagger:type object
+	Status json.RawMessage `json:"status,omitempty"`
+	// ResponseTimeMS is the responseTimeMs JSON field.
+	//
+	// Required: false
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	ResponseTimeMS *int64 `json:"responseTimeMs,omitempty"`
+	// RequestID is the requestId JSON field.
+	//
+	// Required: false
+	RequestID string `json:"requestId,omitempty"`
 }
 
+// ClientError documents the ReportsClientError JSON shape.
+//
+// swagger:model ReportsClientError
+// swagger:additionalProperties false
 type ClientError struct {
-	Time    string `json:"time"`
-	Type    string `json:"type"`
+	// Time is the time JSON field.
+	//
+	// Required: true
+	// Min Length: 1
+	// Max Length: 40
+	Time string `json:"time"`
+	// Type is the type JSON field.
+	//
+	// Required: true
+	// Enum: ["error", "unhandledrejection"]
+	Type string `json:"type"`
+	// Message is the message JSON field.
+	//
+	// Required: true
+	// Min Length: 1
+	// Max Length: 500
 	Message string `json:"message"`
-	Stack   string `json:"stack,omitempty"`
-	Source  string `json:"source,omitempty"`
-	Line    int    `json:"line,omitempty"`
-	Column  int    `json:"column,omitempty"`
+	// Не более 2000 байт.
+	//
+	// Required: false
+	Stack string `json:"stack,omitempty"`
+	// Не более 512 байт.
+	//
+	// Required: false
+	Source string `json:"source,omitempty"`
+	// Line is the line JSON field.
+	//
+	// Required: false
+	Line int `json:"line,omitempty"`
+	// Column is the column JSON field.
+	//
+	// Required: false
+	Column int `json:"column,omitempty"`
 }
 
+// Release documents the ReportsRelease JSON shape.
+//
+// swagger:model ReportsRelease
+// swagger:additionalProperties false
 type Release struct {
+	// Version is the version JSON field.
+	//
+	// Required: true
+	// Min Length: 1
+	// Max Length: 100
 	Version string `json:"version"`
-	Commit  string `json:"commit"`
+	// Commit is the commit JSON field.
+	//
+	// Required: true
+	// Min Length: 1
+	// Max Length: 64
+	Commit string `json:"commit"`
 }
 
 type Diagnostics struct {
@@ -156,10 +421,24 @@ type AttachmentUpload struct {
 	Data        []byte
 }
 
+// Result documents the ReportsResult JSON shape.
+//
+// swagger:model ReportsResult
 type Result struct {
-	ReportID    string `json:"reportId"`
+	// ReportID is the reportId JSON field.
+	//
+	// Required: true
+	ReportID string `json:"reportId"`
+	// Fingerprint is the fingerprint JSON field.
+	//
+	// Required: true
 	Fingerprint string `json:"fingerprint"`
-	ReceivedAt  string `json:"receivedAt"`
+	// swagger:name receivedAt
+	// ReceivedAt is the receivedAt JSON field.
+	//
+	// Required: true
+	// swagger:strfmt date-time
+	ReceivedAt string `json:"receivedAt"`
 }
 
 func Normalize(req Request, sourceRequestID string, attachment *AttachmentUpload) (CreateInput, error) {
@@ -461,6 +740,7 @@ func validateError(value ClientError) error {
 	return nil
 }
 
+// swagger:type object
 func validateStatus(raw json.RawMessage) error {
 	if len(raw) == 0 {
 		return errors.New("missing status")

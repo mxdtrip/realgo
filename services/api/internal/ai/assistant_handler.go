@@ -56,6 +56,140 @@ func RegisterAssistantRoutes(r chi.Router, h *AssistantHandler) {
 }
 
 // Hint handles POST /api/v1/assistant/hint.
+// swagger:operation POST /api/v1/assistant/hint post_api_v1_assistant_hint
+//
+// ---
+// tags:
+// - AI
+// summary: Получить подсказку AI-ассистента
+// operationId: post_api_v1_assistant_hint
+// description: 'Без stream=1 возвращается JSON в data. stream=1 возвращает SSE: delta с {text}, затем done с AssistantHintResponse
+//   либо error с {code,message}. После начала SSE HTTP остаётся 200 даже при событии error; SSE payload не обёрнут
+//   в data. Лимит: 30 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis.'
+// x-rate-limit:
+//   requests: 30
+//   windowSeconds: 60
+//   identity: ID пользователя из контекста после requireAuth.
+//   separatePerMethodAndPath: true
+// security:
+// - BearerAuth: []
+// consumes:
+// - application/json
+// parameters:
+// - name: stream
+//   in: query
+//   required: false
+//   description: Только значение 1 включает SSE. Иначе возвращается обычный JSON.
+//   type: string
+// - name: body
+//   in: body
+//   required: true
+//   schema:
+//     $ref: '#/definitions/AiAssistantHintRequest'
+//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// responses:
+//   '200':
+//     description: Успешный ответ
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//       X-RateLimit-Limit:
+//         description: Лимит текущего bucket.
+//         type: integer
+//       X-RateLimit-Remaining:
+//         description: Остаток в текущем bucket.
+//         type: integer
+//     schema:
+//       type: object
+//       properties:
+//         data:
+//           $ref: '#/definitions/AiAssistantHintResponse'
+//         meta:
+//           $ref: '#/definitions/CommonMeta'
+//       required:
+//       - data
+//     x-sse:
+//       schema:
+//         type: string
+//       example: 'event: delta
+//
+//         data: {"text":"Попробуй использовать хеш-таблицу."}
+//
+//
+//         event: done
+//
+//         data: {"hint":"Попробуй использовать хеш-таблицу.","stage":"nudge","problemKnown":true}
+//
+//
+//         '
+//   '400':
+//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '401':
+//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '413':
+//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '429':
+//     description: 'Превышен лимит запросов либо AI-квота; коды: AI_QUOTA_EXCEEDED, rate_limited'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//       Retry-After:
+//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
+//         type: integer
+//         minimum: 1
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '500':
+//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '502':
+//     description: 'Ошибка внешнего провайдера; коды: AI_PROVIDER_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '503':
+//     description: 'Сервис или зависимость временно недоступны; коды: AI_METERING_UNAVAILABLE, AI_UNAVAILABLE, auth_unavailable,
+//       rate_limit_unavailable'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '504':
+//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
+// produces:
+// - application/json
+// - text/event-stream
+
 func (h *AssistantHandler) Hint(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

@@ -48,6 +48,61 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Get("/{code}", h.GetDetail)
 }
 
+// swagger:operation GET /api/v1/me/patterns get_api_v1_me_patterns
+//
+// ---
+// tags:
+// - Patterns
+// summary: Получить паттерны со статистикой
+// operationId: get_api_v1_me_patterns
+// description: 'Ответ: data.patterns, а не data-массив. Параметр sort не обрабатывается этим handler.'
+// security:
+// - BearerAuth: []
+// responses:
+//   '200':
+//     description: Успешный ответ
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       type: object
+//       properties:
+//         data:
+//           $ref: '#/definitions/PatternsList'
+//         meta:
+//           $ref: '#/definitions/CommonMeta'
+//       required:
+//       - data
+//   '401':
+//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '500':
+//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '503':
+//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '504':
+//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
+// produces:
+// - application/json
+
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -66,6 +121,71 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, map[string][]Pattern{"patterns": items})
 }
 
+// swagger:operation GET /api/v1/me/patterns/weak get_api_v1_me_patterns_weak
+//
+// ---
+// tags:
+// - Patterns
+// summary: Получить слабые паттерны
+// operationId: get_api_v1_me_patterns_weak
+// description: Получить слабые паттерны.
+// security:
+// - BearerAuth: []
+// parameters:
+// - name: limit
+//   in: query
+//   required: false
+//   description: По умолчанию 5. Значения выше 20 обрезаются до 20. Нечисловое или неположительное значение заменяется
+//     значением по умолчанию.
+//   type: integer
+//   default: 5
+// responses:
+//   '200':
+//     description: Успешный ответ
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       type: object
+//       properties:
+//         data:
+//           type: array
+//           items:
+//             $ref: '#/definitions/PatternsWeakPattern'
+//         meta:
+//           $ref: '#/definitions/CommonMeta'
+//       required:
+//       - data
+//   '401':
+//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED, unauthorized'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '500':
+//     description: 'Внутренняя ошибка; коды: internal_error'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '503':
+//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '504':
+//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
+// produces:
+// - application/json
+
 func (h *Handler) ListWeak(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -83,6 +203,76 @@ func (h *Handler) ListWeak(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusOK, items)
 }
+
+// swagger:operation GET /api/v1/me/patterns/{code} get_api_v1_me_patterns_code
+//
+// ---
+// tags:
+// - Patterns
+// summary: Получить материал по паттерну
+// operationId: get_api_v1_me_patterns_code
+// description: Получить материал по паттерну.
+// security:
+// - BearerAuth: []
+// parameters:
+// - name: code
+//   in: path
+//   required: true
+//   description: Код паттерна или субпаттерна.
+//   type: string
+//   minLength: 1
+// responses:
+//   '200':
+//     description: Успешный ответ
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       type: object
+//       properties:
+//         data:
+//           $ref: '#/definitions/PatternsPatternDetail'
+//         meta:
+//           $ref: '#/definitions/CommonMeta'
+//       required:
+//       - data
+//   '401':
+//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED, unauthorized'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '404':
+//     description: 'Сущность не найдена или недоступна; коды: not_found'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '500':
+//     description: 'Внутренняя ошибка; коды: internal_error'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '503':
+//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '504':
+//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
+// produces:
+// - application/json
 
 func (h *Handler) GetDetail(w http.ResponseWriter, r *http.Request) {
 	if _, ok := auth.UserIDFromContext(r.Context()); !ok {

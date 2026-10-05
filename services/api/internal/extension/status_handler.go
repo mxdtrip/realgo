@@ -30,6 +30,69 @@ func NewStatusHandler(svc extensionStatusService) *StatusHandler {
 }
 
 // GetStatus: GET /api/v1/me/extension/status
+// swagger:operation GET /api/v1/me/extension/status get_api_v1_me_extension_status
+//
+// ---
+// tags:
+// - Extension
+// summary: Получить состояние синхронизации расширения
+// operationId: get_api_v1_me_extension_status
+// description: Получить состояние синхронизации расширения.
+// security:
+// - BearerAuth: []
+// parameters:
+// - name: limit
+//   in: query
+//   required: false
+//   description: Количество последних событий. По умолчанию 10; значения выше 50 обрезаются до 50. Нечисловое или
+//     неположительное значение заменяется на 10.
+//   type: integer
+//   default: 10
+// responses:
+//   '200':
+//     description: Успешный ответ
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       type: object
+//       properties:
+//         data:
+//           $ref: '#/definitions/ExtensionStatusResponse'
+//         meta:
+//           $ref: '#/definitions/CommonMeta'
+//       required:
+//       - data
+//   '401':
+//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '500':
+//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '503':
+//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '504':
+//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
+// produces:
+// - application/json
+
 func (h *StatusHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

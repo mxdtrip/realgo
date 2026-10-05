@@ -24,19 +24,50 @@ type envelope struct {
 // Meta carries per-response metadata. RequestID is populated automatically from
 // the X-Request-Id header (set by the request-logging middleware); NextCursor is
 // supplied by paginated handlers via JSONWithMeta.
+// Meta documents the CommonMeta JSON shape.
+//
+// swagger:model CommonMeta
 type Meta struct {
-	RequestID  string  `json:"requestId,omitempty"`
+	// RequestID is the requestId JSON field.
+	//
+	// Required: false
+	RequestID string `json:"requestId,omitempty"`
+	// NextCursor is the nextCursor JSON field.
+	//
+	// Required: false
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
 	NextCursor *string `json:"nextCursor,omitempty"`
 }
 
 // Error is the machine-readable error body returned to clients.
+// Error documents the CommonError JSON shape.
+//
+// swagger:model CommonError
 type Error struct {
-	Code    string        `json:"code"`
-	Message string        `json:"message"`
+	// Code is the code JSON field.
+	//
+	// Required: true
+	Code string `json:"code"`
+	// Message is the message JSON field.
+	//
+	// Required: true
+	Message string `json:"message"`
+	// Details is the details JSON field.
+	//
+	// Required: false
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
 	Details *ErrorDetails `json:"details,omitempty"`
 }
 
+// swagger:model CommonErrorDetails
 type ErrorDetails struct {
+	// Required: false
 	Field string `json:"field,omitempty"`
 }
 

@@ -18,7 +18,20 @@ const (
 var ErrProblemNotFound = errors.New("problem not found")
 
 // Response is the GET /me/problems/{problemId}/cards payload.
+// Response documents the ProblemcardsResponse JSON shape.
+//
+// swagger:model ProblemcardsResponse
 type Response struct {
-	Status string       `json:"status"`
-	Cards  []cards.Card `json:"cards"`
+	// Status is the status JSON field.
+	//
+	// Required: true
+	Status string `json:"status"`
+	// Cards is the cards JSON field.
+	//
+	// Required: true
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	Cards []cards.Card `json:"cards"`
 }

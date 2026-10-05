@@ -40,6 +40,101 @@ func RegisterReviewRoutes(r chi.Router, h *ReviewHandler) {
 }
 
 // RecordProblemAttempt: POST /me/reviews/problems/{problemId}/attempt
+// swagger:operation POST /api/v1/me/reviews/problems/{problemId}/attempt post_api_v1_me_reviews_problems_problemId_attempt
+//
+// ---
+// tags:
+// - Reviews
+// summary: Записать попытку решения задачи
+// operationId: post_api_v1_me_reviews_problems_problemId_attempt
+// description: Записать попытку решения задачи.
+// security:
+// - BearerAuth: []
+// consumes:
+// - application/json
+// parameters:
+// - name: problemId
+//   in: path
+//   required: true
+//   description: Числовой ID, а не prb_*/card_* строка.
+//   type: integer
+//   format: int64
+//   minimum: 1
+// - name: body
+//   in: body
+//   required: true
+//   schema:
+//     $ref: '#/definitions/ReviewsRequestProblemAttemptRequest'
+//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// responses:
+//   '200':
+//     description: Успешный ответ
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       type: object
+//       properties:
+//         data:
+//           $ref: '#/definitions/ReviewsProblemAttemptData'
+//         meta:
+//           $ref: '#/definitions/CommonMeta'
+//       required:
+//       - data
+//   '400':
+//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '401':
+//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '404':
+//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '413':
+//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '500':
+//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '503':
+//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '504':
+//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
+// produces:
+// - application/json
+
 func (h *ReviewHandler) RecordProblemAttempt(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {
@@ -87,6 +182,95 @@ func (h *ReviewHandler) RecordProblemAttempt(w http.ResponseWriter, r *http.Requ
 }
 
 // GetQueue: GET /me/reviews/queue
+// swagger:operation GET /api/v1/me/reviews/queue get_api_v1_me_reviews_queue
+//
+// ---
+// tags:
+// - Reviews
+// summary: Получить очередь повторений
+// operationId: get_api_v1_me_reviews_queue
+// description: Получить очередь повторений. Следующий курсор находится в meta.nextCursor как непрозрачная строка;
+//   это не объект nextCursor в корне ответа.
+// security:
+// - BearerAuth: []
+// parameters:
+// - name: status
+//   in: query
+//   required: false
+//   description: Просроченные или будущие повторения.
+//   type: string
+//   enum:
+//   - due
+//   - upcoming
+//   default: due
+// - name: limit
+//   in: query
+//   required: false
+//   description: По умолчанию 50. Значения выше 100 обрезаются до 100. Нечисловое или неположительное значение заменяется
+//     значением по умолчанию.
+//   type: integer
+//   default: 50
+// - name: cursor
+//   in: query
+//   required: false
+//   description: 'Непрозрачный курсор из meta.nextCursor. При отсутствии ключа следующей страницы нет. Невалидный
+//     курсор: 400.'
+//   type: string
+// responses:
+//   '200':
+//     description: Успешный ответ
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       type: object
+//       properties:
+//         data:
+//           type: array
+//           items:
+//             $ref: '#/definitions/ReviewsReviewItem'
+//         meta:
+//           $ref: '#/definitions/CommonMeta'
+//       required:
+//       - data
+//   '400':
+//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '401':
+//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '500':
+//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '503':
+//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '504':
+//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
+// produces:
+// - application/json
+
 func (h *ReviewHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {
@@ -128,6 +312,101 @@ func (h *ReviewHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 }
 
 // RateReview: POST /me/reviews/{reviewId}/rate
+// swagger:operation POST /api/v1/me/reviews/{reviewId}/rate post_api_v1_me_reviews_reviewId_rate
+//
+// ---
+// tags:
+// - Reviews
+// summary: Оценить повторение по review ID
+// operationId: post_api_v1_me_reviews_reviewId_rate
+// description: 'Оценить повторение по review ID. Handler/service не требуют, чтобы повторение уже было due: тот же
+//   маршрут применяется к upcoming. reviewedAt принимается в RFC3339.'
+// security:
+// - BearerAuth: []
+// consumes:
+// - application/json
+// parameters:
+// - name: reviewId
+//   in: path
+//   required: true
+//   description: Числовой ID, а не prb_*/card_* строка.
+//   type: integer
+//   format: int64
+// - name: body
+//   in: body
+//   required: true
+//   schema:
+//     $ref: '#/definitions/ReviewsRequestRateReviewRequest'
+//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// responses:
+//   '200':
+//     description: Успешный ответ
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       type: object
+//       properties:
+//         data:
+//           $ref: '#/definitions/ReviewsRateReviewData'
+//         meta:
+//           $ref: '#/definitions/CommonMeta'
+//       required:
+//       - data
+//   '400':
+//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '401':
+//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '404':
+//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '413':
+//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '500':
+//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '503':
+//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '504':
+//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
+// produces:
+// - application/json
+
 func (h *ReviewHandler) RateReview(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {
@@ -178,6 +457,61 @@ func (h *ReviewHandler) RateReview(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetStats: GET /me/reviews/stats
+// swagger:operation GET /api/v1/me/reviews/stats get_api_v1_me_reviews_stats
+//
+// ---
+// tags:
+// - Reviews
+// summary: Получить статистику повторений
+// operationId: get_api_v1_me_reviews_stats
+// description: Получить статистику повторений.
+// security:
+// - BearerAuth: []
+// responses:
+//   '200':
+//     description: Успешный ответ
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       type: object
+//       properties:
+//         data:
+//           $ref: '#/definitions/ReviewsStatsResponse'
+//         meta:
+//           $ref: '#/definitions/CommonMeta'
+//       required:
+//       - data
+//   '401':
+//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '500':
+//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '503':
+//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
+//     headers:
+//       X-Request-Id:
+//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
+//         type: string
+//     schema:
+//       $ref: '#/definitions/ErrorEnvelope'
+//   '504':
+//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
+// produces:
+// - application/json
+
 func (h *ReviewHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {
