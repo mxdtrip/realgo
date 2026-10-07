@@ -90,7 +90,10 @@ type Request struct {
 	//
 	// Required: true
 	// Additional Properties: false
-	// swagger:type SwaggerBrowserClient
+	// Extensions:
+	// ---
+	// x-doc-schema-ref: "#/definitions/ReportsBrowserClient"
+	// ---
 	Browser Client `json:"browser"`
 	// OS is the os JSON field.
 	//

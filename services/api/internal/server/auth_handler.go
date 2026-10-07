@@ -326,158 +326,23 @@ func newUserResponse(u db.User) userResponse {
 	return resp
 }
 
-// swagger:operation POST /api/v1/auth/register post_api_v1_auth_register
+// swagger:operation POST /api/v1/auth/register Auth post_api_v1_auth_register
 //
 // ---
-// tags:
-// - Auth
-// summary: Начать регистрацию по email
-// operationId: post_api_v1_auth_register
-// description: 'Режим определяется APP_ENV в app.Run: при APP_ENV != production включается SkipEmailVerification,
-//   возвращается 201 с user/tokens, подтверждение почты не требуется и nickname из тела не сохраняется. docker-compose.staging.yml
-//   задаёт APP_ENV=staging. При APP_ENV=production: 202 с challenge, аккаунт создаётся после подтверждения кода из
-//   письма. Повторный запрос письма: /auth/email-verification/request. При X-Realgo-Client: web проверяется Origin,
-//   в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie
-//   __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме
-//   этот заголовок не нужен. Лимит: 5 запросов за 3600 секунд на метод/путь и identity; зависит от наличия Redis.'
-// x-rate-limit:
-//   requests: 5
-//   windowSeconds: 3600
-//   identity: 'IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.'
-//   separatePerMethodAndPath: true
-// consumes:
-// - application/json
-// parameters:
-// - name: X-Realgo-Client
-//   in: header
-//   required: false
-//   description: web включает браузерный refresh-cookie режим. Для Swagger/Postman оставьте пустым.
-//   type: string
-//   enum:
-//   - web
-// - name: Origin
-//   in: header
-//   required: false
-//   description: В web-режиме браузер автоматически передаёт origin; JavaScript не может произвольно изменить этот
-//     заголовок.
-//   type: string
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthRegistrationRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// summary: "Начать регистрацию по email"
+// description: "Режим определяется APP_ENV в app.Run: при APP_ENV != production включается SkipEmailVerification, возвращается 201 с user/tokens, подтверждение почты не требуется и nickname из тела не сохраняется. docker-compose.staging.yml задаёт APP_ENV=staging. При APP_ENV=production: 202 с challenge, аккаунт создаётся после подтверждения кода из письма. Повторный запрос письма: /auth/email-verification/request. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит: 5 запросов за 3600 секунд на метод/путь и identity; зависит от наличия Redis."
+// x-rate-limit: {"identity": "IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.", "requests": 5, "separatePerMethodAndPath": true, "windowSeconds": 3600}
 // responses:
-//   '201':
-//     description: 'Staging/local: аккаунт и сессия созданы без email verification (APP_ENV != production)'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//       Set-Cookie:
-//         description: 'Только в браузерном режиме X-Realgo-Client: web. HttpOnly refresh-cookie для session_id; refresh_token
-//           в JSON опускается.'
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/AuthAuthResponse'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '202':
-//     description: 'Production: письмо поставлено в очередь; подтвердите код с challenge'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/RegistrationPending'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request, validation_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '403':
-//     description: 'Браузерный Origin отклонён; коды: csrf_rejected'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '409':
-//     description: 'Конфликт состояния; коды: email_taken'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '429':
-//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       Retry-After:
-//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
-//         type: integer
-//         minimum: 1
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, rate_limit_unavailable, mail_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "201": {$ref: "#/responses/registrationCreated"}
+//   "202": {$ref: "#/responses/registrationPending"}
+//   "400": {$ref: "#/responses/invalidAuthRequest"}
+//   "403": {$ref: "#/responses/csrfRejected"}
+//   "409": {$ref: "#/responses/emailTaken"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/mailUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -507,134 +372,22 @@ func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusAccepted, map[string]string{"status": "verification_requested", "challenge": challenge})
 }
 
-// swagger:operation POST /api/v1/auth/login post_api_v1_auth_login
+// swagger:operation POST /api/v1/auth/login Auth post_api_v1_auth_login
 //
 // ---
-// tags:
-// - Auth
-// summary: Войти по email и паролю
-// operationId: post_api_v1_auth_login
-// description: 'Войти по email и паролю. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL;
-//   иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id>
-//   (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит:
-//   20 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis.'
-// x-rate-limit:
-//   requests: 20
-//   windowSeconds: 60
-//   identity: 'IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.'
-//   separatePerMethodAndPath: true
-// consumes:
-// - application/json
-// parameters:
-// - name: X-Realgo-Client
-//   in: header
-//   required: false
-//   description: web включает браузерный refresh-cookie режим. Для Swagger/Postman оставьте пустым.
-//   type: string
-//   enum:
-//   - web
-// - name: Origin
-//   in: header
-//   required: false
-//   description: В web-режиме браузер автоматически передаёт origin; JavaScript не может произвольно изменить этот
-//     заголовок.
-//   type: string
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthCredentialsRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// summary: "Войти по email и паролю"
+// description: "Войти по email и паролю. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит: 20 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis."
+// x-rate-limit: {"identity": "IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.", "requests": 20, "separatePerMethodAndPath": true, "windowSeconds": 60}
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//       Set-Cookie:
-//         description: 'Только в браузерном режиме X-Realgo-Client: web. HttpOnly refresh-cookie для session_id; refresh_token
-//           в JSON опускается.'
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/AuthAuthResponse'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request, validation_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: invalid_credentials'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '403':
-//     description: 'Браузерный Origin отклонён; коды: csrf_rejected'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '429':
-//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       Retry-After:
-//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
-//         type: integer
-//         minimum: 1
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, rate_limit_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/authSession"}
+//   "400": {$ref: "#/responses/invalidAuthRequest"}
+//   "401": {$ref: "#/responses/invalidCredentials"}
+//   "403": {$ref: "#/responses/csrfRejected"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authRateLimitUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 	h.handleCredentials(w, r, h.svc.Login, http.StatusOK, "Login")
@@ -719,130 +472,21 @@ type emailVerificationConfirmRequest struct {
 
 // requestPasswordReset is deliberately indistinguishable for known and
 // unknown accounts. Logs use an irreversible short hash rather than email.
-// swagger:operation POST /api/v1/auth/password-reset/request post_api_v1_auth_password_reset_request
+// swagger:operation POST /api/v1/auth/password-reset/request Auth post_api_v1_auth_password_reset_request
 //
 // ---
-// tags:
-// - Auth
-// summary: Запросить письмо для сброса пароля
-// operationId: post_api_v1_auth_password_reset_request
-// description: 'Ответ 202 одинаков для известного и неизвестного email. Доставка письма асинхронная. При X-Realgo-Client:
-//   web проверяется Origin, в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly
-//   SameSite=Strict cookie __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном
-//   Swagger/Postman режиме этот заголовок не нужен. Лимит: 5 запросов за 3600 секунд на метод/путь и identity; зависит
-//   от наличия Redis.'
-// x-rate-limit:
-//   requests: 5
-//   windowSeconds: 3600
-//   identity: 'IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.'
-//   separatePerMethodAndPath: true
-// consumes:
-// - application/json
-// parameters:
-// - name: X-Realgo-Client
-//   in: header
-//   required: false
-//   description: web включает браузерный refresh-cookie режим. Для Swagger/Postman оставьте пустым.
-//   type: string
-//   enum:
-//   - web
-// - name: Origin
-//   in: header
-//   required: false
-//   description: В web-режиме браузер автоматически передаёт origin; JavaScript не может произвольно изменить этот
-//     заголовок.
-//   type: string
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthPasswordResetRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// summary: "Запросить письмо для сброса пароля"
+// description: "Ответ 202 одинаков для известного и неизвестного email. Доставка письма асинхронная. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит: 5 запросов за 3600 секунд на метод/путь и identity; зависит от наличия Redis."
+// x-rate-limit: {"identity": "IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.", "requests": 5, "separatePerMethodAndPath": true, "windowSeconds": 3600}
 // responses:
-//   '202':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: object
-//           properties:
-//             status:
-//               type: string
-//               enum:
-//               - reset_requested
-//           required:
-//           - status
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '403':
-//     description: 'Браузерный Origin отклонён; коды: csrf_rejected'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '429':
-//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       Retry-After:
-//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
-//         type: integer
-//         minimum: 1
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, rate_limit_unavailable, mail_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "202": {$ref: "#/responses/resetRequested"}
+//   "400": {$ref: "#/responses/invalidRequest"}
+//   "403": {$ref: "#/responses/csrfRejected"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/mailUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) requestPasswordReset(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -862,129 +506,21 @@ func (h *authHandler) requestPasswordReset(w http.ResponseWriter, r *http.Reques
 	response.JSON(w, http.StatusAccepted, map[string]string{"status": "reset_requested"})
 }
 
-// swagger:operation POST /api/v1/auth/password-reset/confirm post_api_v1_auth_password_reset_confirm
+// swagger:operation POST /api/v1/auth/password-reset/confirm Auth post_api_v1_auth_password_reset_confirm
 //
 // ---
-// tags:
-// - Auth
-// summary: Установить пароль по reset-токену
-// operationId: post_api_v1_auth_password_reset_confirm
-// description: 'Установить пароль по reset-токену. При X-Realgo-Client: web проверяется Origin, в точности равный
-//   origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id>
-//   (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит:
-//   10 запросов за 3600 секунд на метод/путь и identity; зависит от наличия Redis.'
-// x-rate-limit:
-//   requests: 10
-//   windowSeconds: 3600
-//   identity: 'IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.'
-//   separatePerMethodAndPath: true
-// consumes:
-// - application/json
-// parameters:
-// - name: X-Realgo-Client
-//   in: header
-//   required: false
-//   description: web включает браузерный refresh-cookie режим. Для Swagger/Postman оставьте пустым.
-//   type: string
-//   enum:
-//   - web
-// - name: Origin
-//   in: header
-//   required: false
-//   description: В web-режиме браузер автоматически передаёт origin; JavaScript не может произвольно изменить этот
-//     заголовок.
-//   type: string
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthPasswordResetConfirmRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// summary: "Установить пароль по reset-токену"
+// description: "Установить пароль по reset-токену. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит: 10 запросов за 3600 секунд на метод/путь и identity; зависит от наличия Redis."
+// x-rate-limit: {"identity": "IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.", "requests": 10, "separatePerMethodAndPath": true, "windowSeconds": 3600}
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: object
-//           properties:
-//             status:
-//               type: string
-//               enum:
-//               - password_reset
-//           required:
-//           - status
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request, validation_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '403':
-//     description: 'Браузерный Origin отклонён; коды: csrf_rejected'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '429':
-//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       Retry-After:
-//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
-//         type: integer
-//         minimum: 1
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, rate_limit_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/passwordReset"}
+//   "400": {$ref: "#/responses/invalidAuthRequest"}
+//   "403": {$ref: "#/responses/csrfRejected"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authRateLimitUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) confirmPasswordReset(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -1009,130 +545,21 @@ func (h *authHandler) confirmPasswordReset(w http.ResponseWriter, r *http.Reques
 	response.JSON(w, http.StatusOK, map[string]string{"status": "password_reset"})
 }
 
-// swagger:operation POST /api/v1/auth/email-verification/request post_api_v1_auth_email_verification_request
+// swagger:operation POST /api/v1/auth/email-verification/request Auth post_api_v1_auth_email_verification_request
 //
 // ---
-// tags:
-// - Auth
-// summary: Повторно запросить код подтверждения почты
-// operationId: post_api_v1_auth_email_verification_request
-// description: 'Асинхронно ставит resend в очередь. 202 одинаков для валидного и неизвестного challenge/email; доставка
-//   письма этим ответом не подтверждается. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL;
-//   иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id>
-//   (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит:
-//   5 запросов за 3600 секунд на метод/путь и identity; зависит от наличия Redis.'
-// x-rate-limit:
-//   requests: 5
-//   windowSeconds: 3600
-//   identity: 'IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.'
-//   separatePerMethodAndPath: true
-// consumes:
-// - application/json
-// parameters:
-// - name: X-Realgo-Client
-//   in: header
-//   required: false
-//   description: web включает браузерный refresh-cookie режим. Для Swagger/Postman оставьте пустым.
-//   type: string
-//   enum:
-//   - web
-// - name: Origin
-//   in: header
-//   required: false
-//   description: В web-режиме браузер автоматически передаёт origin; JavaScript не может произвольно изменить этот
-//     заголовок.
-//   type: string
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthEmailVerificationRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// summary: "Повторно запросить код подтверждения почты"
+// description: "Асинхронно ставит resend в очередь. 202 одинаков для валидного и неизвестного challenge/email; доставка письма этим ответом не подтверждается. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит: 5 запросов за 3600 секунд на метод/путь и identity; зависит от наличия Redis."
+// x-rate-limit: {"identity": "IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.", "requests": 5, "separatePerMethodAndPath": true, "windowSeconds": 3600}
 // responses:
-//   '202':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: object
-//           properties:
-//             status:
-//               type: string
-//               enum:
-//               - verification_requested
-//           required:
-//           - status
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '403':
-//     description: 'Браузерный Origin отклонён; коды: csrf_rejected'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '429':
-//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       Retry-After:
-//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
-//         type: integer
-//         minimum: 1
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, rate_limit_unavailable, mail_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "202": {$ref: "#/responses/verificationRequested"}
+//   "400": {$ref: "#/responses/invalidRequest"}
+//   "403": {$ref: "#/responses/csrfRejected"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/mailUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) requestEmailVerification(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -1152,127 +579,21 @@ func (h *authHandler) requestEmailVerification(w http.ResponseWriter, r *http.Re
 	response.JSON(w, http.StatusAccepted, map[string]string{"status": "verification_requested"})
 }
 
-// swagger:operation POST /api/v1/auth/email-verification/confirm post_api_v1_auth_email_verification_confirm
+// swagger:operation POST /api/v1/auth/email-verification/confirm Auth post_api_v1_auth_email_verification_confirm
 //
 // ---
-// tags:
-// - Auth
-// summary: Подтвердить почту и завершить регистрацию
-// operationId: post_api_v1_auth_email_verification_confirm
-// description: 'Требуются email, challenge из регистрации и шестизначный код. Создаёт пользователя и сессию. Неверный/истёкший
-//   код или уже использованный email: 400 invalid_code. При X-Realgo-Client: web проверяется Origin, в точности равный
-//   origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id>
-//   (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит:
-//   10 запросов за 3600 секунд на метод/путь и identity; зависит от наличия Redis.'
-// x-rate-limit:
-//   requests: 10
-//   windowSeconds: 3600
-//   identity: 'IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.'
-//   separatePerMethodAndPath: true
-// consumes:
-// - application/json
-// parameters:
-// - name: X-Realgo-Client
-//   in: header
-//   required: false
-//   description: web включает браузерный refresh-cookie режим. Для Swagger/Postman оставьте пустым.
-//   type: string
-//   enum:
-//   - web
-// - name: Origin
-//   in: header
-//   required: false
-//   description: В web-режиме браузер автоматически передаёт origin; JavaScript не может произвольно изменить этот
-//     заголовок.
-//   type: string
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthEmailVerificationConfirmRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// summary: "Подтвердить почту и завершить регистрацию"
+// description: "Требуются email, challenge из регистрации и шестизначный код. Создаёт пользователя и сессию. Неверный/истёкший код или уже использованный email: 400 invalid_code. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит: 10 запросов за 3600 секунд на метод/путь и identity; зависит от наличия Redis."
+// x-rate-limit: {"identity": "IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.", "requests": 10, "separatePerMethodAndPath": true, "windowSeconds": 3600}
 // responses:
-//   '201':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//       Set-Cookie:
-//         description: 'Только в браузерном режиме X-Realgo-Client: web. HttpOnly refresh-cookie для session_id; refresh_token
-//           в JSON опускается.'
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/AuthAuthResponse'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_code, invalid_request'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '403':
-//     description: 'Браузерный Origin отклонён; коды: csrf_rejected'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '429':
-//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       Retry-After:
-//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
-//         type: integer
-//         minimum: 1
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, rate_limit_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "201": {$ref: "#/responses/authSession"}
+//   "400": {$ref: "#/responses/invalidVerificationCode"}
+//   "403": {$ref: "#/responses/csrfRejected"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authRateLimitUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) confirmEmailVerification(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -1337,142 +658,23 @@ func (h *authHandler) handleCredentials(
 // https://oauth.yandex.ru/authorize and landed back on the app's callback
 // route with an authorization code, which it forwards here to be exchanged
 // server-side (client_secret never reaches the browser).
-// swagger:operation POST /api/v1/auth/yandex post_api_v1_auth_yandex
+// swagger:operation POST /api/v1/auth/yandex Auth post_api_v1_auth_yandex
 //
 // ---
-// tags:
-// - Auth
-// summary: Обменять код Яндекс OAuth на сессию
-// operationId: post_api_v1_auth_yandex
-// description: 'Обменять код Яндекс OAuth на сессию. При X-Realgo-Client: web проверяется Origin, в точности равный
-//   origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id>
-//   (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит:
-//   20 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis.'
-// x-rate-limit:
-//   requests: 20
-//   windowSeconds: 60
-//   identity: 'IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.'
-//   separatePerMethodAndPath: true
-// consumes:
-// - application/json
-// parameters:
-// - name: X-Realgo-Client
-//   in: header
-//   required: false
-//   description: web включает браузерный refresh-cookie режим. Для Swagger/Postman оставьте пустым.
-//   type: string
-//   enum:
-//   - web
-// - name: Origin
-//   in: header
-//   required: false
-//   description: В web-режиме браузер автоматически передаёт origin; JavaScript не может произвольно изменить этот
-//     заголовок.
-//   type: string
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthOauthLoginRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// summary: "Обменять код Яндекс OAuth на сессию"
+// description: "Обменять код Яндекс OAuth на сессию. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит: 20 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis."
+// x-rate-limit: {"identity": "IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.", "requests": 20, "separatePerMethodAndPath": true, "windowSeconds": 60}
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//       Set-Cookie:
-//         description: 'Только в браузерном режиме X-Realgo-Client: web. HttpOnly refresh-cookie для session_id; refresh_token
-//           в JSON опускается.'
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/AuthAuthResponse'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request, validation_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '403':
-//     description: 'Браузерный Origin отклонён; коды: csrf_rejected'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '422':
-//     description: 'Неподдерживаемое значение или недоступные данные провайдера; коды: oauth_no_email'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '429':
-//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       Retry-After:
-//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
-//         type: integer
-//         minimum: 1
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '502':
-//     description: 'Ошибка внешнего провайдера; коды: oauth_provider_failed'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, oauth_unavailable, rate_limit_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/authSession"}
+//   "400": {$ref: "#/responses/invalidAuthRequest"}
+//   "403": {$ref: "#/responses/csrfRejected"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "422": {$ref: "#/responses/oauthNoEmail"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "502": {$ref: "#/responses/oauthProviderError"}
+//   "503": {$ref: "#/responses/oauthUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) yandexLogin(w http.ResponseWriter, r *http.Request) {
 	h.handleOAuthLogin(w, r, h.svc.LoginWithYandex, "YandexLogin")
@@ -1481,142 +683,23 @@ func (h *authHandler) yandexLogin(w http.ResponseWriter, r *http.Request) {
 // githubLogin handles POST /auth/github — the second leg of "Sign in with
 // GitHub", mirroring yandexLogin for the GitHub OAuth App authorization code
 // flow (https://docs.github.com/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps).
-// swagger:operation POST /api/v1/auth/github post_api_v1_auth_github
+// swagger:operation POST /api/v1/auth/github Auth post_api_v1_auth_github
 //
 // ---
-// tags:
-// - Auth
-// summary: Обменять код GitHub OAuth на сессию
-// operationId: post_api_v1_auth_github
-// description: 'Обменять код GitHub OAuth на сессию. При X-Realgo-Client: web проверяется Origin, в точности равный
-//   origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id>
-//   (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит:
-//   20 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis.'
-// x-rate-limit:
-//   requests: 20
-//   windowSeconds: 60
-//   identity: 'IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.'
-//   separatePerMethodAndPath: true
-// consumes:
-// - application/json
-// parameters:
-// - name: X-Realgo-Client
-//   in: header
-//   required: false
-//   description: web включает браузерный refresh-cookie режим. Для Swagger/Postman оставьте пустым.
-//   type: string
-//   enum:
-//   - web
-// - name: Origin
-//   in: header
-//   required: false
-//   description: В web-режиме браузер автоматически передаёт origin; JavaScript не может произвольно изменить этот
-//     заголовок.
-//   type: string
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthOauthLoginRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// summary: "Обменять код GitHub OAuth на сессию"
+// description: "Обменять код GitHub OAuth на сессию. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит: 20 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis."
+// x-rate-limit: {"identity": "IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.", "requests": 20, "separatePerMethodAndPath": true, "windowSeconds": 60}
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//       Set-Cookie:
-//         description: 'Только в браузерном режиме X-Realgo-Client: web. HttpOnly refresh-cookie для session_id; refresh_token
-//           в JSON опускается.'
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/AuthAuthResponse'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request, validation_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '403':
-//     description: 'Браузерный Origin отклонён; коды: csrf_rejected'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '422':
-//     description: 'Неподдерживаемое значение или недоступные данные провайдера; коды: oauth_no_email'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '429':
-//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       Retry-After:
-//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
-//         type: integer
-//         minimum: 1
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '502':
-//     description: 'Ошибка внешнего провайдера; коды: oauth_provider_failed'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, oauth_unavailable, rate_limit_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/authSession"}
+//   "400": {$ref: "#/responses/invalidAuthRequest"}
+//   "403": {$ref: "#/responses/csrfRejected"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "422": {$ref: "#/responses/oauthNoEmail"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "502": {$ref: "#/responses/oauthProviderError"}
+//   "503": {$ref: "#/responses/oauthUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) githubLogin(w http.ResponseWriter, r *http.Request) {
 	h.handleOAuthLogin(w, r, h.svc.LoginWithGitHub, "GithubLogin")
@@ -1653,163 +736,22 @@ func (h *authHandler) handleOAuthLogin(
 	response.JSON(w, http.StatusOK, authResponse{User: newUserResponse(user), Tokens: h.browserTokens(w, r, tokens)})
 }
 
-// swagger:operation POST /api/v1/auth/refresh post_api_v1_auth_refresh
+// swagger:operation POST /api/v1/auth/refresh Auth post_api_v1_auth_refresh
 //
 // ---
-// tags:
-// - Auth
-// summary: Обновить токены сессии
-// operationId: post_api_v1_auth_refresh
-// description: 'Refresh-токен одноразовый: после обновления используйте новую пару. Возвращает data.tokens. В браузерном
-//   режиме требуется соответствующий X-Realgo-Session и refresh-cookie. При X-Realgo-Client: web проверяется Origin,
-//   в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie
-//   __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме
-//   этот заголовок не нужен. Лимит: 20 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis.'
-// x-rate-limit:
-//   requests: 20
-//   windowSeconds: 60
-//   identity: 'IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.'
-//   separatePerMethodAndPath: true
-// consumes:
-// - application/json
-// parameters:
-// - name: X-Realgo-Client
-//   in: header
-//   required: false
-//   description: web включает браузерный refresh-cookie режим. Для Swagger/Postman оставьте пустым.
-//   type: string
-//   enum:
-//   - web
-// - name: Origin
-//   in: header
-//   required: false
-//   description: В web-режиме браузер автоматически передаёт origin; JavaScript не может произвольно изменить этот
-//     заголовок.
-//   type: string
-// - name: X-Realgo-Session
-//   in: header
-//   required: false
-//   description: 'Обязательно в web-режиме: session_id соответствующей refresh-cookie.'
-//   type: string
-//   pattern: ^[A-Za-z0-9_-]{43}$
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthRefreshRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// summary: "Обновить токены сессии"
+// description: "Refresh-токен одноразовый: после обновления используйте новую пару. Возвращает data.tokens. В браузерном режиме требуется соответствующий X-Realgo-Session и refresh-cookie. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит: 20 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis."
+// x-rate-limit: {"identity": "IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.", "requests": 20, "separatePerMethodAndPath": true, "windowSeconds": 60}
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//       Set-Cookie:
-//         description: 'Только в браузерном режиме X-Realgo-Client: web. HttpOnly refresh-cookie для session_id; refresh_token
-//           в JSON опускается.'
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/TokensData'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//     examples:
-//       application/json: &id001
-//         data:
-//           tokens:
-//             session_id: sssssssssssssssssssssssssssssssssssssssssss
-//             access_token: <access_token>
-//             refresh_token: <refresh_token>
-//             token_type: Bearer
-//             expires_in: 900
-//         meta:
-//           requestId: example-request-id
-//     x-examples:
-//       api: *id001
-//       web:
-//         data:
-//           tokens:
-//             session_id: sssssssssssssssssssssssssssssssssssssssssss
-//             access_token: <access_token>
-//             token_type: Bearer
-//             expires_in: 900
-//         meta:
-//           requestId: example-request-id
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request, validation_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: invalid_token'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '403':
-//     description: 'Браузерный Origin отклонён; коды: csrf_rejected'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '429':
-//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       Retry-After:
-//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
-//         type: integer
-//         minimum: 1
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, rate_limit_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/refreshedTokens"}
+//   "400": {$ref: "#/responses/invalidAuthRequest"}
+//   "401": {$ref: "#/responses/invalidToken"}
+//   "403": {$ref: "#/responses/csrfRejected"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authRateLimitUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -1836,144 +778,24 @@ func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
 // deviceSession exchanges an already authenticated access token for an
 // independent refresh session. It lets the browser extension avoid sharing the
 // web app's one-time rotating refresh token.
-// swagger:operation POST /api/v1/auth/device-session post_api_v1_auth_device_session
+// swagger:operation POST /api/v1/auth/device-session Auth post_api_v1_auth_device_session
 //
 // ---
-// tags:
-// - Auth
-// summary: Создать отдельную сессию для устройства
-// operationId: post_api_v1_auth_device_session
-// description: 'Требует Bearer access token и действующий parent refresh token той же сессии; создаёт независимую
-//   refresh-сессию для расширения. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL;
-//   иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id>
-//   (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит:
-//   20 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis.'
-// x-rate-limit:
-//   requests: 20
-//   windowSeconds: 60
-//   identity: ID пользователя из контекста после requireAuth.
-//   separatePerMethodAndPath: true
+// summary: "Создать отдельную сессию для устройства"
+// description: "Требует Bearer access token и действующий parent refresh token той же сессии; создаёт независимую refresh-сессию для расширения. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит: 20 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis."
 // security:
 // - BearerAuth: []
-// consumes:
-// - application/json
-// parameters:
-// - name: X-Realgo-Client
-//   in: header
-//   required: false
-//   description: web включает браузерный refresh-cookie режим. Для Swagger/Postman оставьте пустым.
-//   type: string
-//   enum:
-//   - web
-// - name: Origin
-//   in: header
-//   required: false
-//   description: В web-режиме браузер автоматически передаёт origin; JavaScript не может произвольно изменить этот
-//     заголовок.
-//   type: string
-// - name: X-Realgo-Session
-//   in: header
-//   required: false
-//   description: 'Обязательно в web-режиме: session_id соответствующей refresh-cookie.'
-//   type: string
-//   pattern: ^[A-Za-z0-9_-]{43}$
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthRefreshRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// x-rate-limit: {"identity": "ID пользователя из контекста после requireAuth.", "requests": 20, "separatePerMethodAndPath": true, "windowSeconds": 60}
 // responses:
-//   '201':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//       Set-Cookie:
-//         description: 'Только в браузерном режиме X-Realgo-Client: web. HttpOnly refresh-cookie для session_id; refresh_token
-//           в JSON опускается.'
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/TokensData'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request, validation_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED, invalid_token,
-//       unauthorized'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '403':
-//     description: 'Браузерный Origin отклонён; коды: csrf_rejected'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '429':
-//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       Retry-After:
-//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
-//         type: integer
-//         minimum: 1
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, rate_limit_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "201": {$ref: "#/responses/deviceSession"}
+//   "400": {$ref: "#/responses/invalidAuthRequest"}
+//   "401": {$ref: "#/responses/invalidDeviceSession"}
+//   "403": {$ref: "#/responses/csrfRejected"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authRateLimitUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) deviceSession(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -1997,139 +819,21 @@ func (h *authHandler) deviceSession(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusCreated, map[string]auth.TokenPair{"tokens": h.browserTokens(w, r, tokens)})
 }
 
-// swagger:operation POST /api/v1/auth/logout post_api_v1_auth_logout
+// swagger:operation POST /api/v1/auth/logout Auth post_api_v1_auth_logout
 //
 // ---
-// tags:
-// - Auth
-// summary: Выйти из refresh-сессии
-// operationId: post_api_v1_auth_logout
-// description: 'Bearеr access token не требуется; используется refresh token из тела или браузерной cookie. Поэтому
-//   logout доступен и с истёкшим access token. При X-Realgo-Client: web проверяется Origin, в точности равный origin
-//   MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id>
-//   (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит:
-//   20 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis.'
-// x-rate-limit:
-//   requests: 20
-//   windowSeconds: 60
-//   identity: 'IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.'
-//   separatePerMethodAndPath: true
-// consumes:
-// - application/json
-// parameters:
-// - name: X-Realgo-Client
-//   in: header
-//   required: false
-//   description: web включает браузерный refresh-cookie режим. Для Swagger/Postman оставьте пустым.
-//   type: string
-//   enum:
-//   - web
-// - name: Origin
-//   in: header
-//   required: false
-//   description: В web-режиме браузер автоматически передаёт origin; JavaScript не может произвольно изменить этот
-//     заголовок.
-//   type: string
-// - name: X-Realgo-Session
-//   in: header
-//   required: false
-//   description: 'Обязательно в web-режиме: session_id соответствующей refresh-cookie.'
-//   type: string
-//   pattern: ^[A-Za-z0-9_-]{43}$
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthRefreshRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
+// summary: "Выйти из refresh-сессии"
+// description: "Bearеr access token не требуется; используется refresh token из тела или браузерной cookie. Поэтому logout доступен и с истёкшим access token. При X-Realgo-Client: web проверяется Origin, в точности равный origin MAIL_BASE_URL; иначе 403 csrf_rejected. Refresh хранится в HttpOnly SameSite=Strict cookie __Host-realgo-refresh-<session_id> (HTTPS) или realgo-refresh-<session_id> (HTTP). В обычном Swagger/Postman режиме этот заголовок не нужен. Лимит: 20 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis."
+// x-rate-limit: {"identity": "IP клиента: эти маршруты не выполняют requireAuth, даже если прислан заголовок Bearer.", "requests": 20, "separatePerMethodAndPath": true, "windowSeconds": 60}
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//       Set-Cookie:
-//         description: В web-режиме и с валидным X-Realgo-Session очищает refresh-cookie (Max-Age=0).
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: object
-//           properties:
-//             status:
-//               type: string
-//               enum:
-//               - logged_out
-//           required:
-//           - status
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request, validation_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '403':
-//     description: 'Браузерный Origin отклонён; коды: csrf_rejected'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '429':
-//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       Retry-After:
-//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
-//         type: integer
-//         minimum: 1
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, rate_limit_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/loggedOut"}
+//   "400": {$ref: "#/responses/invalidAuthRequest"}
+//   "403": {$ref: "#/responses/csrfRejected"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authRateLimitUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) logout(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -2154,61 +858,19 @@ func (h *authHandler) logout(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, map[string]string{"status": "logged_out"})
 }
 
-// swagger:operation GET /api/v1/me get_api_v1_me
+// swagger:operation GET /api/v1/me Account get_api_v1_me
 //
 // ---
-// tags:
-// - Account
-// summary: Получить текущего пользователя
-// operationId: get_api_v1_me
-// description: Получить текущего пользователя.
+// summary: "Получить текущего пользователя"
+// description: "Получить текущего пользователя."
 // security:
 // - BearerAuth: []
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/UserData'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED, unauthorized,
-//       invalid_token'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/userDataResponse"}
+//   "401": {$ref: "#/responses/invalidAuthSession"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -2454,87 +1116,21 @@ func normaliseTopics(in []string) ([]string, error) {
 // patchProfile handles PATCH /me/profile — a partial update of the onboarding
 // profile. Omitted fields are left untouched; interview_date:null explicitly
 // clears the date while an RFC3339 string replaces it.
-// swagger:operation PATCH /api/v1/me/profile patch_api_v1_me_profile
+// swagger:operation PATCH /api/v1/me/profile Account patch_api_v1_me_profile
 //
 // ---
-// tags:
-// - Account
-// summary: Обновить профиль и onboarding
-// operationId: patch_api_v1_me_profile
-// description: Частичное обновление. PATCH {} допустим. interview_date:null очищает дату. Формат профиля использует
-//   snake_case.
+// summary: "Обновить профиль и onboarding"
+// description: "Частичное обновление. PATCH {} допустим. interview_date:null очищает дату. Формат профиля использует snake_case."
 // security:
 // - BearerAuth: []
-// consumes:
-// - application/json
-// parameters:
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthPatchProfileRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/UserData'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request, validation_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED, unauthorized,
-//       invalid_token'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/userDataResponse"}
+//   "400": {$ref: "#/responses/invalidAuthRequest"}
+//   "401": {$ref: "#/responses/invalidAuthSession"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) patchProfile(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -2691,93 +1287,21 @@ type changePasswordRequest struct {
 	NewPassword string `json:"new_password"`
 }
 
-// swagger:operation POST /api/v1/me/password post_api_v1_me_password
+// swagger:operation POST /api/v1/me/password Account post_api_v1_me_password
 //
 // ---
-// tags:
-// - Account
-// summary: Изменить пароль
-// operationId: post_api_v1_me_password
-// description: Изменить пароль.
+// summary: "Изменить пароль"
+// description: "Изменить пароль."
 // security:
 // - BearerAuth: []
-// consumes:
-// - application/json
-// parameters:
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthChangePasswordRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: object
-//           properties:
-//             status:
-//               type: string
-//               enum:
-//               - password_changed
-//           required:
-//           - status
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request, validation_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED, invalid_credentials,
-//       unauthorized, invalid_token'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/passwordChanged"}
+//   "400": {$ref: "#/responses/invalidAuthRequest"}
+//   "401": {$ref: "#/responses/invalidAccountCredentials"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) changePassword(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -2803,67 +1327,19 @@ func (h *authHandler) changePassword(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, map[string]string{"status": "password_changed"})
 }
 
-// swagger:operation POST /api/v1/me/sessions/revoke post_api_v1_me_sessions_revoke
+// swagger:operation POST /api/v1/me/sessions/revoke Account post_api_v1_me_sessions_revoke
 //
 // ---
-// tags:
-// - Account
-// summary: Отозвать все сессии пользователя
-// operationId: post_api_v1_me_sessions_revoke
-// description: Отозвать все сессии пользователя.
+// summary: "Отозвать все сессии пользователя"
+// description: "Отозвать все сессии пользователя."
 // security:
 // - BearerAuth: []
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: object
-//           properties:
-//             status:
-//               type: string
-//               enum:
-//               - sessions_revoked
-//           required:
-//           - status
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED, unauthorized'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/sessionsRevoked"}
+//   "401": {$ref: "#/responses/authUnauthorized"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) revokeAllSessions(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -2882,87 +1358,21 @@ func (h *authHandler) revokeAllSessions(w http.ResponseWriter, r *http.Request) 
 }
 
 // patchNotificationSettings handles PATCH /me/notification-settings.
-// swagger:operation PATCH /api/v1/me/notification-settings patch_api_v1_me_notification_settings
+// swagger:operation PATCH /api/v1/me/notification-settings Account patch_api_v1_me_notification_settings
 //
 // ---
-// tags:
-// - Account
-// summary: Обновить настройки уведомлений
-// operationId: patch_api_v1_me_notification_settings
-// description: Нужно хотя бы одно не-null поле. Ответ содержит data.user, а не отдельный объект notification-settings.
-//   Отдельный GET /me/notification-settings не зарегистрирован.
+// summary: "Обновить настройки уведомлений"
+// description: "Нужно хотя бы одно не-null поле. Ответ содержит data.user, а не отдельный объект notification-settings. Отдельный GET /me/notification-settings не зарегистрирован."
 // security:
 // - BearerAuth: []
-// consumes:
-// - application/json
-// parameters:
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthPatchNotificationSettingsRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/UserData'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request, validation_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED, unauthorized,
-//       invalid_token'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/userDataResponse"}
+//   "400": {$ref: "#/responses/invalidAuthRequest"}
+//   "401": {$ref: "#/responses/invalidAuthSession"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) patchNotificationSettings(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -3000,53 +1410,18 @@ func (h *authHandler) patchNotificationSettings(w http.ResponseWriter, r *http.R
 
 // postExport handles POST /me/export. MVP stub: real generation and email
 // delivery are post-MVP; the endpoint acknowledges the request only.
-// swagger:operation POST /api/v1/me/export post_api_v1_me_export
+// swagger:operation POST /api/v1/me/export Account post_api_v1_me_export
 //
 // ---
-// tags:
-// - Account
-// summary: Запросить экспорт данных (заглушка)
-// operationId: post_api_v1_me_export
-// description: 'Текущая реализация только подтверждает запрос: data.status=accepted, message="data export is not implemented
-//   yet". Файл экспорта не создаётся; GET /me/export/{exportId} не зарегистрирован.'
+// summary: "Запросить экспорт данных (заглушка)"
+// description: "Текущая реализация только подтверждает запрос: data.status=accepted, message=\"data export is not implemented yet\". Файл экспорта не создаётся; GET /me/export/{exportId} не зарегистрирован."
 // security:
 // - BearerAuth: []
 // responses:
-//   '202':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/ExportAcknowledged'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED, unauthorized'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "202": {$ref: "#/responses/exportAccepted"}
+//   "401": {$ref: "#/responses/authUnauthorized"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) postExport(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {
@@ -3085,94 +1460,21 @@ type deleteMeRequest struct {
 
 // deleteMe handles DELETE /me. Account removal is irreversible, so it requires
 // the current password for confirmation.
-// swagger:operation DELETE /api/v1/me delete_api_v1_me
+// swagger:operation DELETE /api/v1/me Account delete_api_v1_me
 //
 // ---
-// tags:
-// - Account
-// summary: Удалить аккаунт с подтверждением пароля
-// operationId: delete_api_v1_me
-// description: Удаление подтверждается текущим password, поле confirm не поддерживается. Все сессии отзываются. Для
-//   OAuth-only пользователя без password hash эта проверка не проходит.
+// summary: "Удалить аккаунт с подтверждением пароля"
+// description: "Удаление подтверждается текущим password, поле confirm не поддерживается. Все сессии отзываются. Для OAuth-only пользователя без password hash эта проверка не проходит."
 // security:
 // - BearerAuth: []
-// consumes:
-// - application/json
-// parameters:
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/AuthDeleteMeRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: object
-//           properties:
-//             status:
-//               type: string
-//               enum:
-//               - deleted
-//           required:
-//           - status
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: invalid_request, validation_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED, invalid_credentials,
-//       unauthorized, invalid_token'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: request_too_large'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: internal_error'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/accountDeleted"}
+//   "400": {$ref: "#/responses/invalidAuthRequest"}
+//   "401": {$ref: "#/responses/invalidAccountCredentials"}
+//   "413": {$ref: "#/responses/authRequestTooLarge"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *authHandler) deleteMe(w http.ResponseWriter, r *http.Request) {
 	if h.unavailable(w) {

@@ -26,155 +26,25 @@ type Handler struct{ repo repository }
 
 func NewHandler(repo repository) *Handler { return &Handler{repo: repo} }
 
-// swagger:operation POST /api/v1/me/problem-reports post_api_v1_me_problem_reports
+// swagger:operation POST /api/v1/me/problem-reports Reports post_api_v1_me_problem_reports
 //
 // ---
-// tags:
-// - Reports
-// summary: Отправить отчёт о проблеме с диагностикой
-// operationId: post_api_v1_me_problem_reports
-// description: 'Можно отправить JSON до 2 MiB либо multipart/form-data: report — JSON-текст ReportsRequest, attachment
-//   — максимум один файл. Фото и UTF-8 текст до 5 MiB; видео до 15 MiB. Общий multipart лимит 17.5 MiB. Неизвестные
-//   JSON-поля отклоняются. Лимит: 5 запросов за 600 секунд на метод/путь и identity; зависит от наличия Redis.
-//
-//
-//   Swagger UI показывает multipart/form-data: report — JSON-текст, attachment — необязательный файл. API также принимает
-//   application/json с телом ReportsRequest.'
-// x-rate-limit:
-//   requests: 5
-//   windowSeconds: 600
-//   identity: ID пользователя из контекста после requireAuth.
-//   separatePerMethodAndPath: true
+// summary: "Отправить отчёт о проблеме с диагностикой"
+// description: "Можно отправить JSON до 2 MiB либо multipart/form-data: report — JSON-текст ReportsRequest, attachment — максимум один файл. Фото и UTF-8 текст до 5 MiB; видео до 15 MiB. Общий multipart лимит 17.5 MiB. Неизвестные JSON-поля отклоняются. Лимит: 5 запросов за 600 секунд на метод/путь и identity; зависит от наличия Redis.\n\nSwagger UI показывает multipart/form-data: report — JSON-текст, attachment — необязательный файл. API также принимает application/json с телом ReportsRequest."
 // security:
 // - BearerAuth: []
-// consumes:
-// - multipart/form-data
-// x-json-request-body:
-//   schema:
-//     $ref: '#/definitions/ReportsRequest'
-//   example:
-//     schemaVersion: 2
-//     description: При открытии карточек не отображается список.
-//     reportedAt: '2026-10-05T16:00:00Z'
-//     page:
-//       route: /cards
-//       viewport:
-//         width: 1920
-//         height: 1080
-//       locale: ru
-//       timezone: Asia/Yekaterinburg
-//       online: true
-//     browser:
-//       name: Firefox
-//       version: '157.0'
-//       engine: Gecko
-//     os:
-//       name: Linux
-//       version: ''
-//     network: null
-//     breadcrumbs: []
-//     errors: []
-//     release:
-//       version: dev
-//       commit: d86d771f0751c7c1174fb2dc318c377eeeb3b297
-// parameters:
-// - name: report
-//   in: formData
-//   required: true
-//   type: string
-//   description: JSON-текст объекта ReportsRequest, одной строкой.
-//   x-example: '{"schemaVersion": 2, "description": "При открытии карточек не отображается список.", "reportedAt":
-//     "2026-10-05T16:00:00Z", "page": {"route": "/cards", "viewport": {"width": 1920, "height": 1080}, "locale": "ru",
-//     "timezone": "Asia/Yekaterinburg", "online": true}, "browser": {"name": "Firefox", "version": "157.0", "engine":
-//     "Gecko"}, "os": {"name": "Linux", "version": ""}, "network": null, "breadcrumbs": [], "errors": [], "release":
-//     {"version": "dev", "commit": "d86d771f0751c7c1174fb2dc318c377eeeb3b297"}}'
-//   default: '{"schemaVersion": 2, "description": "При открытии карточек не отображается список.", "reportedAt": "2026-10-05T16:00:00Z",
-//     "page": {"route": "/cards", "viewport": {"width": 1920, "height": 1080}, "locale": "ru", "timezone": "Asia/Yekaterinburg",
-//     "online": true}, "browser": {"name": "Firefox", "version": "157.0", "engine": "Gecko"}, "os": {"name": "Linux",
-//     "version": ""}, "network": null, "breadcrumbs": [], "errors": [], "release": {"version": "dev", "commit": "d86d771f0751c7c1174fb2dc318c377eeeb3b297"}}'
-// - name: attachment
-//   in: formData
-//   required: false
-//   type: file
-//   description: 'Необязательный один файл: фото/UTF-8 текст до 5 MiB, видео до 15 MiB.'
+// consumes: ["multipart/form-data"]
+// x-json-request-body: {"schema": {"$ref": "#/definitions/ReportsRequest"}}
+// x-rate-limit: {"identity": "ID пользователя из контекста после requireAuth.", "requests": 5, "separatePerMethodAndPath": true, "windowSeconds": 600}
 // responses:
-//   '201':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       X-RateLimit-Limit:
-//         description: Лимит текущего bucket.
-//         type: integer
-//       X-RateLimit-Remaining:
-//         description: Остаток в текущем bucket.
-//         type: integer
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/ReportsResult'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '429':
-//     description: 'Превышен лимит запросов либо AI-квота; коды: rate_limited'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//       Retry-After:
-//         description: Для rate_limited — число секунд до повтора; при AI-квоте может отсутствовать.
-//         type: integer
-//         minimum: 1
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable, rate_limit_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "201": {$ref: "#/responses/reportCreated"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authRateLimitUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())

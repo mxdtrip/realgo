@@ -49,87 +49,21 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 //
 // Clients should poll every 2-3s until status is ready|none, capping at ~60s
 // and treating a still-generating result past the cap as none.
-// swagger:operation GET /api/v1/me/problems/{problemId}/cards get_api_v1_me_problems_problemId_cards
+// swagger:operation GET /api/v1/me/problems/{problemId}/cards Problems get_api_v1_me_problems_problemId_cards
 //
 // ---
-// tags:
-// - Problems
-// summary: Получить карточки и статус их генерации по задаче
-// operationId: get_api_v1_me_problems_problemId_cards
-// description: 'data.status: ready (карточки доступны), generating (генерация идёт), none (карточек и активной генерации
-//   нет). Возвращает доступные пользователю глобальные и собственные карточки. Для глобальных AI-карточек требуется
-//   прогресс пользователя по задаче со статусом solved или reviewing. Собственные и глобальные не-AI карточки проверяются
-//   отдельно. Если карточки существуют, но не видны пользователю, ready не гарантируется.'
+// summary: "Получить карточки и статус их генерации по задаче"
+// description: "data.status: ready (карточки доступны), generating (генерация идёт), none (карточек и активной генерации нет). Возвращает доступные пользователю глобальные и собственные карточки. Для глобальных AI-карточек требуется прогресс пользователя по задаче со статусом solved или reviewing. Собственные и глобальные не-AI карточки проверяются отдельно. Если карточки существуют, но не видны пользователю, ready не гарантируется."
 // security:
 // - BearerAuth: []
-// parameters:
-// - name: problemId
-//   in: path
-//   required: true
-//   description: Числовой ID, а не prb_*/card_* строка.
-//   type: integer
-//   format: int64
-//   minimum: 1
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/ProblemcardsResponse'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/problemCards"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())

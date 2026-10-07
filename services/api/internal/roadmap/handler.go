@@ -27,62 +27,19 @@ type repository interface {
 	Clear(ctx context.Context, userID int64) error
 }
 
-// swagger:operation GET /api/v1/me/roadmaps get_api_v1_me_roadmaps
+// swagger:operation GET /api/v1/me/roadmaps Roadmap get_api_v1_me_roadmaps
 //
 // ---
-// tags:
-// - Roadmap
-// summary: Получить сохранённые roadmap-планы
-// operationId: get_api_v1_me_roadmaps
-// description: Получить сохранённые roadmap-планы.
+// summary: "Получить сохранённые roadmap-планы"
+// description: "Получить сохранённые roadmap-планы."
 // security:
 // - BearerAuth: []
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: array
-//           items:
-//             $ref: '#/definitions/RoadmapSummary'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/roadmapList"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -99,83 +56,21 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, data)
 }
 
-// swagger:operation PUT /api/v1/me/roadmaps/{planKey}/activate put_api_v1_me_roadmaps_planKey_activate
+// swagger:operation PUT /api/v1/me/roadmaps/{planKey}/activate Roadmap put_api_v1_me_roadmaps_planKey_activate
 //
 // ---
-// tags:
-// - Roadmap
-// summary: Активировать сохранённый roadmap
-// operationId: put_api_v1_me_roadmaps_planKey_activate
-// description: Активировать сохранённый roadmap.
+// summary: "Активировать сохранённый roadmap"
+// description: "Активировать сохранённый roadmap."
 // security:
 // - BearerAuth: []
-// parameters:
-// - name: planKey
-//   in: path
-//   required: true
-//   description: 'planKey из GET /me/roadmaps; не более 240 байт. При наличии : кодируйте его как часть URL.'
-//   type: string
-//   minLength: 1
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/RoadmapResponse'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/roadmap"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Activate(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -203,83 +98,21 @@ func (h *Handler) Activate(w http.ResponseWriter, r *http.Request) {
 
 // CompleteTheory marks only the first-pass theory stage as complete. Problem
 // and card repetitions keep using review_schedules and the shared FSRS path.
-// swagger:operation PUT /api/v1/me/roadmap/patterns/{code}/theory put_api_v1_me_roadmap_patterns_code_theory
+// swagger:operation PUT /api/v1/me/roadmap/patterns/{code}/theory Roadmap put_api_v1_me_roadmap_patterns_code_theory
 //
 // ---
-// tags:
-// - Roadmap
-// summary: Отметить теорию субпаттерна пройденной
-// operationId: put_api_v1_me_roadmap_patterns_code_theory
-// description: Отметить теорию субпаттерна пройденной.
+// summary: "Отметить теорию субпаттерна пройденной"
+// description: "Отметить теорию субпаттерна пройденной."
 // security:
 // - BearerAuth: []
-// parameters:
-// - name: code
-//   in: path
-//   required: true
-//   description: Код паттерна или субпаттерна. После trim — не более 160 байт.
-//   type: string
-//   minLength: 1
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/RoadmapTheoryCompletion'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/theoryCompleted"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) CompleteTheory(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -307,111 +140,23 @@ func (h *Handler) CompleteTheory(w http.ResponseWriter, r *http.Request) {
 
 // ResolveTaskAccess prevents an inaccessible external problem from blocking a
 // roadmap. A user may skip that slot or replace it with a comparable task.
-// swagger:operation POST /api/v1/me/roadmap/tasks/{problemID}/access post_api_v1_me_roadmap_tasks_problemID_access
+// swagger:operation POST /api/v1/me/roadmap/tasks/{problemID}/access Roadmap post_api_v1_me_roadmap_tasks_problemID_access
 //
 // ---
-// tags:
-// - Roadmap
-// summary: Заменить или пропустить недоступную задачу
-// operationId: post_api_v1_me_roadmap_tasks_problemID_access
-// description: 'skip оставляет слот видимым, не считает задачу решённой и снимает блокировку следующего этапа. replace
-//   подбирает доступную задачу того же субпаттерна; без замены: 409 NO_REPLACEMENT. data содержит action, originalProblemId
-//   и необязательный replacementProblemId. Поля outcome/attemptedAt относятся к записи попытки решения и не являются
-//   ответом этого маршрута.'
+// summary: "Заменить или пропустить недоступную задачу"
+// description: "skip оставляет слот видимым, не считает задачу решённой и снимает блокировку следующего этапа. replace подбирает доступную задачу того же субпаттерна; без замены: 409 NO_REPLACEMENT. data содержит action, originalProblemId и необязательный replacementProblemId. Поля outcome/attemptedAt относятся к записи попытки решения и не являются ответом этого маршрута."
 // security:
 // - BearerAuth: []
-// consumes:
-// - application/json
-// parameters:
-// - name: problemID
-//   in: path
-//   required: true
-//   description: Числовой ID, а не prb_*/card_* строка.
-//   type: integer
-//   format: int64
-//   minimum: 1
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/RoadmapTaskAccessRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/RoadmapTaskAccessResolution'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '409':
-//     description: 'Конфликт состояния; коды: NO_REPLACEMENT'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/roadmapTaskAccess"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "409": {$ref: "#/responses/noReplacement"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) ResolveTaskAccess(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -458,68 +203,20 @@ func NewHandler(repo repository) *Handler {
 	return &Handler{repo: repo}
 }
 
-// swagger:operation GET /api/v1/me/roadmap get_api_v1_me_roadmap
+// swagger:operation GET /api/v1/me/roadmap Roadmap get_api_v1_me_roadmap
 //
 // ---
-// tags:
-// - Roadmap
-// summary: Получить активный персональный roadmap
-// operationId: get_api_v1_me_roadmap
-// description: Получить активный персональный roadmap.
+// summary: "Получить активный персональный roadmap"
+// description: "Получить активный персональный roadmap."
 // security:
 // - BearerAuth: []
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/RoadmapResponse'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/roadmap"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -546,96 +243,22 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Preview calculates a roadmap without persisting it. It powers the live
 // onboarding preview and the "rebuild future weeks" confirmation on /roadmap.
-// swagger:operation POST /api/v1/me/roadmap/preview post_api_v1_me_roadmap_preview
+// swagger:operation POST /api/v1/me/roadmap/preview Roadmap post_api_v1_me_roadmap_preview
 //
 // ---
-// tags:
-// - Roadmap
-// summary: Рассчитать roadmap без сохранения
-// operationId: post_api_v1_me_roadmap_preview
-// description: 'Рассчитывает план без изменения сохранённых данных. При отсутствии company evidence возвращается core-план.
-//   weeklyCapacity отсутствует в ConfigRequest этого коммита: передача поля отклоняется strict decoder с 400 VALIDATION_ERROR.
-//   Расчёт использует недельный темп по умолчанию 3. interviewDate проверяется на формат YYYY-MM-DD; ограничения строго
-//   позже сегодняшней даты в handler нет.'
+// summary: "Рассчитать roadmap без сохранения"
+// description: "Рассчитывает план без изменения сохранённых данных. При отсутствии company evidence возвращается core-план. weeklyCapacity отсутствует в ConfigRequest этого коммита: передача поля отклоняется strict decoder с 400 VALIDATION_ERROR. Расчёт использует недельный темп по умолчанию 3. interviewDate проверяется на формат YYYY-MM-DD; ограничения строго позже сегодняшней даты в handler нет."
 // security:
 // - BearerAuth: []
-// consumes:
-// - application/json
-// parameters:
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/RoadmapConfigRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/RoadmapResponse'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/roadmap"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Preview(w http.ResponseWriter, r *http.Request) {
 	h.mutate(w, r, false)
@@ -643,96 +266,22 @@ func (h *Handler) Preview(w http.ResponseWriter, r *http.Request) {
 
 // Put calculates and atomically persists the roadmap config, ordered
 // subpatterns and user target. Repeating the same request is deterministic.
-// swagger:operation PUT /api/v1/me/roadmap put_api_v1_me_roadmap
+// swagger:operation PUT /api/v1/me/roadmap Roadmap put_api_v1_me_roadmap
 //
 // ---
-// tags:
-// - Roadmap
-// summary: Рассчитать и сохранить roadmap
-// operationId: put_api_v1_me_roadmap
-// description: 'Сохраняет рассчитанный план и цель пользователя. Схема запроса совпадает с preview. weeklyCapacity
-//   отсутствует в ConfigRequest этого коммита: передача поля отклоняется strict decoder с 400 VALIDATION_ERROR. Расчёт
-//   использует недельный темп по умолчанию 3. interviewDate проверяется на формат YYYY-MM-DD; ограничения строго позже
-//   сегодняшней даты в handler нет.'
+// summary: "Рассчитать и сохранить roadmap"
+// description: "Сохраняет рассчитанный план и цель пользователя. Схема запроса совпадает с preview. weeklyCapacity отсутствует в ConfigRequest этого коммита: передача поля отклоняется strict decoder с 400 VALIDATION_ERROR. Расчёт использует недельный темп по умолчанию 3. interviewDate проверяется на формат YYYY-MM-DD; ограничения строго позже сегодняшней даты в handler нет."
 // security:
 // - BearerAuth: []
-// consumes:
-// - application/json
-// parameters:
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/RoadmapConfigRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/RoadmapResponse'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/roadmap"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Put(w http.ResponseWriter, r *http.Request) {
 	h.mutate(w, r, true)
@@ -796,51 +345,19 @@ func validateConfig(req ConfigRequest) (string, string) {
 // Delete handles DELETE /me/roadmap — clears the onboarding-set target so
 // the roadmap goes back to the empty "build your roadmap" state. Solve
 // history and progress are untouched; this only resets personalization.
-// swagger:operation DELETE /api/v1/me/roadmap delete_api_v1_me_roadmap
+// swagger:operation DELETE /api/v1/me/roadmap Roadmap delete_api_v1_me_roadmap
 //
 // ---
-// tags:
-// - Roadmap
-// summary: Сбросить персонализацию roadmap
-// operationId: delete_api_v1_me_roadmap
-// description: 'Сбрасывает персонализацию; история решений и повторений сохраняется. Успех: 204 без тела.'
+// summary: "Сбросить персонализацию roadmap"
+// description: "Сбрасывает персонализацию; история решений и повторений сохраняется. Успех: 204 без тела."
 // security:
 // - BearerAuth: []
 // responses:
-//   '204':
-//     description: Без тела ответа
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "204": {$ref: "#/responses/noContent"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())

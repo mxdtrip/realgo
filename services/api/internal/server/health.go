@@ -17,41 +17,14 @@ type healthHandler struct {
 
 // live reports that the process is up. It does not touch dependencies, so it
 // stays green during a transient Postgres or Redis outage.
-// swagger:operation GET /healthz get_healthz
+// swagger:operation GET /healthz Health get_healthz
 //
 // ---
-// tags:
-// - Health
-// summary: Проверить, что API запущен
-// operationId: get_healthz
-// description: Проверить, что API запущен.
+// summary: "Проверить, что API запущен"
+// description: "Проверить, что API запущен."
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: object
-//           properties:
-//             status:
-//               type: string
-//               enum:
-//               - ok
-//           required:
-//           - status
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/live"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *healthHandler) live(w http.ResponseWriter, _ *http.Request) {
 	response.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -59,49 +32,15 @@ func (h *healthHandler) live(w http.ResponseWriter, _ *http.Request) {
 
 // ready reports whether the service can serve traffic: both Postgres and Redis
 // must answer a ping.
-// swagger:operation GET /readyz get_readyz
+// swagger:operation GET /readyz Health get_readyz
 //
 // ---
-// tags:
-// - Health
-// summary: Проверить доступность PostgreSQL и Redis
-// operationId: get_readyz
-// description: Проверить доступность PostgreSQL и Redis.
+// summary: "Проверить доступность PostgreSQL и Redis"
+// description: "Проверить доступность PostgreSQL и Redis."
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: object
-//           properties:
-//             status:
-//               type: string
-//               enum:
-//               - ready
-//           required:
-//           - status
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: postgres_unavailable, redis_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/ready"}
+//   "503": {$ref: "#/responses/dependenciesUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *healthHandler) ready(w http.ResponseWriter, r *http.Request) {
 	if h.pg == nil {

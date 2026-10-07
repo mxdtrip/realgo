@@ -49,3 +49,49 @@ func TestNormalizePointerSliceItemsAndExtensionSpelling(t *testing.T) {
 		t.Fatal("malformed annotation was silently discarded")
 	}
 }
+
+func TestNormalizeTypedResponseMetadataAndSchemaReference(t *testing.T) {
+	payload := map[string]any{"$ref": "#/definitions/Payload"}
+	body := map[string]any{
+		"properties":                map[string]any{"data": payload},
+		"x-doc-response-extensions": map[string]any{"x-sse": map[string]any{"example": "event: done"}},
+	}
+	response := map[string]any{"schema": body}
+	if err := normalize(response); err != nil {
+		t.Fatal(err)
+	}
+	if response["x-sse"] == nil || payload["$ref"] != "#/definitions/Payload" {
+		t.Fatal("response metadata or typed payload was lost")
+	}
+	if _, ok := body["x-doc-response-extensions"]; ok {
+		t.Fatal("internal marker leaked into schema")
+	}
+	if err := normalize(map[string]any{"schema": map[string]any{
+		"x-doc-response-extensions": map[string]any{"properties": "invalid"},
+	}}); err == nil {
+		t.Fatal("response marker accepted schema properties")
+	}
+	browser := map[string]any{"$ref": "#/definitions/Client", "x-doc-schema-ref": "#/definitions/BrowserClient"}
+	if err := normalize(browser); err != nil {
+		t.Fatal(err)
+	}
+	if browser["$ref"] != "#/definitions/BrowserClient" || len(browser) != 1 {
+		t.Fatalf("reference = %#v", browser)
+	}
+}
+
+func TestAlternativeBodyExampleComesFromDTO(t *testing.T) {
+	example := map[string]any{"description": "Report"}
+	body := map[string]any{"schema": map[string]any{"$ref": "#/definitions/Report"}}
+	spec := map[string]any{
+		"definitions": map[string]any{"Report": map[string]any{"example": example}},
+		"paths": map[string]any{"/reports": map[string]any{
+			"post": map[string]any{"x-json-request-body": body},
+			"get":  map[string]any{},
+		}},
+	}
+	copyAlternativeBodyExamples(spec)
+	if body["example"].(map[string]any)["description"] != "Report" {
+		t.Fatal("DTO example was not copied to the alternative request body")
+	}
+}

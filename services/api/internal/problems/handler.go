@@ -48,109 +48,20 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Post("/{problemId}/save", h.Save)
 }
 
-// swagger:operation GET /api/v1/me/problems get_api_v1_me_problems
+// swagger:operation GET /api/v1/me/problems Problems get_api_v1_me_problems
 //
 // ---
-// tags:
-// - Problems
-// summary: Получить задачи пользователя с пагинацией
-// operationId: get_api_v1_me_problems
-// description: 'Возвращает задачи пользователя. POST /me/problems в текущем router не зарегистрирован: для сохранения
-//   существующей задачи используйте /{problemId}/save. Это задачи в пользовательской области видимости: есть user_problem_progress,
-//   задача создана этим пользователем или есть его расписание повторения. Полный глобальный каталог не возвращается.
-//   Сортировка: createdAt DESC, id DESC. status=solved не поддерживается и возвращает 400 VALIDATION_ERROR; разрешены
-//   saved/reviewing/mastered/archived. Статус solved из БД здесь отображается как mastered.'
+// summary: "Получить задачи пользователя с пагинацией"
+// description: "Возвращает задачи пользователя. POST /me/problems в текущем router не зарегистрирован: для сохранения существующей задачи используйте /{problemId}/save. Это задачи в пользовательской области видимости: есть user_problem_progress, задача создана этим пользователем или есть его расписание повторения. Полный глобальный каталог не возвращается. Сортировка: createdAt DESC, id DESC. status=solved не поддерживается и возвращает 400 VALIDATION_ERROR; разрешены saved/reviewing/mastered/archived. Статус solved из БД здесь отображается как mastered."
 // security:
 // - BearerAuth: []
-// parameters:
-// - name: status
-//   in: query
-//   required: false
-//   description: Фильтр состояния задачи.
-//   type: string
-//   enum:
-//   - saved
-//   - reviewing
-//   - mastered
-//   - archived
-// - name: platform
-//   in: query
-//   required: false
-//   description: Фильтр платформы.
-//   type: string
-//   enum:
-//   - leetcode
-//   - hackerrank
-//   - codeforces
-//   - geeksforgeeks
-//   - custom
-// - name: limit
-//   in: query
-//   required: false
-//   description: 'По умолчанию 50. Значения выше 100 обрезаются до 100. Нечисловое или неположительное значение: 400.'
-//   type: integer
-//   default: 50
-//   minimum: 1
-// - name: cursor
-//   in: query
-//   required: false
-//   description: 'Непрозрачный курсор из meta.nextCursor. При отсутствии ключа следующей страницы нет. Невалидный
-//     курсор: 400.'
-//   type: string
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: array
-//           items:
-//             $ref: '#/definitions/ProblemsProblem'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/problemList"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -179,84 +90,21 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /me/problems/{problemId}
-// swagger:operation GET /api/v1/me/problems/{problemId} get_api_v1_me_problems_problemId
+// swagger:operation GET /api/v1/me/problems/{problemId} Problems get_api_v1_me_problems_problemId
 //
 // ---
-// tags:
-// - Problems
-// summary: Получить задачу пользователя по ID
-// operationId: get_api_v1_me_problems_problemId
-// description: Получить задачу пользователя по ID.
+// summary: "Получить задачу пользователя по ID"
+// description: "Получить задачу пользователя по ID."
 // security:
 // - BearerAuth: []
-// parameters:
-// - name: problemId
-//   in: path
-//   required: true
-//   description: Числовой ID, а не prb_*/card_* строка. Handler проверяет разбор int64, но не проверяет >0; отсутствующий
-//     ID приводит к 404.
-//   type: integer
-//   format: int64
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/ProblemsProblemDetail'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/problemDetail"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -289,89 +137,21 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /me/problems/{problemId}/save
-// swagger:operation POST /api/v1/me/problems/{problemId}/save post_api_v1_me_problems_problemId_save
+// swagger:operation POST /api/v1/me/problems/{problemId}/save Problems post_api_v1_me_problems_problemId_save
 //
 // ---
-// tags:
-// - Problems
-// summary: Сохранить задачу в профиль
-// operationId: post_api_v1_me_problems_problemId_save
-// description: Сохраняет существующую задачу в профиль; JSON-тело не требуется.
+// summary: "Сохранить задачу в профиль"
+// description: "Сохраняет существующую задачу в профиль; JSON-тело не требуется."
 // security:
 // - BearerAuth: []
-// parameters:
-// - name: problemId
-//   in: path
-//   required: true
-//   description: Числовой ID, а не prb_*/card_* строка. Handler проверяет разбор int64, но не проверяет >0; отсутствующий
-//     ID приводит к 404.
-//   type: integer
-//   format: int64
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: object
-//           properties:
-//             status:
-//               type: string
-//           required:
-//           - status
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/problemSaved"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())

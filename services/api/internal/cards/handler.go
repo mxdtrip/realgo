@@ -64,99 +64,20 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Post("/{cardId}/rate", h.Rate)
 }
 
-// swagger:operation GET /api/v1/me/cards get_api_v1_me_cards
+// swagger:operation GET /api/v1/me/cards Cards get_api_v1_me_cards
 //
 // ---
-// tags:
-// - Cards
-// summary: Получить карточки с пагинацией
-// operationId: get_api_v1_me_cards
-// description: Следующий cursor возвращается только если есть следующая страница; meta.nextCursor при nil опускается.
-//   Формат ID — int64.
+// summary: "Получить карточки с пагинацией"
+// description: "Следующий cursor возвращается только если есть следующая страница; meta.nextCursor при nil опускается. Формат ID — int64."
 // security:
 // - BearerAuth: []
-// parameters:
-// - name: type
-//   in: query
-//   required: false
-//   description: Фильтр типа карточек.
-//   type: string
-//   enum:
-//   - pattern_recognition
-//   - algorithm_mechanics
-//   - edge_case
-// - name: patternCode
-//   in: query
-//   required: false
-//   description: Фильтр кода паттерна.
-//   type: string
-// - name: limit
-//   in: query
-//   required: false
-//   description: 'По умолчанию 50. Значения выше 100 обрезаются до 100. Нечисловое или неположительное значение: 400.'
-//   type: integer
-//   default: 50
-//   minimum: 1
-// - name: cursor
-//   in: query
-//   required: false
-//   description: 'Непрозрачный курсор из meta.nextCursor. При отсутствии ключа следующей страницы нет. Невалидный
-//     курсор: 400.'
-//   type: string
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           type: array
-//           items:
-//             $ref: '#/definitions/CardsCard'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/cardList"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -183,94 +104,20 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	response.JSONWithMeta(w, http.StatusOK, items, response.Meta{NextCursor: nextCursor})
 }
 
-// swagger:operation GET /api/v1/me/cards/session get_api_v1_me_cards_session
+// swagger:operation GET /api/v1/me/cards/session Cards get_api_v1_me_cards_session
 //
 // ---
-// tags:
-// - Cards
-// summary: Получить сессию повторения карточек
-// operationId: get_api_v1_me_cards_session
-// description: Получить сессию повторения карточек. GET только выбирает карточки. scope=practice сам по себе не отключает
-//   изменения расписания у POST /me/cards/{cardId}/rate. Для свободной тренировки без изменения FSRS клиент должен
-//   хранить локальный результат и не отправлять этот POST.
+// summary: "Получить сессию повторения карточек"
+// description: "Получить сессию повторения карточек. GET только выбирает карточки. scope=practice сам по себе не отключает изменения расписания у POST /me/cards/{cardId}/rate. Для свободной тренировки без изменения FSRS клиент должен хранить локальный результат и не отправлять этот POST."
 // security:
 // - BearerAuth: []
-// parameters:
-// - name: scope
-//   in: query
-//   required: false
-//   description: 'Область сессии: просроченные, сложные, все или практика.'
-//   type: string
-//   enum:
-//   - due
-//   - hard_normal
-//   - all
-//   - practice
-//   default: due
-// - name: patternCode
-//   in: query
-//   required: false
-//   description: Фильтр кода паттерна.
-//   type: string
-// - name: limit
-//   in: query
-//   required: false
-//   description: 'По умолчанию 20. Значения выше 100 обрезаются до 100. Нечисловое или неположительное значение: 400.'
-//   type: integer
-//   default: 20
-//   minimum: 1
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/CardsSession'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/cardSession"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Session(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -297,60 +144,19 @@ func (h *Handler) Session(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, session)
 }
 
-// swagger:operation GET /api/v1/me/cards/due-summary get_api_v1_me_cards_due_summary
+// swagger:operation GET /api/v1/me/cards/due-summary Cards get_api_v1_me_cards_due_summary
 //
 // ---
-// tags:
-// - Cards
-// summary: Получить сводку просроченных карточек
-// operationId: get_api_v1_me_cards_due_summary
-// description: Получить сводку просроченных карточек.
+// summary: "Получить сводку просроченных карточек"
+// description: "Получить сводку просроченных карточек."
 // security:
 // - BearerAuth: []
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/CardsDueSummary'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/cardDueSummary"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) DueSummary(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -370,103 +176,22 @@ func (h *Handler) DueSummary(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, summary)
 }
 
-// swagger:operation POST /api/v1/me/cards/{cardId}/rate post_api_v1_me_cards_cardId_rate
+// swagger:operation POST /api/v1/me/cards/{cardId}/rate Cards post_api_v1_me_cards_cardId_rate
 //
 // ---
-// tags:
-// - Cards
-// summary: Оценить повторение карточки
-// operationId: post_api_v1_me_cards_cardId_rate
-// description: Оценка hard возвращает repeatInCurrentSession=true. reviewedAt обязателен в RFC3339; расписание рассчитывается
-//   FSRS. Текущий сервис всегда создаёт/обновляет расписание FSRS; scope из sessionId не проверяется. sessionId применяется
-//   только к sessionProgress. Сервер возвращает repeatInCurrentSession=true на каждую hard-оценку; ограничение числа
-//   перепоказов из ТЗ реализуется клиентом.
+// summary: "Оценить повторение карточки"
+// description: "Оценка hard возвращает repeatInCurrentSession=true. reviewedAt обязателен в RFC3339; расписание рассчитывается FSRS. Текущий сервис всегда создаёт/обновляет расписание FSRS; scope из sessionId не проверяется. sessionId применяется только к sessionProgress. Сервер возвращает repeatInCurrentSession=true на каждую hard-оценку; ограничение числа перепоказов из ТЗ реализуется клиентом."
 // security:
 // - BearerAuth: []
-// consumes:
-// - application/json
-// parameters:
-// - name: cardId
-//   in: path
-//   required: true
-//   description: Числовой ID, а не prb_*/card_* строка.
-//   type: integer
-//   format: int64
-//   minimum: 1
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/CardsRateRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/CardsRateResult'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/cardRated"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Rate(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -510,85 +235,21 @@ func (h *Handler) Rate(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, result)
 }
 
-// swagger:operation POST /api/v1/me/cards post_api_v1_me_cards
+// swagger:operation POST /api/v1/me/cards Cards post_api_v1_me_cards
 //
 // ---
-// tags:
-// - Cards
-// summary: Создать пользовательскую карточку
-// operationId: post_api_v1_me_cards
-// description: Создать пользовательскую карточку.
+// summary: "Создать пользовательскую карточку"
+// description: "Создать пользовательскую карточку."
 // security:
 // - BearerAuth: []
-// consumes:
-// - application/json
-// parameters:
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/CardsCreateCardRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
 // responses:
-//   '201':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/CardsCardDetail'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "201": {$ref: "#/responses/cardDetail"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -637,84 +298,21 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusCreated, card)
 }
 
-// swagger:operation GET /api/v1/me/cards/{cardId} get_api_v1_me_cards_cardId
+// swagger:operation GET /api/v1/me/cards/{cardId} Cards get_api_v1_me_cards_cardId
 //
 // ---
-// tags:
-// - Cards
-// summary: Получить карточку по ID
-// operationId: get_api_v1_me_cards_cardId
-// description: Получить карточку по ID.
+// summary: "Получить карточку по ID"
+// description: "Получить карточку по ID."
 // security:
 // - BearerAuth: []
-// parameters:
-// - name: cardId
-//   in: path
-//   required: true
-//   description: Числовой ID, а не prb_*/card_* строка.
-//   type: integer
-//   format: int64
-//   minimum: 1
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/CardsCardDetail'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/cardDetail"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -746,101 +344,22 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, card)
 }
 
-// swagger:operation PATCH /api/v1/me/cards/{cardId} patch_api_v1_me_cards_cardId
+// swagger:operation PATCH /api/v1/me/cards/{cardId} Cards patch_api_v1_me_cards_cardId
 //
 // ---
-// tags:
-// - Cards
-// summary: Изменить пользовательскую карточку
-// operationId: patch_api_v1_me_cards_cardId
-// description: Редактируются карточки пользователя; недоступная карточка возвращает 404. Null трактуется так же, как
-//   отсутствие поля.
+// summary: "Изменить пользовательскую карточку"
+// description: "Редактируются карточки пользователя; недоступная карточка возвращает 404. Null трактуется так же, как отсутствие поля."
 // security:
 // - BearerAuth: []
-// consumes:
-// - application/json
-// parameters:
-// - name: cardId
-//   in: path
-//   required: true
-//   description: Числовой ID, а не prb_*/card_* строка.
-//   type: integer
-//   format: int64
-//   minimum: 1
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/CardsUpdateCardRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/CardsCardDetail'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/cardDetail"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -901,75 +420,21 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, card)
 }
 
-// swagger:operation DELETE /api/v1/me/cards/{cardId} delete_api_v1_me_cards_cardId
+// swagger:operation DELETE /api/v1/me/cards/{cardId} Cards delete_api_v1_me_cards_cardId
 //
 // ---
-// tags:
-// - Cards
-// summary: Удалить пользовательскую карточку
-// operationId: delete_api_v1_me_cards_cardId
-// description: 'Успех: 204 без JSON-тела.'
+// summary: "Удалить пользовательскую карточку"
+// description: "Успех: 204 без JSON-тела."
 // security:
 // - BearerAuth: []
-// parameters:
-// - name: cardId
-//   in: path
-//   required: true
-//   description: Числовой ID, а не prb_*/card_* строка.
-//   type: integer
-//   format: int64
-//   minimum: 1
 // responses:
-//   '204':
-//     description: Без тела ответа
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "204": {$ref: "#/responses/noContent"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())

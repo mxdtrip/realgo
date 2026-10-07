@@ -4,13 +4,7 @@ package reports
 // swagger:model ReportsBrowserClient
 // swagger:additionalProperties false
 type SwaggerBrowserClient struct {
-	// Required: true
-	// Min Length: 1
-	// Max Length: 80
-	Name string `json:"name"`
-	// Required: false
-	// Max Length: 80
-	Version string `json:"version"`
+	Client
 	// Required: true
 	// Min Length: 1
 	// Max Length: 80

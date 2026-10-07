@@ -40,68 +40,19 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 }
 
 // GET /me/quiz/session
-// swagger:operation GET /api/v1/me/quiz/session get_api_v1_me_quiz_session
+// swagger:operation GET /api/v1/me/quiz/session Quiz get_api_v1_me_quiz_session
 //
 // ---
-// tags:
-// - Quiz
-// summary: Получить вопросы сессии квиза
-// operationId: get_api_v1_me_quiz_session
-// description: Получить вопросы сессии квиза.
+// summary: "Получить вопросы сессии квиза"
+// description: "Получить вопросы сессии квиза."
 // security:
 // - BearerAuth: []
-// parameters:
-// - name: limit
-//   in: query
-//   required: false
-//   description: По умолчанию 10. Значения выше 30 обрезаются до 30. Нечисловое или неположительное значение заменяется
-//     значением по умолчанию.
-//   type: integer
-//   default: 10
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/QuizSession'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/quizSession"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) session(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -130,108 +81,23 @@ func (h *Handler) session(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /me/quiz/{questionId}/answer
-// swagger:operation POST /api/v1/me/quiz/{questionId}/answer post_api_v1_me_quiz_questionId_answer
+// swagger:operation POST /api/v1/me/quiz/{questionId}/answer Quiz post_api_v1_me_quiz_questionId_answer
 //
 // ---
-// tags:
-// - Quiz
-// summary: Ответить на вопрос квиза
-// operationId: post_api_v1_me_quiz_questionId_answer
-// description: option — индекс в options с нуля. Повторный ответ на этот вопрос возвращает 409 CONFLICT. Запрос {}
-//   трактуется как option=0.
+// summary: "Ответить на вопрос квиза"
+// description: "option — индекс в options с нуля. Повторный ответ на этот вопрос возвращает 409 CONFLICT. Запрос {} трактуется как option=0."
 // security:
 // - BearerAuth: []
-// consumes:
-// - application/json
-// parameters:
-// - name: questionId
-//   in: path
-//   required: true
-//   description: Числовой ID, а не prb_*/card_* строка.
-//   type: integer
-//   format: int64
-// - name: body
-//   in: body
-//   required: true
-//   schema:
-//     $ref: '#/definitions/QuizAnswerRequest'
-//   description: Один JSON-объект; неизвестные поля отклоняются. По умолчанию предел 1 MiB.
 // responses:
-//   '200':
-//     description: Успешный ответ
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       type: object
-//       properties:
-//         data:
-//           $ref: '#/definitions/QuizAnswerResult'
-//         meta:
-//           $ref: '#/definitions/CommonMeta'
-//       required:
-//       - data
-//   '400':
-//     description: 'Невалидный запрос; коды: VALIDATION_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '401':
-//     description: 'Отсутствует/истёк access token либо неверные credentials; коды: INVALID_TOKEN, UNAUTHORIZED'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '404':
-//     description: 'Сущность не найдена или недоступна; коды: NOT_FOUND'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '409':
-//     description: 'Конфликт состояния; коды: CONFLICT'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '413':
-//     description: 'Превышен размер тела запроса; коды: REQUEST_TOO_LARGE'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '500':
-//     description: 'Внутренняя ошибка; коды: INTERNAL_ERROR'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '503':
-//     description: 'Сервис или зависимость временно недоступны; коды: auth_unavailable'
-//     headers:
-//       X-Request-Id:
-//         description: Идентификатор запроса; также доступен в meta.requestId для JSON.
-//         type: string
-//     schema:
-//       $ref: '#/definitions/ErrorEnvelope'
-//   '504':
-//     description: Таймаут middleware (60 секунд); стандартная JSON-обёртка не гарантируется.
-// produces:
-// - application/json
+//   "200": {$ref: "#/responses/quizAnswered"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "409": {$ref: "#/responses/cardReviewConflict"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) answer(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
