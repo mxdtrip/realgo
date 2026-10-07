@@ -23,36 +23,26 @@ const (
 //
 // swagger:model PatternsAtlasResponse
 type AtlasResponse struct {
-	// TaxonomyVersion is the taxonomy_version JSON field.
-	//
 	// Required: true
 	TaxonomyVersion string `json:"taxonomy_version"`
-	// Tools is the tools JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Tools []AtlasTool `json:"tools"`
-	// Families is the families JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Families []AtlasFamily `json:"families"`
-	// Subpatterns is the subpatterns JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Subpatterns []AtlasSubpattern `json:"subpatterns"`
-	// Company is the company JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
@@ -65,20 +55,12 @@ type AtlasResponse struct {
 //
 // swagger:model PatternsAtlasTool
 type AtlasTool struct {
-	// Code is the code JSON field.
-	//
 	// Required: true
 	Code string `json:"code"`
-	// Name is the name JSON field.
-	//
 	// Required: true
 	Name string `json:"name"`
-	// Position is the position JSON field.
-	//
 	// Required: true
 	Position int `json:"position"`
-	// SubpatternCodes is the subpattern_codes JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -91,24 +73,14 @@ type AtlasTool struct {
 //
 // swagger:model PatternsAtlasFamily
 type AtlasFamily struct {
-	// Code is the code JSON field.
-	//
 	// Required: true
 	Code string `json:"code"`
-	// Name is the name JSON field.
-	//
 	// Required: true
 	Name string `json:"name"`
-	// Description is the description JSON field.
-	//
 	// Required: true
 	Description string `json:"description"`
-	// Position is the position JSON field.
-	//
 	// Required: true
 	Position int `json:"position"`
-	// SubpatternCodes is the subpattern_codes JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -121,44 +93,28 @@ type AtlasFamily struct {
 //
 // swagger:model PatternsAtlasSubpattern
 type AtlasSubpattern struct {
-	// Code is the code JSON field.
-	//
 	// Required: true
 	Code string `json:"code"`
-	// Name is the name JSON field.
-	//
 	// Required: true
 	Name string `json:"name"`
-	// Position is the position JSON field.
-	//
 	// Required: true
 	Position int `json:"position"`
-	// FamilyCodes is the family_codes JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	FamilyCodes []string `json:"family_codes"`
-	// ToolCodes is the tool_codes JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	ToolCodes []string `json:"tool_codes"`
-	// Stats is the stats JSON field.
-	//
 	// Required: true
 	Stats SubpatternStats `json:"stats"`
-	// Mastery is the mastery JSON field.
-	//
 	// Required: true
 	Mastery Mastery `json:"mastery"`
-	// Relevance is the relevance JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
@@ -174,43 +130,25 @@ type AtlasSubpattern struct {
 //
 // swagger:model PatternsSubpatternStats
 type SubpatternStats struct {
-	// ProblemCount is the problem_count JSON field.
-	//
 	// Required: true
 	ProblemCount int `json:"problem_count"`
-	// SolvedCount is the solved_count JSON field.
-	//
 	// Required: true
 	SolvedCount int `json:"solved_count"`
-	// InProgressCount is the in_progress_count JSON field.
-	//
 	// Required: true
 	InProgressCount int `json:"in_progress_count"`
-	// DueCount is the due_count JSON field.
-	//
 	// Required: true
 	DueCount int `json:"due_count"`
-	// CardCount is the card_count JSON field.
-	//
 	// Required: true
 	CardCount int `json:"card_count"`
-	// AttemptCount is the attempt_count JSON field.
-	//
 	// Required: true
 	AttemptCount int `json:"attempt_count"`
-	// HardCount is the hard_count JSON field.
-	//
 	// Required: true
 	HardCount int `json:"hard_count"`
 	// DifficultyCounts is the catalog-wide easy/medium/hard/unknown split of
 	// the subpattern's practice set (same for every user).
-	// DifficultyCounts is the difficulty_counts JSON field.
-	//
 	// Required: false
 	DifficultyCounts map[string]int `json:"difficulty_counts,omitempty"`
 	// swagger:name next_review_at
-	// NextReviewAt is the next_review_at JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
@@ -219,8 +157,6 @@ type SubpatternStats struct {
 	// swagger:strfmt date-time
 	NextReviewAt *time.Time `json:"next_review_at,omitempty"`
 	// swagger:name last_solved_at
-	// LastSolvedAt is the last_solved_at JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
@@ -234,17 +170,11 @@ type SubpatternStats struct {
 //
 // swagger:model PatternsMastery
 type Mastery struct {
-	// Status is the status JSON field.
-	//
 	// Required: true
 	// Enum: ["not_started", "learning", "weak", "unstable", "strong", "mastered"]
 	Status string `json:"status"`
-	// Percent is the percent JSON field.
-	//
 	// Required: true
 	Percent int `json:"percent"`
-	// Components is the components JSON field.
-	//
 	// Required: true
 	Components MasteryComponents `json:"components"`
 }
@@ -256,12 +186,8 @@ type Mastery struct {
 //
 // swagger:model PatternsMasteryComponents
 type MasteryComponents struct {
-	// Practice is the practice JSON field.
-	//
 	// Required: true
 	Practice int `json:"practice"`
-	// Retention is the retention JSON field.
-	//
 	// Required: true
 	Retention int `json:"retention"`
 }
@@ -308,28 +234,16 @@ type AtlasCompanyOverlay struct {
 //
 // swagger:model PatternsAtlasCoverage
 type AtlasCoverage struct {
-	// RelevantSubpatterns is the relevant_subpatterns JSON field.
-	//
 	// Required: true
 	RelevantSubpatterns int `json:"relevant_subpatterns"`
-	// Strong is the strong JSON field.
-	//
 	// Required: true
 	Strong int `json:"strong"`
-	// Unstable is the unstable JSON field.
-	//
 	// Required: true
 	Unstable int `json:"unstable"`
-	// Weak is the weak JSON field.
-	//
 	// Required: true
 	Weak int `json:"weak"`
-	// NotStarted is the not_started JSON field.
-	//
 	// Required: true
 	NotStarted int `json:"not_started"`
-	// TopGaps is the top_gaps JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -342,20 +256,12 @@ type AtlasCoverage struct {
 //
 // swagger:model PatternsAtlasGap
 type AtlasGap struct {
-	// Code is the code JSON field.
-	//
 	// Required: true
 	Code string `json:"code"`
-	// Name is the name JSON field.
-	//
 	// Required: true
 	Name string `json:"name"`
-	// Relevance is the relevance JSON field.
-	//
 	// Required: true
 	Relevance string `json:"relevance"`
-	// MasteryPercent is the mastery_percent JSON field.
-	//
 	// Required: true
 	MasteryPercent int `json:"mastery_percent"`
 }
@@ -369,24 +275,14 @@ type AtlasGap struct {
 // swagger:model PatternsAtlasRelevantProblem
 type AtlasRelevantProblem struct {
 	PracticeProblem
-	// SubpatternCode is the subpattern_code JSON field.
-	//
 	// Required: true
 	SubpatternCode string `json:"subpattern_code"`
-	// SubpatternName is the subpattern_name JSON field.
-	//
 	// Required: true
 	SubpatternName string `json:"subpattern_name"`
-	// EvidenceCount is the evidence_count JSON field.
-	//
 	// Required: true
 	EvidenceCount int `json:"evidence_count"`
-	// LastSeenAt is the last_seen_at JSON field.
-	//
 	// Required: false
 	LastSeenAt string `json:"last_seen_at,omitempty"`
-	// SourceType is the source_type JSON field.
-	//
 	// Required: true
 	SourceType string `json:"source_type"`
 }
@@ -395,24 +291,14 @@ type AtlasRelevantProblem struct {
 //
 // swagger:model PatternsAtlasCompany
 type AtlasCompany struct {
-	// Code is the code JSON field.
-	//
 	// Required: true
 	Code string `json:"code"`
-	// Name is the name JSON field.
-	//
 	// Required: true
 	Name string `json:"name"`
-	// SubpatternCount is the subpattern_count JSON field.
-	//
 	// Required: true
 	SubpatternCount int `json:"subpattern_count"`
-	// DemoOnly is the demo_only JSON field.
-	//
 	// Required: true
 	DemoOnly bool `json:"demo_only"`
-	// LastSeenAt is the last_seen_at JSON field.
-	//
 	// Required: false
 	LastSeenAt string `json:"last_seen_at,omitempty"`
 }
@@ -422,12 +308,8 @@ type AtlasCompany struct {
 //
 // swagger:model PatternsNodeRef
 type NodeRef struct {
-	// Code is the code JSON field.
-	//
 	// Required: true
 	Code string `json:"code"`
-	// Name is the name JSON field.
-	//
 	// Required: true
 	Name string `json:"name"`
 }
@@ -437,12 +319,8 @@ type NodeRef struct {
 //
 // swagger:model PatternsContrastPair
 type ContrastPair struct {
-	// Title is the title JSON field.
-	//
 	// Required: true
 	Title string `json:"title"`
-	// Note is the note JSON field.
-	//
 	// Required: true
 	Note string `json:"note"`
 }
@@ -491,21 +369,13 @@ type LearningMaterial struct {
 //
 // swagger:model PatternsCardSummary
 type CardSummary struct {
-	// ID is the id JSON field.
-	//
 	// Required: true
 	ID int64 `json:"id"`
-	// Type is the type JSON field.
-	//
 	// Required: true
 	Type string `json:"type"`
-	// Question is the question JSON field.
-	//
 	// Required: true
 	Question string `json:"question"`
 	// swagger:name next_review_at
-	// NextReviewAt is the next_review_at JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
@@ -513,8 +383,6 @@ type CardSummary struct {
 	// ---
 	// swagger:strfmt date-time
 	NextReviewAt *time.Time `json:"next_review_at,omitempty"`
-	// LastRating is the last_rating JSON field.
-	//
 	// Required: false
 	LastRating string `json:"last_rating,omitempty"`
 }
@@ -523,41 +391,23 @@ type CardSummary struct {
 //
 // swagger:model PatternsPracticeProblem
 type PracticeProblem struct {
-	// ID is the id JSON field.
-	//
 	// Required: true
 	ID int64 `json:"id"`
-	// Title is the title JSON field.
-	//
 	// Required: true
 	Title string `json:"title"`
-	// URL is the url JSON field.
-	//
 	// Required: true
 	URL string `json:"url"`
-	// Difficulty is the difficulty JSON field.
-	//
 	// Required: true
 	Difficulty string `json:"difficulty"`
-	// Tier is the tier JSON field.
-	//
 	// Required: false
 	Tier string `json:"tier,omitempty"`
-	// Status is the status JSON field.
-	//
 	// Required: true
 	Status string `json:"status"`
-	// Platform is the platform JSON field.
-	//
 	// Required: false
 	Platform string `json:"platform,omitempty"`
-	// Rating is the rating JSON field.
-	//
 	// Required: false
 	Rating string `json:"rating,omitempty"`
 	// swagger:name solved_at
-	// SolvedAt is the solved_at JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
@@ -566,8 +416,6 @@ type PracticeProblem struct {
 	// swagger:strfmt date-time
 	SolvedAt *time.Time `json:"solved_at,omitempty"`
 	// swagger:name next_review_at
-	// NextReviewAt is the next_review_at JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
@@ -582,16 +430,10 @@ type PracticeProblem struct {
 // swagger:model PatternsCompanyPracticeProblem
 type CompanyPracticeProblem struct {
 	PracticeProblem
-	// EvidenceCount is the evidence_count JSON field.
-	//
 	// Required: true
 	EvidenceCount int `json:"evidence_count"`
-	// LastSeenAt is the last_seen_at JSON field.
-	//
 	// Required: false
 	LastSeenAt string `json:"last_seen_at,omitempty"`
-	// SourceType is the source_type JSON field.
-	//
 	// Required: true
 	SourceType string `json:"source_type"`
 }
@@ -600,12 +442,8 @@ type CompanyPracticeProblem struct {
 //
 // swagger:model PatternsCompanyPracticeGroup
 type CompanyPracticeGroup struct {
-	// Company is the company JSON field.
-	//
 	// Required: true
 	Company NodeRef `json:"company"`
-	// Problems is the problems JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -618,12 +456,8 @@ type CompanyPracticeGroup struct {
 //
 // swagger:model PatternsRelevantCompany
 type RelevantCompany struct {
-	// Code is the code JSON field.
-	//
 	// Required: true
 	Code string `json:"code"`
-	// Name is the name JSON field.
-	//
 	// Required: true
 	Name string `json:"name"`
 	CompanyRelevance
@@ -636,54 +470,36 @@ type RelevantCompany struct {
 //
 // swagger:model PatternsNodeDetail
 type NodeDetail struct {
-	// Code is the code JSON field.
-	//
 	// Required: true
 	Code string `json:"code"`
-	// Name is the name JSON field.
-	//
 	// Required: true
 	Name string `json:"name"`
-	// Kind is the kind JSON field.
-	//
 	// Required: true
 	Kind string `json:"kind"`
-	// Description is the description JSON field.
-	//
 	// Required: true
 	Description string `json:"description"`
-	// TaxonomyVersion is the taxonomy_version JSON field.
-	//
 	// Required: false
 	TaxonomyVersion string `json:"taxonomy_version,omitempty"`
 
 	// Family-level methodology (pre-atlas content, still shown for families).
-	// Techniques is the techniques JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Techniques []string `json:"techniques"`
-	// RecognitionSymptoms is the recognition_symptoms JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	RecognitionSymptoms []string `json:"recognition_symptoms"`
-	// Checklist is the checklist JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Checklist []string `json:"checklist"`
-	// ExampleProblems is the example_problems JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -691,24 +507,18 @@ type NodeDetail struct {
 	// ---
 	ExampleProblems []ExampleProblem `json:"example_problems"`
 
-	// Families is the families JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Families []NodeRef `json:"families,omitempty"`
-	// Tools is the tools JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Tools []NodeRef `json:"tools,omitempty"`
-	// Subpatterns is the subpatterns JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
@@ -716,56 +526,42 @@ type NodeDetail struct {
 	// ---
 	Subpatterns []NodeRef `json:"subpatterns,omitempty"`
 
-	// Material is the material JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Material *LearningMaterial `json:"material,omitempty"`
-	// Stats is the stats JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Stats *SubpatternStats `json:"stats,omitempty"`
-	// Mastery is the mastery JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Mastery *Mastery `json:"mastery,omitempty"`
-	// Cards is the cards JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Cards []CardSummary `json:"cards"`
-	// Practice is the practice JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Practice []PracticeProblem `json:"practice"`
-	// CompanyPractice is the company_practice JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	CompanyPractice []CompanyPracticeGroup `json:"company_practice"`
-	// RelevantCompanies is the relevant_companies JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---

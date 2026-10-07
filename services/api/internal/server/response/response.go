@@ -28,12 +28,8 @@ type envelope struct {
 //
 // swagger:model CommonMeta
 type Meta struct {
-	// RequestID is the requestId JSON field.
-	//
 	// Required: false
 	RequestID string `json:"requestId,omitempty"`
-	// NextCursor is the nextCursor JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
@@ -47,16 +43,10 @@ type Meta struct {
 //
 // swagger:model CommonError
 type Error struct {
-	// Code is the code JSON field.
-	//
 	// Required: true
 	Code string `json:"code"`
-	// Message is the message JSON field.
-	//
 	// Required: true
 	Message string `json:"message"`
-	// Details is the details JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---

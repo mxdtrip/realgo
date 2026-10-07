@@ -20,8 +20,6 @@ type AssistantHintRequest struct {
 	// Required: true
 	// Enum: ["leetcode", "geeksforgeeks", "hackerrank", "codeforces"]
 	Platform string `json:"platform"`
-	// TaskTitle is the taskTitle JSON field.
-	//
 	// Required: true
 	// Min Length: 1
 	TaskTitle string `json:"taskTitle"`
@@ -30,13 +28,9 @@ type AssistantHintRequest struct {
 	// Required: true
 	// Min Length: 1
 	TaskURL string `json:"taskUrl"`
-	// PlatformTaskSlug is the platformTaskSlug JSON field.
-	//
 	// Required: true
 	// Min Length: 1
 	PlatformTaskSlug string `json:"platformTaskSlug"`
-	// Difficulty is the difficulty JSON field.
-	//
 	// Required: false
 	Difficulty string `json:"difficulty"`
 	// Используются первые 12 значений после trim и удаления пустых/дубликатов.
@@ -78,13 +72,9 @@ type AssistantHintRequest struct {
 //
 // swagger:model AiAssistantMessage
 type AssistantMessage struct {
-	// Role is the role JSON field.
-	//
 	// Required: true
 	// Enum: ["user", "assistant"]
 	Role AssistantRole `json:"role"`
-	// Content is the content JSON field.
-	//
 	// Required: true
 	// Max Length: 1200
 	Content string `json:"content"`
@@ -96,24 +86,14 @@ type AssistantMessage struct {
 //
 // swagger:model AiAssistantPattern
 type AssistantPattern struct {
-	// Code is the code JSON field.
-	//
 	// Required: true
 	Code string `json:"code"`
-	// Name is the name JSON field.
-	//
 	// Required: true
 	Name string `json:"name"`
-	// Tier is the tier JSON field.
-	//
 	// Required: false
 	Tier string `json:"tier,omitempty"`
-	// Families is the families JSON field.
-	//
 	// Required: false
 	Families string `json:"families,omitempty"`
-	// Description is the description JSON field.
-	//
 	// Required: false
 	Description string `json:"description,omitempty"`
 }
@@ -144,25 +124,15 @@ type AssistantHintInput struct {
 //
 // swagger:model AiAssistantHintResponse
 type AssistantHintResponse struct {
-	// Hint is the hint JSON field.
-	//
 	// Required: true
 	Hint string `json:"hint"`
-	// Question is the question JSON field.
-	//
 	// Required: false
 	Question string `json:"question,omitempty"`
-	// Stage is the stage JSON field.
-	//
 	// Required: true
 	// Enum: ["nudge", "approach", "reveal"]
 	Stage string `json:"stage"`
-	// ProblemKnown is the problemKnown JSON field.
-	//
 	// Required: true
 	ProblemKnown bool `json:"problemKnown"`
-	// Patterns is the patterns JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
@@ -180,8 +150,6 @@ type AssistantHintResponse struct {
 // swagger:additionalProperties false
 type GenerateCardRequest struct {
 	// Only problem-based generation is supported. PatternID must remain nil.
-	// ProblemID is the problem_id JSON field.
-	//
 	// Required: true
 	ProblemID *int64 `json:"problem_id"`
 	// Для этой ручки непустой pattern_id пока не поддерживается; передавайте только problem_id.
@@ -214,24 +182,18 @@ type GenerateCardRequest struct {
 // swagger:model AiGenerateQuizRequest
 // swagger:additionalProperties false
 type GenerateQuizRequest struct {
-	// ProblemID is the problem_id JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	ProblemID *int64 `json:"problem_id"`
-	// PatternID is the pattern_id JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	PatternID *int64 `json:"pattern_id"`
-	// Difficulty is the difficulty JSON field.
-	//
 	// Required: false
 	Difficulty string `json:"difficulty"`
 }

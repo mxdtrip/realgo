@@ -17,7 +17,6 @@
       },
       "properties": {
         "difficulty": {
-          "description": "Difficulty is the difficulty JSON field.",
           "type": "string",
           "x-go-name": "Difficulty"
         },
@@ -54,7 +53,6 @@
           "x-go-name": "Platform"
         },
         "platformTaskSlug": {
-          "description": "PlatformTaskSlug is the platformTaskSlug JSON field.",
           "minLength": 1,
           "type": "string",
           "x-go-name": "PlatformTaskSlug"
@@ -74,7 +72,6 @@
           "x-go-name": "TaskDescription"
         },
         "taskTitle": {
-          "description": "TaskTitle is the taskTitle JSON field.",
           "minLength": 1,
           "type": "string",
           "x-go-name": "TaskTitle"
@@ -101,12 +98,10 @@
       "description": "AssistantHintResponse documents the AiAssistantHintResponse JSON shape.",
       "properties": {
         "hint": {
-          "description": "Hint is the hint JSON field.",
           "type": "string",
           "x-go-name": "Hint"
         },
         "patterns": {
-          "description": "Patterns is the patterns JSON field.",
           "items": {
             "$ref": "#/definitions/AiAssistantPattern"
           },
@@ -115,17 +110,14 @@
           "x-nullable": true
         },
         "problemKnown": {
-          "description": "ProblemKnown is the problemKnown JSON field.",
           "type": "boolean",
           "x-go-name": "ProblemKnown"
         },
         "question": {
-          "description": "Question is the question JSON field.",
           "type": "string",
           "x-go-name": "Question"
         },
         "stage": {
-          "description": "Stage is the stage JSON field.",
           "enum": [
             "nudge",
             "approach",
@@ -149,7 +141,6 @@
       "description": "AssistantMessage is a compact conversation item. Only the last few turns are\naccepted by the handler; this is context, not durable chat history.\nAssistantMessage documents the AiAssistantMessage JSON shape.",
       "properties": {
         "content": {
-          "description": "Content is the content JSON field.",
           "maxLength": 1200,
           "type": "string",
           "x-go-name": "Content"
@@ -166,7 +157,6 @@
               ]
             }
           ],
-          "description": "Role is the role JSON field.",
           "x-go-name": "Role"
         }
       },
@@ -182,27 +172,22 @@
       "description": "AssistantPattern is the known taxonomy context for this problem, when the\nproblem exists in the catalog.\nAssistantPattern documents the AiAssistantPattern JSON shape.",
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "description": {
-          "description": "Description is the description JSON field.",
           "type": "string",
           "x-go-name": "Description"
         },
         "families": {
-          "description": "Families is the families JSON field.",
           "type": "string",
           "x-go-name": "Families"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
         "tier": {
-          "description": "Tier is the tier JSON field.",
           "type": "string",
           "x-go-name": "Tier"
         }
@@ -236,7 +221,7 @@
           "x-nullable": true
         },
         "problem_id": {
-          "description": "Only problem-based generation is supported. PatternID must remain nil.\nProblemID is the problem_id JSON field.",
+          "description": "Only problem-based generation is supported. PatternID must remain nil.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ProblemID"
@@ -259,19 +244,16 @@
       },
       "properties": {
         "difficulty": {
-          "description": "Difficulty is the difficulty JSON field.",
           "type": "string",
           "x-go-name": "Difficulty"
         },
         "pattern_id": {
-          "description": "PatternID is the pattern_id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "PatternID",
           "x-nullable": true
         },
         "problem_id": {
-          "description": "ProblemID is the problem_id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ProblemID",
@@ -366,7 +348,6 @@
       },
       "properties": {
         "current_password": {
-          "description": "CurrentPassword is the current_password JSON field.",
           "format": "password",
           "minLength": 1,
           "type": "string",
@@ -397,7 +378,6 @@
       },
       "properties": {
         "email": {
-          "description": "Email is the email JSON field.",
           "format": "email",
           "minLength": 1,
           "type": "string",
@@ -409,7 +389,6 @@
           "x-go-name": "Locale"
         },
         "password": {
-          "description": "Password is the password JSON field.",
           "format": "password",
           "minLength": 1,
           "type": "string",
@@ -437,7 +416,6 @@
       },
       "properties": {
         "password": {
-          "description": "Password is the password JSON field.",
           "format": "password",
           "minLength": 1,
           "type": "string",
@@ -466,7 +444,6 @@
       },
       "properties": {
         "challenge": {
-          "description": "Challenge is the challenge JSON field.",
           "minLength": 32,
           "type": "string",
           "x-go-name": "Challenge"
@@ -479,7 +456,6 @@
           "x-go-name": "Code"
         },
         "email": {
-          "description": "Email is the email JSON field.",
           "format": "email",
           "type": "string",
           "x-go-name": "Email"
@@ -521,22 +497,18 @@
     "AuthNotificationSettingsResponse": {
       "properties": {
         "email_enabled": {
-          "description": "EmailEnabled is the email_enabled JSON field.",
           "type": "boolean",
           "x-go-name": "EmailEnabled"
         },
         "review_reminder": {
-          "description": "ReviewReminder is the review_reminder JSON field.",
           "type": "boolean",
           "x-go-name": "ReviewReminder"
         },
         "streak_reminder": {
-          "description": "StreakReminder is the streak_reminder JSON field.",
           "type": "boolean",
           "x-go-name": "StreakReminder"
         },
         "weekly_digest": {
-          "description": "WeeklyDigest is the weekly_digest JSON field.",
           "type": "boolean",
           "x-go-name": "WeeklyDigest"
         }
@@ -561,7 +533,6 @@
       },
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "minLength": 1,
           "type": "string",
           "x-go-name": "Code"
@@ -596,7 +567,6 @@
           "x-go-name": "NewPassword"
         },
         "token": {
-          "description": "Token is the token JSON field.",
           "minLength": 1,
           "type": "string",
           "x-go-name": "Token"
@@ -637,25 +607,21 @@
       },
       "properties": {
         "email_enabled": {
-          "description": "EmailEnabled is the email_enabled JSON field.",
           "type": "boolean",
           "x-go-name": "EmailEnabled",
           "x-nullable": true
         },
         "review_reminder": {
-          "description": "ReviewReminder is the review_reminder JSON field.",
           "type": "boolean",
           "x-go-name": "ReviewReminder",
           "x-nullable": true
         },
         "streak_reminder": {
-          "description": "StreakReminder is the streak_reminder JSON field.",
           "type": "boolean",
           "x-go-name": "StreakReminder",
           "x-nullable": true
         },
         "weekly_digest": {
-          "description": "WeeklyDigest is the weekly_digest JSON field.",
           "type": "boolean",
           "x-go-name": "WeeklyDigest",
           "x-nullable": true
@@ -723,7 +689,6 @@
       },
       "properties": {
         "grade": {
-          "description": "Grade is the grade JSON field.",
           "enum": [
             "",
             "junior",
@@ -750,7 +715,6 @@
           "x-nullable": true
         },
         "platform": {
-          "description": "Platform is the platform JSON field.",
           "enum": [
             "leetcode",
             "geeksforgeeks",
@@ -762,21 +726,18 @@
           "x-nullable": true
         },
         "prep_goal": {
-          "description": "PrepGoal is the prep_goal JSON field.",
           "maxLength": 100,
           "type": "string",
           "x-go-name": "PrepGoal",
           "x-nullable": true
         },
         "target_company": {
-          "description": "TargetCompany is the target_company JSON field.",
           "maxLength": 200,
           "type": "string",
           "x-go-name": "TargetCompany",
           "x-nullable": true
         },
         "target_position": {
-          "description": "TargetPosition is the target_position JSON field.",
           "maxLength": 200,
           "type": "string",
           "x-go-name": "TargetPosition",
@@ -808,37 +769,31 @@
     "AuthProfileResponse": {
       "properties": {
         "grade": {
-          "description": "Grade is the grade JSON field.",
           "type": "string",
           "x-go-name": "Grade",
           "x-nullable": true
         },
         "platform": {
-          "description": "Platform is the platform JSON field.",
           "type": "string",
           "x-go-name": "Platform",
           "x-nullable": true
         },
         "prep_goal": {
-          "description": "PrepGoal is the prep_goal JSON field.",
           "type": "string",
           "x-go-name": "PrepGoal",
           "x-nullable": true
         },
         "target_company": {
-          "description": "TargetCompany is the target_company JSON field.",
           "type": "string",
           "x-go-name": "TargetCompany",
           "x-nullable": true
         },
         "target_position": {
-          "description": "TargetPosition is the target_position JSON field.",
           "type": "string",
           "x-go-name": "TargetPosition",
           "x-nullable": true
         },
         "target_topics": {
-          "description": "TargetTopics is the target_topics JSON field.",
           "items": {
             "type": "string"
           },
@@ -886,7 +841,6 @@
       },
       "properties": {
         "email": {
-          "description": "Email is the email JSON field.",
           "format": "email",
           "type": "string",
           "x-go-name": "Email"
@@ -944,7 +898,6 @@
           "x-go-name": "SessionID"
         },
         "token_type": {
-          "description": "TokenType is the token_type JSON field.",
           "type": "string",
           "x-go-name": "TokenType"
         }
@@ -963,32 +916,27 @@
     "AuthUserResponse": {
       "properties": {
         "created_at": {
-          "description": "CreatedAt is the created_at JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "CreatedAt"
         },
         "email": {
-          "description": "Email is the email JSON field.",
           "format": "email",
           "type": "string",
           "x-go-name": "Email"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "interview_date": {
-          "description": "InterviewDate is the interview_date JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "InterviewDate",
           "x-nullable": true
         },
         "nickname": {
-          "description": "Nickname is the nickname JSON field.",
           "type": "string",
           "x-go-name": "Nickname",
           "x-nullable": true
@@ -997,12 +945,10 @@
           "$ref": "#/definitions/AuthNotificationSettingsResponse"
         },
         "onboarding_completed": {
-          "description": "OnboardingCompleted is the onboarding_completed JSON field.",
           "type": "boolean",
           "x-go-name": "OnboardingCompleted"
         },
         "plan": {
-          "description": "Plan is the plan JSON field.",
           "type": "string",
           "x-go-name": "Plan"
         },
@@ -1010,7 +956,6 @@
           "$ref": "#/definitions/AuthProfileResponse"
         },
         "timezone": {
-          "description": "Timezone is the timezone JSON field.",
           "type": "string",
           "x-go-name": "Timezone"
         }
@@ -1035,34 +980,28 @@
     "CardsCard": {
       "properties": {
         "back": {
-          "description": "Back is the back JSON field.",
           "type": "string",
           "x-go-name": "Back"
         },
         "createdAt": {
-          "description": "CreatedAt is the createdAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "CreatedAt"
         },
         "createdByAi": {
-          "description": "CreatedByAI is the createdByAi JSON field.",
           "type": "boolean",
           "x-go-name": "CreatedByAI"
         },
         "front": {
-          "description": "Front is the front JSON field.",
           "type": "string",
           "x-go-name": "Front"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "lastRating": {
-          "description": "LastRating is the lastRating JSON field.",
           "enum": [
             "hard",
             "normal",
@@ -1073,7 +1012,6 @@
           "x-nullable": true
         },
         "nextReviewAt": {
-          "description": "NextReviewAt is the nextReviewAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
@@ -1083,7 +1021,6 @@
           "$ref": "#/definitions/CardsSource"
         },
         "status": {
-          "description": "Status is the status JSON field.",
           "enum": [
             "new",
             "due",
@@ -1094,7 +1031,6 @@
           "x-go-name": "Status"
         },
         "type": {
-          "description": "Type is the type JSON field.",
           "enum": [
             "pattern_recognition",
             "algorithm_mechanics",
@@ -1125,52 +1061,43 @@
       "description": "CardDetail documents the CardsCardDetail JSON shape.",
       "properties": {
         "back": {
-          "description": "Back is the back JSON field.",
           "type": "string",
           "x-go-name": "Back"
         },
         "createdAt": {
-          "description": "CreatedAt is the createdAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "CreatedAt"
         },
         "createdByAi": {
-          "description": "CreatedByAI is the createdByAi JSON field.",
           "type": "boolean",
           "x-go-name": "CreatedByAI"
         },
         "explanation": {
-          "description": "Explanation is the explanation JSON field.",
           "type": "string",
           "x-go-name": "Explanation",
           "x-nullable": true
         },
         "front": {
-          "description": "Front is the front JSON field.",
           "type": "string",
           "x-go-name": "Front"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "patternName": {
-          "description": "PatternName is the patternName JSON field.",
           "type": "string",
           "x-go-name": "PatternName",
           "x-nullable": true
         },
         "problemTitle": {
-          "description": "ProblemTitle is the problemTitle JSON field.",
           "type": "string",
           "x-go-name": "ProblemTitle",
           "x-nullable": true
         },
         "problemUrl": {
-          "description": "ProblemURL is the problemUrl JSON field.",
           "type": "string",
           "x-go-name": "ProblemURL",
           "x-nullable": true
@@ -1179,7 +1106,6 @@
           "$ref": "#/definitions/CardsSource"
         },
         "type": {
-          "description": "Type is the type JSON field.",
           "enum": [
             "pattern_recognition",
             "algorithm_mechanics",
@@ -1225,7 +1151,6 @@
           "x-go-name": "Back"
         },
         "explanation": {
-          "description": "Explanation is the explanation JSON field.",
           "maxLength": 2000,
           "type": "string",
           "x-go-name": "Explanation",
@@ -1239,28 +1164,24 @@
           "x-go-name": "Front"
         },
         "patternId": {
-          "description": "PatternID is the patternId JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "PatternID",
           "x-nullable": true
         },
         "problemId": {
-          "description": "ProblemID is the problemId JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ProblemID",
           "x-nullable": true
         },
         "sourceText": {
-          "description": "SourceText is the sourceText JSON field.",
           "maxLength": 2000,
           "type": "string",
           "x-go-name": "SourceText",
           "x-nullable": true
         },
         "type": {
-          "description": "Type is the type JSON field.",
           "enum": [
             "pattern_recognition",
             "algorithm_mechanics",
@@ -1336,7 +1257,6 @@
       "description": "DueSummary is the un-capped due-today breakdown used by the /cards\nlauncher's \"Что повторяем сегодня\" panel, distinct from Session (which\ncaps at session_limit — one review session's worth, not \"how many are\ndue today\").\nDueSummary documents the CardsDueSummary JSON shape.",
       "properties": {
         "byType": {
-          "description": "ByType is the byType JSON field.",
           "items": {
             "$ref": "#/definitions/CardsDueTypeSummary"
           },
@@ -1345,13 +1265,11 @@
           "x-nullable": true
         },
         "estimatedMinutes": {
-          "description": "EstimatedMinutes is the estimatedMinutes JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "EstimatedMinutes"
         },
         "totalDue": {
-          "description": "TotalDue is the totalDue JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "TotalDue"
@@ -1369,13 +1287,12 @@
     "CardsDueTypeSummary": {
       "properties": {
         "count": {
-          "description": "Count is the count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Count"
         },
         "sampleLabels": {
-          "description": "SampleLabels holds up to 3 source titles (soonest-due first) so the UI\ncan show what's due without fetching every card's full content.\nSampleLabels is the sampleLabels JSON field.",
+          "description": "SampleLabels holds up to 3 source titles (soonest-due first) so the UI\ncan show what's due without fetching every card's full content.",
           "items": {
             "type": "string"
           },
@@ -1384,7 +1301,6 @@
           "x-nullable": true
         },
         "type": {
-          "description": "Type is the type JSON field.",
           "enum": [
             "pattern_recognition",
             "algorithm_mechanics",
@@ -1413,7 +1329,6 @@
       },
       "properties": {
         "rating": {
-          "description": "Rating is the rating JSON field.",
           "enum": [
             "hard",
             "normal",
@@ -1423,7 +1338,6 @@
           "x-go-name": "Rating"
         },
         "reviewedAt": {
-          "description": "ReviewedAt is the reviewedAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "ReviewedAt"
@@ -1446,24 +1360,20 @@
     "CardsRateResult": {
       "properties": {
         "cardId": {
-          "description": "CardID is the cardId JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "CardID"
         },
         "nextReviewAt": {
-          "description": "NextReviewAt is the nextReviewAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt"
         },
         "rating": {
-          "description": "Rating is the rating JSON field.",
           "type": "string",
           "x-go-name": "Rating"
         },
         "repeatInCurrentSession": {
-          "description": "RepeatInCurrentSession is the repeatInCurrentSession JSON field.",
           "type": "boolean",
           "x-go-name": "RepeatInCurrentSession"
         },
@@ -1486,13 +1396,11 @@
     "CardsReviewState": {
       "properties": {
         "attempts": {
-          "description": "Attempts is the attempts JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Attempts"
         },
         "lastRating": {
-          "description": "LastRating is the lastRating JSON field.",
           "enum": [
             "hard",
             "normal",
@@ -1503,7 +1411,6 @@
           "x-nullable": true
         },
         "nextReviewAt": {
-          "description": "NextReviewAt is the nextReviewAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
@@ -1523,7 +1430,6 @@
     "CardsSession": {
       "properties": {
         "cards": {
-          "description": "Cards is the cards JSON field.",
           "items": {
             "$ref": "#/definitions/CardsSessionCard"
           },
@@ -1532,13 +1438,11 @@
           "x-nullable": true
         },
         "estimatedMinutes": {
-          "description": "EstimatedMinutes is the estimatedMinutes JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "EstimatedMinutes"
         },
         "scope": {
-          "description": "Scope is the scope JSON field.",
           "enum": [
             "due",
             "hard_normal",
@@ -1549,7 +1453,6 @@
           "x-go-name": "Scope"
         },
         "sessionId": {
-          "description": "SessionID is the sessionId JSON field.",
           "type": "string",
           "x-go-name": "SessionID"
         }
@@ -1568,22 +1471,18 @@
     "CardsSessionCard": {
       "properties": {
         "back": {
-          "description": "Back is the back JSON field.",
           "type": "string",
           "x-go-name": "Back"
         },
         "createdByAi": {
-          "description": "CreatedByAI is the createdByAi JSON field.",
           "type": "boolean",
           "x-go-name": "CreatedByAI"
         },
         "front": {
-          "description": "Front is the front JSON field.",
           "type": "string",
           "x-go-name": "Front"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
@@ -1592,12 +1491,10 @@
           "$ref": "#/definitions/CardsReviewState"
         },
         "sourceLabel": {
-          "description": "SourceLabel is the sourceLabel JSON field.",
           "type": "string",
           "x-go-name": "SourceLabel"
         },
         "type": {
-          "description": "Type is the type JSON field.",
           "enum": [
             "pattern_recognition",
             "algorithm_mechanics",
@@ -1624,19 +1521,16 @@
     "CardsSessionProgress": {
       "properties": {
         "remaining": {
-          "description": "Remaining is the remaining JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Remaining"
         },
         "reviewed": {
-          "description": "Reviewed is the reviewed JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Reviewed"
         },
         "total": {
-          "description": "Total is the total JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Total"
@@ -1655,19 +1549,16 @@
     "CardsSource": {
       "properties": {
         "entityId": {
-          "description": "EntityID is the entityId JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "EntityID",
           "x-nullable": true
         },
         "entityType": {
-          "description": "EntityType is the entityType JSON field.",
           "type": "string",
           "x-go-name": "EntityType"
         },
         "label": {
-          "description": "Label is the label JSON field.",
           "type": "string",
           "x-go-name": "Label"
         }
@@ -1699,7 +1590,6 @@
           "x-nullable": true
         },
         "explanation": {
-          "description": "Explanation is the explanation JSON field.",
           "maxLength": 2000,
           "type": "string",
           "x-go-name": "Explanation",
@@ -1714,14 +1604,12 @@
           "x-nullable": true
         },
         "sourceText": {
-          "description": "SourceText is the sourceText JSON field.",
           "maxLength": 2000,
           "type": "string",
           "x-go-name": "SourceText",
           "x-nullable": true
         },
         "type": {
-          "description": "Type is the type JSON field.",
           "enum": [
             "pattern_recognition",
             "algorithm_mechanics",
@@ -1793,7 +1681,6 @@
       "description": "Error documents the CommonError JSON shape.",
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
@@ -1803,12 +1690,10 @@
               "$ref": "#/definitions/CommonErrorDetails"
             }
           ],
-          "description": "Details is the details JSON field.",
           "x-go-name": "Details",
           "x-nullable": true
         },
         "message": {
-          "description": "Message is the message JSON field.",
           "type": "string",
           "x-go-name": "Message"
         }
@@ -1837,13 +1722,11 @@
       "description": "Meta carries per-response metadata. RequestID is populated automatically from\nthe X-Request-Id header (set by the request-logging middleware); NextCursor is\nsupplied by paginated handlers via JSONWithMeta.\nMeta documents the CommonMeta JSON shape.",
       "properties": {
         "nextCursor": {
-          "description": "NextCursor is the nextCursor JSON field.",
           "type": "string",
           "x-go-name": "NextCursor",
           "x-nullable": true
         },
         "requestId": {
-          "description": "RequestID is the requestId JSON field.",
           "type": "string",
           "x-go-name": "RequestID"
         }
@@ -1855,17 +1738,14 @@
     "CompaniesCompany": {
       "properties": {
         "id": {
-          "description": "ID is the id JSON field.",
           "type": "string",
           "x-go-name": "ID"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
         "source": {
-          "description": "Source is the source JSON field.",
           "type": "string",
           "x-go-name": "Source"
         }
@@ -1884,13 +1764,11 @@
       "description": "Activity feeds the dashboard heatmap: per-day counts over the last\nactivityWindowDays days (user timezone), oldest first. Days with no\nactivity are omitted from Days.\nActivity documents the DashboardActivity JSON shape.",
       "properties": {
         "activeDays": {
-          "description": "ActiveDays is the activeDays JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ActiveDays"
         },
         "days": {
-          "description": "Days is the days JSON field.",
           "items": {
             "$ref": "#/definitions/DashboardActivityDay"
           },
@@ -1899,7 +1777,6 @@
           "x-nullable": true
         },
         "totalReviews": {
-          "description": "TotalReviews is the totalReviews JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "TotalReviews"
@@ -1917,7 +1794,6 @@
     "DashboardActivityDay": {
       "properties": {
         "count": {
-          "description": "Count is the count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Count"
@@ -1940,29 +1816,24 @@
     "DashboardNextAction": {
       "properties": {
         "description": {
-          "description": "Description is the description JSON field.",
           "type": "string",
           "x-go-name": "Description"
         },
         "dueAt": {
-          "description": "DueAt is the dueAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "DueAt",
           "x-nullable": true
         },
         "href": {
-          "description": "Href is the href JSON field.",
           "type": "string",
           "x-go-name": "Href"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "type": {
-          "description": "Type is the type JSON field.",
           "type": "string",
           "x-go-name": "Type"
         }
@@ -1987,7 +1858,6 @@
           "$ref": "#/definitions/DashboardNextAction"
         },
         "reviewPreview": {
-          "description": "ReviewPreview is the reviewPreview JSON field.",
           "items": {
             "$ref": "#/definitions/DashboardReviewPreviewItem"
           },
@@ -1996,7 +1866,6 @@
           "x-nullable": true
         },
         "stats": {
-          "description": "Stats is the stats JSON field.",
           "items": {
             "$ref": "#/definitions/DashboardStat"
           },
@@ -2005,7 +1874,6 @@
           "x-nullable": true
         },
         "weakPatterns": {
-          "description": "WeakPatterns is the weakPatterns JSON field.",
           "items": {
             "$ref": "#/definitions/DashboardWeakPattern"
           },
@@ -2029,34 +1897,28 @@
     "DashboardReviewPreviewItem": {
       "properties": {
         "dueAt": {
-          "description": "DueAt is the dueAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "DueAt"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "type": "string",
           "x-go-name": "ID"
         },
         "lastRating": {
-          "description": "LastRating is the lastRating JSON field.",
           "type": "string",
           "x-go-name": "LastRating",
           "x-nullable": true
         },
         "meta": {
-          "description": "Meta is the meta JSON field.",
           "type": "string",
           "x-go-name": "Meta"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "type": {
-          "description": "Type is the type JSON field.",
           "type": "string",
           "x-go-name": "Type"
         }
@@ -2077,37 +1939,30 @@
     "DashboardStat": {
       "properties": {
         "displayValue": {
-          "description": "DisplayValue is the displayValue JSON field.",
           "type": "string",
           "x-go-name": "DisplayValue"
         },
         "hint": {
-          "description": "Hint is the hint JSON field.",
           "type": "string",
           "x-go-name": "Hint"
         },
         "href": {
-          "description": "Href is the href JSON field.",
           "type": "string",
           "x-go-name": "Href"
         },
         "key": {
-          "description": "Key is the key JSON field.",
           "type": "string",
           "x-go-name": "Key"
         },
         "label": {
-          "description": "Label is the label JSON field.",
           "type": "string",
           "x-go-name": "Label"
         },
         "tone": {
-          "description": "Tone is the tone JSON field.",
           "type": "string",
           "x-go-name": "Tone"
         },
         "value": {
-          "description": "Value is the value JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Value"
@@ -2129,23 +1984,19 @@
     "DashboardWeakPattern": {
       "properties": {
         "confidence": {
-          "description": "Confidence is the confidence JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Confidence"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "type": "string",
           "x-go-name": "ID"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
         "signal": {
-          "description": "Signal is the signal JSON field.",
           "type": "string",
           "x-go-name": "Signal"
         }
@@ -2209,7 +2060,6 @@
           "x-go-name": "Difficulty"
         },
         "externalId": {
-          "description": "ExternalID is the externalId JSON field.",
           "type": "string",
           "x-go-name": "ExternalID"
         },
@@ -2219,12 +2069,10 @@
           "x-go-name": "PatternName"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "url": {
-          "description": "URL is the url JSON field.",
           "type": "string",
           "x-go-name": "URL"
         }
@@ -2267,12 +2115,10 @@
           "x-go-name": "Event"
         },
         "eventId": {
-          "description": "EventID is the eventId JSON field.",
           "type": "string",
           "x-go-name": "EventID"
         },
         "extensionVersion": {
-          "description": "ExtensionVersion is the extensionVersion JSON field.",
           "type": "string",
           "x-go-name": "ExtensionVersion"
         },
@@ -2287,7 +2133,6 @@
           "x-go-name": "Platform"
         },
         "platformTaskSlug": {
-          "description": "PlatformTaskSlug is the platformTaskSlug JSON field.",
           "type": "string",
           "x-go-name": "PlatformTaskSlug"
         },
@@ -2321,17 +2166,14 @@
           "x-go-name": "SubmittedAt"
         },
         "taskTitle": {
-          "description": "TaskTitle is the taskTitle JSON field.",
           "type": "string",
           "x-go-name": "TaskTitle"
         },
         "taskUrl": {
-          "description": "TaskURL is the taskUrl JSON field.",
           "type": "string",
           "x-go-name": "TaskURL"
         },
         "userDifficulty": {
-          "description": "UserDifficulty is the userDifficulty JSON field.",
           "enum": [
             "",
             "hard",
@@ -2351,36 +2193,30 @@
       "description": "EventResult is the response payload (problem_id, status, next_review_at per\nthe issue's acceptance criteria, plus idempotency signal).\nEventResult documents the ExtensionEventResult JSON shape.",
       "properties": {
         "accepted": {
-          "description": "Accepted is the accepted JSON field.",
           "type": "boolean",
           "x-go-name": "Accepted"
         },
         "duplicate": {
-          "description": "Duplicate is the duplicate JSON field.",
           "type": "boolean",
           "x-go-name": "Duplicate"
         },
         "nextReviewAt": {
-          "description": "NextReviewAt is the nextReviewAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
           "x-nullable": true
         },
         "problemId": {
-          "description": "ProblemID is the problemId JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ProblemID"
         },
         "reviewId": {
-          "description": "ReviewID is the reviewId JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ReviewID"
         },
         "status": {
-          "description": "Status is the status JSON field.",
           "type": "string",
           "x-go-name": "Status"
         }
@@ -2400,18 +2236,15 @@
       "description": "PlatformStatus documents the ExtensionPlatformStatus JSON shape.",
       "properties": {
         "lastSyncAt": {
-          "description": "LastSyncAt is the lastSyncAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "LastSyncAt"
         },
         "source": {
-          "description": "Source is the source JSON field.",
           "type": "string",
           "x-go-name": "Source"
         },
         "status": {
-          "description": "Status is the status JSON field.",
           "type": "string",
           "x-go-name": "Status"
         }
@@ -2430,28 +2263,23 @@
       "description": "RecentEvent documents the ExtensionRecentEvent JSON shape.",
       "properties": {
         "event": {
-          "description": "Event is the event JSON field.",
           "type": "string",
           "x-go-name": "Event"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "type": "string",
           "x-go-name": "ID"
         },
         "occurredAt": {
-          "description": "OccurredAt is the occurredAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "OccurredAt"
         },
         "source": {
-          "description": "Source is the source JSON field.",
           "type": "string",
           "x-go-name": "Source"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         }
@@ -2472,12 +2300,10 @@
       "description": "StatusResponse documents the ExtensionStatusResponse JSON shape.",
       "properties": {
         "connected": {
-          "description": "Connected is the connected JSON field.",
           "type": "boolean",
           "x-go-name": "Connected"
         },
         "platforms": {
-          "description": "Platforms is the platforms JSON field.",
           "items": {
             "$ref": "#/definitions/ExtensionPlatformStatus"
           },
@@ -2486,7 +2312,6 @@
           "x-nullable": true
         },
         "recentEvents": {
-          "description": "RecentEvents is the recentEvents JSON field.",
           "items": {
             "$ref": "#/definitions/ExtensionRecentEvent"
           },
@@ -2508,27 +2333,22 @@
     "PatternsAtlasCompany": {
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "demo_only": {
-          "description": "DemoOnly is the demo_only JSON field.",
           "type": "boolean",
           "x-go-name": "DemoOnly"
         },
         "last_seen_at": {
-          "description": "LastSeenAt is the last_seen_at JSON field.",
           "type": "string",
           "x-go-name": "LastSeenAt"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
         "subpattern_count": {
-          "description": "SubpatternCount is the subpattern_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "SubpatternCount"
@@ -2585,25 +2405,21 @@
       "description": "AtlasCoverage is the readiness summary for a selected company, bucketed by\nmastery status over the subpatterns with actual relevance evidence.\nAtlasCoverage documents the PatternsAtlasCoverage JSON shape.",
       "properties": {
         "not_started": {
-          "description": "NotStarted is the not_started JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "NotStarted"
         },
         "relevant_subpatterns": {
-          "description": "RelevantSubpatterns is the relevant_subpatterns JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "RelevantSubpatterns"
         },
         "strong": {
-          "description": "Strong is the strong JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Strong"
         },
         "top_gaps": {
-          "description": "TopGaps is the top_gaps JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsAtlasGap"
           },
@@ -2612,13 +2428,11 @@
           "x-nullable": true
         },
         "unstable": {
-          "description": "Unstable is the unstable JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Unstable"
         },
         "weak": {
-          "description": "Weak is the weak JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Weak"
@@ -2639,28 +2453,23 @@
     "PatternsAtlasFamily": {
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "description": {
-          "description": "Description is the description JSON field.",
           "type": "string",
           "x-go-name": "Description"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
         "position": {
-          "description": "Position is the position JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Position"
         },
         "subpattern_codes": {
-          "description": "SubpatternCodes is the subpattern_codes JSON field.",
           "items": {
             "type": "string"
           },
@@ -2684,23 +2493,19 @@
     "PatternsAtlasGap": {
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "mastery_percent": {
-          "description": "MasteryPercent is the mastery_percent JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "MasteryPercent"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
         "relevance": {
-          "description": "Relevance is the relevance JSON field.",
           "type": "string",
           "x-go-name": "Relevance"
         }
@@ -2720,83 +2525,68 @@
       "description": "AtlasRelevantProblem is one company-evidence task surfaced in the readiness\noverlay. It pairs PracticeProblem fields with the subpattern the task trains\nand the company evidence weight, so the UI can group tasks next to the\nrelevant subpatterns and top gaps.\nAtlasRelevantProblem documents the PatternsAtlasRelevantProblem JSON shape.",
       "properties": {
         "difficulty": {
-          "description": "Difficulty is the difficulty JSON field.",
           "type": "string",
           "x-go-name": "Difficulty"
         },
         "evidence_count": {
-          "description": "EvidenceCount is the evidence_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "EvidenceCount"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "last_seen_at": {
-          "description": "LastSeenAt is the last_seen_at JSON field.",
           "type": "string",
           "x-go-name": "LastSeenAt"
         },
         "next_review_at": {
-          "description": "NextReviewAt is the next_review_at JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
           "x-nullable": true
         },
         "platform": {
-          "description": "Platform is the platform JSON field.",
           "type": "string",
           "x-go-name": "Platform"
         },
         "rating": {
-          "description": "Rating is the rating JSON field.",
           "type": "string",
           "x-go-name": "Rating"
         },
         "solved_at": {
-          "description": "SolvedAt is the solved_at JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "SolvedAt",
           "x-nullable": true
         },
         "source_type": {
-          "description": "SourceType is the source_type JSON field.",
           "type": "string",
           "x-go-name": "SourceType"
         },
         "status": {
-          "description": "Status is the status JSON field.",
           "type": "string",
           "x-go-name": "Status"
         },
         "subpattern_code": {
-          "description": "SubpatternCode is the subpattern_code JSON field.",
           "type": "string",
           "x-go-name": "SubpatternCode"
         },
         "subpattern_name": {
-          "description": "SubpatternName is the subpattern_name JSON field.",
           "type": "string",
           "x-go-name": "SubpatternName"
         },
         "tier": {
-          "description": "Tier is the tier JSON field.",
           "type": "string",
           "x-go-name": "Tier"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "url": {
-          "description": "URL is the url JSON field.",
           "type": "string",
           "x-go-name": "URL"
         }
@@ -2825,12 +2615,10 @@
               "$ref": "#/definitions/PatternsAtlasCompanyOverlay"
             }
           ],
-          "description": "Company is the company JSON field.",
           "x-go-name": "Company",
           "x-nullable": true
         },
         "families": {
-          "description": "Families is the families JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsAtlasFamily"
           },
@@ -2839,7 +2627,6 @@
           "x-nullable": true
         },
         "subpatterns": {
-          "description": "Subpatterns is the subpatterns JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsAtlasSubpattern"
           },
@@ -2848,12 +2635,10 @@
           "x-nullable": true
         },
         "taxonomy_version": {
-          "description": "TaxonomyVersion is the taxonomy_version JSON field.",
           "type": "string",
           "x-go-name": "TaxonomyVersion"
         },
         "tools": {
-          "description": "Tools is the tools JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsAtlasTool"
           },
@@ -2875,12 +2660,10 @@
     "PatternsAtlasSubpattern": {
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "family_codes": {
-          "description": "FamilyCodes is the family_codes JSON field.",
           "items": {
             "type": "string"
           },
@@ -2892,12 +2675,10 @@
           "$ref": "#/definitions/PatternsMastery"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
         "position": {
-          "description": "Position is the position JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Position"
@@ -2908,7 +2689,6 @@
               "$ref": "#/definitions/PatternsCompanyRelevance"
             }
           ],
-          "description": "Relevance is the relevance JSON field.",
           "x-go-name": "Relevance",
           "x-nullable": true
         },
@@ -2916,7 +2696,6 @@
           "$ref": "#/definitions/PatternsSubpatternStats"
         },
         "tool_codes": {
-          "description": "ToolCodes is the tool_codes JSON field.",
           "items": {
             "type": "string"
           },
@@ -2942,23 +2721,19 @@
     "PatternsAtlasTool": {
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
         "position": {
-          "description": "Position is the position JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Position"
         },
         "subpattern_codes": {
-          "description": "SubpatternCodes is the subpattern_codes JSON field.",
           "items": {
             "type": "string"
           },
@@ -2981,30 +2756,25 @@
     "PatternsCardSummary": {
       "properties": {
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "last_rating": {
-          "description": "LastRating is the last_rating JSON field.",
           "type": "string",
           "x-go-name": "LastRating"
         },
         "next_review_at": {
-          "description": "NextReviewAt is the next_review_at JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
           "x-nullable": true
         },
         "question": {
-          "description": "Question is the question JSON field.",
           "type": "string",
           "x-go-name": "Question"
         },
         "type": {
-          "description": "Type is the type JSON field.",
           "type": "string",
           "x-go-name": "Type"
         }
@@ -3025,7 +2795,6 @@
           "$ref": "#/definitions/PatternsNodeRef"
         },
         "problems": {
-          "description": "Problems is the problems JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsCompanyPracticeProblem"
           },
@@ -3046,73 +2815,60 @@
     "PatternsCompanyPracticeProblem": {
       "properties": {
         "difficulty": {
-          "description": "Difficulty is the difficulty JSON field.",
           "type": "string",
           "x-go-name": "Difficulty"
         },
         "evidence_count": {
-          "description": "EvidenceCount is the evidence_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "EvidenceCount"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "last_seen_at": {
-          "description": "LastSeenAt is the last_seen_at JSON field.",
           "type": "string",
           "x-go-name": "LastSeenAt"
         },
         "next_review_at": {
-          "description": "NextReviewAt is the next_review_at JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
           "x-nullable": true
         },
         "platform": {
-          "description": "Platform is the platform JSON field.",
           "type": "string",
           "x-go-name": "Platform"
         },
         "rating": {
-          "description": "Rating is the rating JSON field.",
           "type": "string",
           "x-go-name": "Rating"
         },
         "solved_at": {
-          "description": "SolvedAt is the solved_at JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "SolvedAt",
           "x-nullable": true
         },
         "source_type": {
-          "description": "SourceType is the source_type JSON field.",
           "type": "string",
           "x-go-name": "SourceType"
         },
         "status": {
-          "description": "Status is the status JSON field.",
           "type": "string",
           "x-go-name": "Status"
         },
         "tier": {
-          "description": "Tier is the tier JSON field.",
           "type": "string",
           "x-go-name": "Tier"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "url": {
-          "description": "URL is the url JSON field.",
           "type": "string",
           "x-go-name": "URL"
         }
@@ -3170,12 +2926,10 @@
       "description": "ContrastPair documents the PatternsContrastPair JSON shape.",
       "properties": {
         "note": {
-          "description": "Note is the note JSON field.",
           "type": "string",
           "x-go-name": "Note"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         }
@@ -3192,17 +2946,14 @@
     "PatternsExampleProblem": {
       "properties": {
         "difficulty": {
-          "description": "Difficulty is the difficulty JSON field.",
           "type": "string",
           "x-go-name": "Difficulty"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "url": {
-          "description": "URL is the url JSON field.",
           "type": "string",
           "x-go-name": "URL"
         }
@@ -3311,13 +3062,11 @@
           "$ref": "#/definitions/PatternsMasteryComponents"
         },
         "percent": {
-          "description": "Percent is the percent JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Percent"
         },
         "status": {
-          "description": "Status is the status JSON field.",
           "enum": [
             "not_started",
             "learning",
@@ -3344,13 +3093,11 @@
       "description": "MasteryComponents keeps the aggregate percent decomposable. More components\n(recognition, discrimination, transfer) can be added without breaking the\npayload shape.\nMasteryComponents documents the PatternsMasteryComponents JSON shape.",
       "properties": {
         "practice": {
-          "description": "Practice is the practice JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Practice"
         },
         "retention": {
-          "description": "Retention is the retention JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Retention"
@@ -3368,7 +3115,6 @@
       "description": "NodeDetail is the educational view of one taxonomy node. Families carry\nSubpatterns + legacy methodology fields; subpatterns carry the material,\nmastery, cards and practice sections.\nNodeDetail documents the PatternsNodeDetail JSON shape.",
       "properties": {
         "cards": {
-          "description": "Cards is the cards JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsCardSummary"
           },
@@ -3377,7 +3123,6 @@
           "x-nullable": true
         },
         "checklist": {
-          "description": "Checklist is the checklist JSON field.",
           "items": {
             "type": "string"
           },
@@ -3386,12 +3131,10 @@
           "x-nullable": true
         },
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "company_practice": {
-          "description": "CompanyPractice is the company_practice JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsCompanyPracticeGroup"
           },
@@ -3400,12 +3143,10 @@
           "x-nullable": true
         },
         "description": {
-          "description": "Description is the description JSON field.",
           "type": "string",
           "x-go-name": "Description"
         },
         "example_problems": {
-          "description": "ExampleProblems is the example_problems JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsExampleProblem"
           },
@@ -3414,7 +3155,6 @@
           "x-nullable": true
         },
         "families": {
-          "description": "Families is the families JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsNodeRef"
           },
@@ -3423,7 +3163,6 @@
           "x-nullable": true
         },
         "kind": {
-          "description": "Kind is the kind JSON field.",
           "type": "string",
           "x-go-name": "Kind"
         },
@@ -3433,7 +3172,6 @@
               "$ref": "#/definitions/PatternsMastery"
             }
           ],
-          "description": "Mastery is the mastery JSON field.",
           "x-go-name": "Mastery",
           "x-nullable": true
         },
@@ -3443,17 +3181,14 @@
               "$ref": "#/definitions/PatternsLearningMaterial"
             }
           ],
-          "description": "Material is the material JSON field.",
           "x-go-name": "Material",
           "x-nullable": true
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
         "practice": {
-          "description": "Practice is the practice JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsPracticeProblem"
           },
@@ -3462,7 +3197,6 @@
           "x-nullable": true
         },
         "recognition_symptoms": {
-          "description": "RecognitionSymptoms is the recognition_symptoms JSON field.",
           "items": {
             "type": "string"
           },
@@ -3471,7 +3205,6 @@
           "x-nullable": true
         },
         "relevant_companies": {
-          "description": "RelevantCompanies is the relevant_companies JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsRelevantCompany"
           },
@@ -3485,12 +3218,10 @@
               "$ref": "#/definitions/PatternsSubpatternStats"
             }
           ],
-          "description": "Stats is the stats JSON field.",
           "x-go-name": "Stats",
           "x-nullable": true
         },
         "subpatterns": {
-          "description": "Subpatterns is the subpatterns JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsNodeRef"
           },
@@ -3499,12 +3230,11 @@
           "x-nullable": true
         },
         "taxonomy_version": {
-          "description": "TaxonomyVersion is the taxonomy_version JSON field.",
           "type": "string",
           "x-go-name": "TaxonomyVersion"
         },
         "techniques": {
-          "description": "Family-level methodology (pre-atlas content, still shown for families).\nTechniques is the techniques JSON field.",
+          "description": "Family-level methodology (pre-atlas content, still shown for families).",
           "items": {
             "type": "string"
           },
@@ -3513,7 +3243,6 @@
           "x-nullable": true
         },
         "tools": {
-          "description": "Tools is the tools JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsNodeRef"
           },
@@ -3544,12 +3273,10 @@
       "description": "NodeRef documents the PatternsNodeRef JSON shape.",
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         }
@@ -3566,47 +3293,39 @@
     "PatternsPattern": {
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "description": {
-          "description": "Description is the description JSON field.",
           "type": "string",
           "x-go-name": "Description"
         },
         "due_count": {
-          "description": "DueCount is the due_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "DueCount"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
         "parent_id": {
-          "description": "ParentID is the parent_id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ParentID",
           "x-nullable": true
         },
         "problem_count": {
-          "description": "ProblemCount is the problem_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ProblemCount"
         },
         "solved_count": {
-          "description": "SolvedCount is the solved_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "SolvedCount"
@@ -3630,7 +3349,6 @@
     "PatternsPatternDetail": {
       "properties": {
         "checklist": {
-          "description": "Checklist is the checklist JSON field.",
           "items": {
             "type": "string"
           },
@@ -3639,17 +3357,14 @@
           "x-nullable": true
         },
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "description": {
-          "description": "Description is the description JSON field.",
           "type": "string",
           "x-go-name": "Description"
         },
         "exampleProblems": {
-          "description": "ExampleProblems is the exampleProblems JSON field.",
           "items": {
             "$ref": "#/definitions/PatternsExampleProblem"
           },
@@ -3658,12 +3373,10 @@
           "x-nullable": true
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
         "recognitionSymptoms": {
-          "description": "RecognitionSymptoms is the recognitionSymptoms JSON field.",
           "items": {
             "type": "string"
           },
@@ -3672,7 +3385,6 @@
           "x-nullable": true
         },
         "techniques": {
-          "description": "Techniques is the techniques JSON field.",
           "items": {
             "type": "string"
           },
@@ -3698,57 +3410,47 @@
     "PatternsPracticeProblem": {
       "properties": {
         "difficulty": {
-          "description": "Difficulty is the difficulty JSON field.",
           "type": "string",
           "x-go-name": "Difficulty"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "next_review_at": {
-          "description": "NextReviewAt is the next_review_at JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
           "x-nullable": true
         },
         "platform": {
-          "description": "Platform is the platform JSON field.",
           "type": "string",
           "x-go-name": "Platform"
         },
         "rating": {
-          "description": "Rating is the rating JSON field.",
           "type": "string",
           "x-go-name": "Rating"
         },
         "solved_at": {
-          "description": "SolvedAt is the solved_at JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "SolvedAt",
           "x-nullable": true
         },
         "status": {
-          "description": "Status is the status JSON field.",
           "type": "string",
           "x-go-name": "Status"
         },
         "tier": {
-          "description": "Tier is the tier JSON field.",
           "type": "string",
           "x-go-name": "Tier"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "url": {
-          "description": "URL is the url JSON field.",
           "type": "string",
           "x-go-name": "URL"
         }
@@ -3768,7 +3470,6 @@
     "PatternsRelevantCompany": {
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
@@ -3786,7 +3487,6 @@
           "x-go-name": "LastSeenAt"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
@@ -3816,13 +3516,11 @@
       "description": "SubpatternStats are the raw per-user aggregates a subpattern's mastery is\nderived from. Kept separate from Mastery so the calculation can evolve\n(recognition/transfer/retention components) without an API break.\nSubpatternStats documents the PatternsSubpatternStats JSON shape.",
       "properties": {
         "attempt_count": {
-          "description": "AttemptCount is the attempt_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "AttemptCount"
         },
         "card_count": {
-          "description": "CardCount is the card_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "CardCount"
@@ -3832,50 +3530,43 @@
             "format": "int64",
             "type": "integer"
           },
-          "description": "DifficultyCounts is the catalog-wide easy/medium/hard/unknown split of\nthe subpattern's practice set (same for every user).\nDifficultyCounts is the difficulty_counts JSON field.",
+          "description": "DifficultyCounts is the catalog-wide easy/medium/hard/unknown split of\nthe subpattern's practice set (same for every user).",
           "type": "object",
           "x-go-name": "DifficultyCounts"
         },
         "due_count": {
-          "description": "DueCount is the due_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "DueCount"
         },
         "hard_count": {
-          "description": "HardCount is the hard_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "HardCount"
         },
         "in_progress_count": {
-          "description": "InProgressCount is the in_progress_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "InProgressCount"
         },
         "last_solved_at": {
-          "description": "LastSolvedAt is the last_solved_at JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "LastSolvedAt",
           "x-nullable": true
         },
         "next_review_at": {
-          "description": "NextReviewAt is the next_review_at JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
           "x-nullable": true
         },
         "problem_count": {
-          "description": "ProblemCount is the problem_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ProblemCount"
         },
         "solved_count": {
-          "description": "SolvedCount is the solved_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "SolvedCount"
@@ -3897,28 +3588,23 @@
     "PatternsWeakPattern": {
       "properties": {
         "hard_count": {
-          "description": "HardCount is the hard_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "HardCount"
         },
         "low_confidence": {
-          "description": "LowConfidence is the low_confidence JSON field.",
           "type": "boolean",
           "x-go-name": "LowConfidence"
         },
         "pattern": {
-          "description": "Pattern is the pattern JSON field.",
           "type": "string",
           "x-go-name": "Pattern"
         },
         "pattern_code": {
-          "description": "PatternCode is the pattern_code JSON field.",
           "type": "string",
           "x-go-name": "PatternCode"
         },
         "review_count": {
-          "description": "ReviewCount is the review_count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ReviewCount"
@@ -3997,18 +3683,15 @@
       "description": "Subpattern documents the PracticeSubpattern JSON shape.",
       "properties": {
         "addedAt": {
-          "description": "AddedAt is the addedAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "AddedAt"
         },
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         }
@@ -4027,7 +3710,6 @@
       "description": "Response documents the ProblemcardsResponse JSON shape.",
       "properties": {
         "cards": {
-          "description": "Cards is the cards JSON field.",
           "items": {
             "$ref": "#/definitions/CardsCard"
           },
@@ -4036,7 +3718,6 @@
           "x-nullable": true
         },
         "status": {
-          "description": "Status is the status JSON field.",
           "type": "string",
           "x-go-name": "Status"
         }
@@ -4053,35 +3734,30 @@
     "ProblemsProblem": {
       "properties": {
         "createdAt": {
-          "description": "CreatedAt is the createdAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "CreatedAt"
         },
         "difficulty": {
-          "description": "Difficulty is the difficulty JSON field.",
           "type": "string",
           "x-go-name": "Difficulty"
         },
         "externalId": {
-          "description": "ExternalID is the externalId JSON field.",
           "type": "string",
           "x-go-name": "ExternalID"
         },
         "hintsUsed": {
-          "description": "HintsUsed — сколько подсказок ассистента реально выдано по задаче\n(успешные assistant_hint-запросы этого пользователя).\nHintsUsed is the hintsUsed JSON field.",
+          "description": "HintsUsed — сколько подсказок ассистента реально выдано по задаче\n(успешные assistant_hint-запросы этого пользователя).",
           "format": "int64",
           "type": "integer",
           "x-go-name": "HintsUsed"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "lastRating": {
-          "description": "LastRating is the lastRating JSON field.",
           "enum": [
             "hard",
             "normal",
@@ -4092,7 +3768,6 @@
           "x-nullable": true
         },
         "nextReviewAt": {
-          "description": "NextReviewAt is the nextReviewAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
@@ -4104,40 +3779,33 @@
               "$ref": "#/definitions/ProblemsProblemPattern"
             }
           ],
-          "description": "Pattern is the pattern JSON field.",
           "x-go-name": "Pattern",
           "x-nullable": true
         },
         "platform": {
-          "description": "Platform is the platform JSON field.",
           "type": "string",
           "x-go-name": "Platform"
         },
         "solvedAt": {
-          "description": "SolvedAt is the solvedAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "SolvedAt",
           "x-nullable": true
         },
         "status": {
-          "description": "Status is the status JSON field.",
           "type": "string",
           "x-go-name": "Status"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "updatedAt": {
-          "description": "UpdatedAt is the updatedAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "UpdatedAt"
         },
         "url": {
-          "description": "URL is the url JSON field.",
           "type": "string",
           "x-go-name": "URL"
         }
@@ -4167,35 +3835,29 @@
       "description": "ProblemDetail is returned by GET /me/problems/{id}. It is a strict superset\nof Problem (list): every list field is present with the same JSON key, plus\nNote. Casing is camelCase to match the list model, the contract doc and both\nfrontends (issue #243).\nProblemDetail documents the ProblemsProblemDetail JSON shape.",
       "properties": {
         "createdAt": {
-          "description": "CreatedAt is the createdAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "CreatedAt"
         },
         "difficulty": {
-          "description": "Difficulty is the difficulty JSON field.",
           "type": "string",
           "x-go-name": "Difficulty"
         },
         "externalId": {
-          "description": "ExternalID is the externalId JSON field.",
           "type": "string",
           "x-go-name": "ExternalID"
         },
         "hintsUsed": {
-          "description": "HintsUsed is the hintsUsed JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "HintsUsed"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "lastRating": {
-          "description": "LastRating is the lastRating JSON field.",
           "enum": [
             "hard",
             "normal",
@@ -4206,14 +3868,12 @@
           "x-nullable": true
         },
         "nextReviewAt": {
-          "description": "NextReviewAt is the nextReviewAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
           "x-nullable": true
         },
         "note": {
-          "description": "Note is the note JSON field.",
           "type": "string",
           "x-go-name": "Note",
           "x-nullable": true
@@ -4224,40 +3884,33 @@
               "$ref": "#/definitions/ProblemsProblemPattern"
             }
           ],
-          "description": "Pattern is the pattern JSON field.",
           "x-go-name": "Pattern",
           "x-nullable": true
         },
         "platform": {
-          "description": "Platform is the platform JSON field.",
           "type": "string",
           "x-go-name": "Platform"
         },
         "solvedAt": {
-          "description": "SolvedAt is the solvedAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "SolvedAt",
           "x-nullable": true
         },
         "status": {
-          "description": "Status is the status JSON field.",
           "type": "string",
           "x-go-name": "Status"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "updatedAt": {
-          "description": "UpdatedAt is the updatedAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "UpdatedAt"
         },
         "url": {
-          "description": "URL is the url JSON field.",
           "type": "string",
           "x-go-name": "URL"
         }
@@ -4324,18 +3977,15 @@
     "QuizAnswerResult": {
       "properties": {
         "correct": {
-          "description": "Correct is the correct JSON field.",
           "type": "boolean",
           "x-go-name": "Correct"
         },
         "correct_option": {
-          "description": "CorrectOption is the correct_option JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "CorrectOption"
         },
         "explanation": {
-          "description": "Explanation is the explanation JSON field.",
           "type": "string",
           "x-go-name": "Explanation",
           "x-nullable": true
@@ -4382,29 +4032,24 @@
     "QuizQuestionItem": {
       "properties": {
         "created_at": {
-          "description": "CreatedAt is the created_at JSON field.",
           "type": "string",
           "x-go-name": "CreatedAt"
         },
         "created_by_ai": {
-          "description": "CreatedByAI is the created_by_ai JSON field.",
           "type": "boolean",
           "x-go-name": "CreatedByAI"
         },
         "difficulty": {
-          "description": "Difficulty is the difficulty JSON field.",
           "type": "string",
           "x-go-name": "Difficulty",
           "x-nullable": true
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "options": {
-          "description": "Options is the options JSON field.",
           "items": {
             "type": "string"
           },
@@ -4413,33 +4058,28 @@
           "x-nullable": true
         },
         "pattern_id": {
-          "description": "PatternID is the pattern_id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "PatternID",
           "x-nullable": true
         },
         "pattern_name": {
-          "description": "PatternName is the pattern_name JSON field.",
           "type": "string",
           "x-go-name": "PatternName",
           "x-nullable": true
         },
         "problem_id": {
-          "description": "ProblemID is the problem_id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ProblemID",
           "x-nullable": true
         },
         "problem_title": {
-          "description": "ProblemTitle is the problem_title JSON field.",
           "type": "string",
           "x-go-name": "ProblemTitle",
           "x-nullable": true
         },
         "question": {
-          "description": "Question is the question JSON field.",
           "type": "string",
           "x-go-name": "Question"
         }
@@ -4511,24 +4151,21 @@
       "description": "navigation требует to (route до 512 байт); click требует target (до 140 байт); network требует method (до 16 байт), url (route до 512 байт) и status.",
       "properties": {
         "method": {
-          "description": "Method is the method JSON field.",
           "type": "string",
           "x-go-name": "Method"
         },
         "requestId": {
-          "description": "RequestID is the requestId JSON field.",
           "type": "string",
           "x-go-name": "RequestID"
         },
         "responseTimeMs": {
-          "description": "ResponseTimeMS is the responseTimeMs JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ResponseTimeMS",
           "x-nullable": true
         },
         "status": {
-          "description": "Status is the status JSON field.\n\nSwagger 2.0 cannot validate this scalar union; the handler accepts the listed alternatives.",
+          "description": "Swagger 2.0 cannot validate this scalar union; the handler accepts the listed alternatives.",
           "x-go-name": "Status",
           "x-oneOf": [
             {
@@ -4547,24 +4184,20 @@
           ]
         },
         "target": {
-          "description": "Target is the target JSON field.",
           "type": "string",
           "x-go-name": "Target"
         },
         "time": {
-          "description": "Time is the time JSON field.",
           "maxLength": 32,
           "minLength": 1,
           "type": "string",
           "x-go-name": "Time"
         },
         "to": {
-          "description": "To is the to JSON field.",
           "type": "string",
           "x-go-name": "To"
         },
         "type": {
-          "description": "Type is the type JSON field.",
           "enum": [
             "navigation",
             "click",
@@ -4574,7 +4207,6 @@
           "x-go-name": "Type"
         },
         "url": {
-          "description": "URL is the url JSON field.",
           "type": "string",
           "x-go-name": "URL"
         }
@@ -4598,14 +4230,12 @@
           "x-go-name": "Engine"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "maxLength": 80,
           "minLength": 1,
           "type": "string",
           "x-go-name": "Name"
         },
         "version": {
-          "description": "Version is the version JSON field.",
           "maxLength": 80,
           "type": "string",
           "x-go-name": "Version"
@@ -4624,20 +4254,17 @@
       "additionalProperties": false,
       "properties": {
         "engine": {
-          "description": "Engine is the engine JSON field.",
           "maxLength": 80,
           "type": "string",
           "x-go-name": "Engine"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "maxLength": 80,
           "minLength": 1,
           "type": "string",
           "x-go-name": "Name"
         },
         "version": {
-          "description": "Version is the version JSON field.",
           "maxLength": 80,
           "type": "string",
           "x-go-name": "Version"
@@ -4655,19 +4282,16 @@
       "additionalProperties": false,
       "properties": {
         "column": {
-          "description": "Column is the column JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Column"
         },
         "line": {
-          "description": "Line is the line JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Line"
         },
         "message": {
-          "description": "Message is the message JSON field.",
           "maxLength": 500,
           "minLength": 1,
           "type": "string",
@@ -4684,14 +4308,12 @@
           "x-go-name": "Stack"
         },
         "time": {
-          "description": "Time is the time JSON field.",
           "maxLength": 40,
           "minLength": 1,
           "type": "string",
           "x-go-name": "Time"
         },
         "type": {
-          "description": "Type is the type JSON field.",
           "enum": [
             "error",
             "unhandledrejection"
@@ -4714,27 +4336,23 @@
       "additionalProperties": false,
       "properties": {
         "endpoint": {
-          "description": "Endpoint is the endpoint JSON field.",
           "maxLength": 512,
           "pattern": "^/",
           "type": "string",
           "x-go-name": "Endpoint"
         },
         "method": {
-          "description": "Method is the method JSON field.",
           "maxLength": 16,
           "minLength": 1,
           "type": "string",
           "x-go-name": "Method"
         },
         "requestId": {
-          "description": "RequestID is the requestId JSON field.",
           "maxLength": 200,
           "type": "string",
           "x-go-name": "RequestID"
         },
         "responseTimeMs": {
-          "description": "ResponseTimeMS is the responseTimeMs JSON field.",
           "format": "int64",
           "maximum": 3600000,
           "minimum": 0,
@@ -4742,13 +4360,12 @@
           "x-go-name": "ResponseTimeMS"
         },
         "startedAt": {
-          "description": "StartedAt is the startedAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "StartedAt"
         },
         "status": {
-          "description": "Status is the status JSON field.\n\nSwagger 2.0 cannot validate this scalar union; the handler accepts the listed alternatives.",
+          "description": "Swagger 2.0 cannot validate this scalar union; the handler accepts the listed alternatives.",
           "x-go-name": "Status",
           "x-oneOf": [
             {
@@ -4767,7 +4384,6 @@
           ]
         },
         "statusText": {
-          "description": "StatusText is the statusText JSON field.",
           "type": "string",
           "x-go-name": "StatusText"
         }
@@ -4787,26 +4403,22 @@
       "additionalProperties": false,
       "properties": {
         "locale": {
-          "description": "Locale is the locale JSON field.",
           "maxLength": 32,
           "minLength": 1,
           "type": "string",
           "x-go-name": "Locale"
         },
         "online": {
-          "description": "Online is the online JSON field.",
           "type": "boolean",
           "x-go-name": "Online"
         },
         "route": {
-          "description": "Route is the route JSON field.",
           "maxLength": 512,
           "pattern": "^/",
           "type": "string",
           "x-go-name": "Route"
         },
         "timezone": {
-          "description": "Timezone is the timezone JSON field.",
           "maxLength": 100,
           "minLength": 1,
           "type": "string",
@@ -4831,14 +4443,12 @@
       "additionalProperties": false,
       "properties": {
         "commit": {
-          "description": "Commit is the commit JSON field.",
           "maxLength": 64,
           "minLength": 1,
           "type": "string",
           "x-go-name": "Commit"
         },
         "version": {
-          "description": "Version is the version JSON field.",
           "maxLength": 100,
           "minLength": 1,
           "type": "string",
@@ -4889,7 +4499,6 @@
       },
       "properties": {
         "breadcrumbs": {
-          "description": "Breadcrumbs is the breadcrumbs JSON field.",
           "items": {
             "$ref": "#/definitions/ReportsBreadcrumb"
           },
@@ -4908,7 +4517,6 @@
               "additionalProperties": false
             }
           ],
-          "description": "Browser is the browser JSON field.",
           "x-go-name": "Browser"
         },
         "description": {
@@ -4919,7 +4527,6 @@
           "x-go-name": "Description"
         },
         "errors": {
-          "description": "Errors is the errors JSON field.",
           "items": {
             "$ref": "#/definitions/ReportsClientError"
           },
@@ -4934,7 +4541,6 @@
               "$ref": "#/definitions/ReportsNetwork"
             }
           ],
-          "description": "Network is the network JSON field.",
           "x-go-name": "Network",
           "x-nullable": true
         },
@@ -4948,14 +4554,12 @@
           "$ref": "#/definitions/ReportsRelease"
         },
         "reportedAt": {
-          "description": "ReportedAt is the reportedAt JSON field.",
           "format": "date-time",
           "maxLength": 40,
           "type": "string",
           "x-go-name": "ReportedAt"
         },
         "schemaVersion": {
-          "description": "SchemaVersion is the schemaVersion JSON field.",
           "enum": [
             2
           ],
@@ -4981,18 +4585,15 @@
     "ReportsResult": {
       "properties": {
         "fingerprint": {
-          "description": "Fingerprint is the fingerprint JSON field.",
           "type": "string",
           "x-go-name": "Fingerprint"
         },
         "receivedAt": {
-          "description": "ReceivedAt is the receivedAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "ReceivedAt"
         },
         "reportId": {
-          "description": "ReportID is the reportId JSON field.",
           "type": "string",
           "x-go-name": "ReportID"
         }
@@ -5011,7 +4612,6 @@
       "additionalProperties": false,
       "properties": {
         "height": {
-          "description": "Height is the height JSON field.",
           "format": "int64",
           "maximum": 32768,
           "minimum": 1,
@@ -5019,7 +4619,6 @@
           "x-go-name": "Height"
         },
         "width": {
-          "description": "Width is the width JSON field.",
           "format": "int64",
           "maximum": 32768,
           "minimum": 1,
@@ -5039,12 +4638,10 @@
     "ReviewsProblemAttemptData": {
       "properties": {
         "outcome": {
-          "description": "Outcome is the outcome JSON field.",
           "type": "string",
           "x-go-name": "Outcome"
         },
         "problemId": {
-          "description": "ProblemID is the problemId JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ProblemID"
@@ -5069,18 +4666,15 @@
       "description": "RateReviewData — данные ответа\nОбёрнут в data согласно контракту\nRateReviewData documents the ReviewsRateReviewData JSON shape.",
       "properties": {
         "nextReviewAt": {
-          "description": "NextReviewAt is the nextReviewAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt"
         },
         "rating": {
-          "description": "Rating is the rating JSON field.",
           "type": "string",
           "x-go-name": "Rating"
         },
         "reviewId": {
-          "description": "ReviewID is the reviewId JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ReviewID"
@@ -5172,19 +4766,16 @@
       "description": "ReviewItem для элемента очереди\nReviewItem documents the ReviewsReviewItem JSON shape.",
       "properties": {
         "attempts": {
-          "description": "Attempts is the attempts JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Attempts"
         },
         "dueAt": {
-          "description": "DueAt is the dueAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "DueAt"
         },
         "entityId": {
-          "description": "EntityID is the entityId JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "EntityID"
@@ -5195,18 +4786,16 @@
           "x-go-name": "EntityType"
         },
         "entityUrl": {
-          "description": "EntityURL — внешняя ссылка «перерешать на платформе» (для problem-элементов).\nEntityURL is the entityUrl JSON field.",
+          "description": "EntityURL — внешняя ссылка «перерешать на платформе» (для problem-элементов).",
           "type": "string",
           "x-go-name": "EntityURL"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "lastRating": {
-          "description": "LastRating is the lastRating JSON field.",
           "enum": [
             "hard",
             "normal",
@@ -5217,12 +4806,11 @@
           "x-nullable": true
         },
         "meta": {
-          "description": "Meta is the meta JSON field.",
           "type": "string",
           "x-go-name": "Meta"
         },
         "patternCode": {
-          "description": "PatternCode — код паттерна для ссылки на /patterns/{code}/session.\nPatternCode is the patternCode JSON field.",
+          "description": "PatternCode — код паттерна для ссылки на /patterns/{code}/session.",
           "type": "string",
           "x-go-name": "PatternCode"
         },
@@ -5232,12 +4820,10 @@
           "x-go-name": "Status"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "typeLabel": {
-          "description": "TypeLabel is the typeLabel JSON field.",
           "type": "string",
           "x-go-name": "TypeLabel"
         }
@@ -5264,25 +4850,21 @@
       "description": "StatsResponse для GET /me/reviews/stats\nStatsResponse documents the ReviewsStatsResponse JSON shape.",
       "properties": {
         "learningCards": {
-          "description": "LearningCards is the learningCards JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "LearningCards"
         },
         "newCards": {
-          "description": "NewCards is the newCards JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "NewCards"
         },
         "reviewCards": {
-          "description": "ReviewCards is the reviewCards JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ReviewCards"
         },
         "totalReviews": {
-          "description": "TotalReviews is the totalReviews JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "TotalReviews"
@@ -5301,32 +4883,27 @@
     "RoadmapCardProgress": {
       "properties": {
         "due": {
-          "description": "Due is the due JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Due"
         },
         "nextReviewAt": {
-          "description": "NextReviewAt is the nextReviewAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
           "x-nullable": true
         },
         "reinforcement": {
-          "description": "Reinforcement is the reinforcement JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Reinforcement"
         },
         "reviewed": {
-          "description": "Reviewed is the reviewed JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Reviewed"
         },
         "total": {
-          "description": "Total is the total JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Total"
@@ -5408,7 +4985,6 @@
           "x-go-name": "PreserveProgress"
         },
         "priorityMode": {
-          "description": "PriorityMode is the priorityMode JSON field.",
           "enum": [
             "",
             "balanced",
@@ -5431,7 +5007,6 @@
           "$ref": "#/definitions/RoadmapCardProgress"
         },
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
@@ -5440,23 +5015,19 @@
             "format": "int64",
             "type": "integer"
           },
-          "description": "DifficultyCounts is the difficultyCounts JSON field.",
           "type": "object",
           "x-go-name": "DifficultyCounts"
         },
         "masteryPercent": {
-          "description": "MasteryPercent is the masteryPercent JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "MasteryPercent"
         },
         "name": {
-          "description": "Name is the name JSON field.",
           "type": "string",
           "x-go-name": "Name"
         },
         "planProgress": {
-          "description": "PlanProgress is the planProgress JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "PlanProgress"
@@ -5465,13 +5036,11 @@
           "$ref": "#/definitions/RoadmapReinforcement"
         },
         "relevantProblemCount": {
-          "description": "RelevantProblemCount is the relevantProblemCount JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "RelevantProblemCount"
         },
         "stage": {
-          "description": "Stage is the stage JSON field.",
           "enum": [
             "theory",
             "tasks",
@@ -5482,7 +5051,6 @@
           "x-go-name": "Stage"
         },
         "tasks": {
-          "description": "Tasks is the tasks JSON field.",
           "items": {
             "$ref": "#/definitions/RoadmapTask"
           },
@@ -5560,19 +5128,16 @@
     "RoadmapReinforcement": {
       "properties": {
         "count": {
-          "description": "Count is the count JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Count"
         },
         "due": {
-          "description": "Due is the due JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Due"
         },
         "nextReviewAt": {
-          "description": "NextReviewAt is the nextReviewAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
@@ -5591,13 +5156,11 @@
     "RoadmapResponse": {
       "properties": {
         "algorithmVersion": {
-          "description": "AlgorithmVersion is the algorithmVersion JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "AlgorithmVersion"
         },
         "availableModes": {
-          "description": "AvailableModes is the availableModes JSON field.",
           "items": {
             "type": "string"
           },
@@ -5606,19 +5169,16 @@
           "x-nullable": true
         },
         "configured": {
-          "description": "Configured is the configured JSON field.",
           "type": "boolean",
           "x-go-name": "Configured"
         },
         "generatedAt": {
-          "description": "GeneratedAt is the generatedAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "GeneratedAt",
           "x-nullable": true
         },
         "horizonWeeks": {
-          "description": "HorizonWeeks is the horizonWeeks JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "HorizonWeeks"
@@ -5629,23 +5189,19 @@
               "$ref": "#/definitions/RoadmapNextAction"
             }
           ],
-          "description": "NextAction is the nextAction JSON field.",
           "x-go-name": "NextAction",
           "x-nullable": true
         },
         "overallProgress": {
-          "description": "OverallProgress is the overallProgress JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "OverallProgress"
         },
         "planKey": {
-          "description": "PlanKey is the planKey JSON field.",
           "type": "string",
           "x-go-name": "PlanKey"
         },
         "priorityMode": {
-          "description": "PriorityMode is the priorityMode JSON field.",
           "enum": [
             "balanced",
             "easy_first",
@@ -5656,19 +5212,16 @@
           "x-go-name": "PriorityMode"
         },
         "reserveCount": {
-          "description": "ReserveCount is the reserveCount JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ReserveCount"
         },
         "selectedCount": {
-          "description": "SelectedCount is the selectedCount JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "SelectedCount"
         },
         "source": {
-          "description": "Source is the source JSON field.",
           "type": "string",
           "x-go-name": "Source"
         },
@@ -5676,13 +5229,11 @@
           "$ref": "#/definitions/RoadmapTarget"
         },
         "weeklyCapacity": {
-          "description": "WeeklyCapacity is the weeklyCapacity JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "WeeklyCapacity"
         },
         "weeks": {
-          "description": "Weeks is the weeks JSON field.",
           "items": {
             "$ref": "#/definitions/RoadmapWeek"
           },
@@ -5713,7 +5264,6 @@
     "RoadmapSummary": {
       "properties": {
         "active": {
-          "description": "Active is the active JSON field.",
           "type": "boolean",
           "x-go-name": "Active"
         },
@@ -5723,31 +5273,26 @@
               "$ref": "#/definitions/RoadmapCompany"
             }
           ],
-          "description": "Company is the company JSON field.",
           "x-go-name": "Company",
           "x-nullable": true
         },
         "generatedAt": {
-          "description": "GeneratedAt is the generatedAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "GeneratedAt",
           "x-nullable": true
         },
         "interviewDate": {
-          "description": "InterviewDate is the interviewDate JSON field.",
           "format": "date",
           "type": "string",
           "x-go-name": "InterviewDate",
           "x-nullable": true
         },
         "planKey": {
-          "description": "PlanKey is the planKey JSON field.",
           "type": "string",
           "x-go-name": "PlanKey"
         },
         "priorityMode": {
-          "description": "PriorityMode is the priorityMode JSON field.",
           "enum": [
             "balanced",
             "easy_first",
@@ -5778,19 +5323,16 @@
               "$ref": "#/definitions/RoadmapCompany"
             }
           ],
-          "description": "Company is the company JSON field.",
           "x-go-name": "Company",
           "x-nullable": true
         },
         "interviewDate": {
-          "description": "InterviewDate is the interviewDate JSON field.",
           "format": "date",
           "type": "string",
           "x-go-name": "InterviewDate",
           "x-nullable": true
         },
         "topics": {
-          "description": "Topics is the topics JSON field.",
           "items": {
             "type": "string"
           },
@@ -5812,63 +5354,52 @@
     "RoadmapTask": {
       "properties": {
         "accessStatus": {
-          "description": "AccessStatus is the accessStatus JSON field.",
           "type": "string",
           "x-go-name": "AccessStatus"
         },
         "difficulty": {
-          "description": "Difficulty is the difficulty JSON field.",
           "type": "string",
           "x-go-name": "Difficulty"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ID"
         },
         "lastRating": {
-          "description": "LastRating is the lastRating JSON field.",
           "type": "string",
           "x-go-name": "LastRating",
           "x-nullable": true
         },
         "nextReviewAt": {
-          "description": "NextReviewAt is the nextReviewAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "NextReviewAt",
           "x-nullable": true
         },
         "originalId": {
-          "description": "OriginalID is the originalId JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "OriginalID"
         },
         "reviewCount": {
-          "description": "ReviewCount is the reviewCount JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ReviewCount"
         },
         "status": {
-          "description": "Status is the status JSON field.",
           "type": "string",
           "x-go-name": "Status"
         },
         "tier": {
-          "description": "Tier is the tier JSON field.",
           "type": "string",
           "x-go-name": "Tier"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "url": {
-          "description": "URL is the url JSON field.",
           "type": "string",
           "x-go-name": "URL"
         }
@@ -5895,7 +5426,6 @@
       },
       "properties": {
         "action": {
-          "description": "Action is the action JSON field.",
           "enum": [
             "replace",
             "skip"
@@ -5915,18 +5445,15 @@
     "RoadmapTaskAccessResolution": {
       "properties": {
         "action": {
-          "description": "Action is the action JSON field.",
           "type": "string",
           "x-go-name": "Action"
         },
         "originalProblemId": {
-          "description": "OriginalProblemID is the originalProblemId JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "OriginalProblemID"
         },
         "replacementProblemId": {
-          "description": "ReplacementProblemID is the replacementProblemId JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ReplacementProblemID",
@@ -5945,12 +5472,10 @@
     "RoadmapTheoryCompletion": {
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "completedAt": {
-          "description": "CompletedAt is the completedAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "CompletedAt"
@@ -5968,12 +5493,10 @@
     "RoadmapTheoryProgress": {
       "properties": {
         "completed": {
-          "description": "Completed is the completed JSON field.",
           "type": "boolean",
           "x-go-name": "Completed"
         },
         "completedAt": {
-          "description": "CompletedAt is the completedAt JSON field.",
           "format": "date-time",
           "type": "string",
           "x-go-name": "CompletedAt",
@@ -5991,17 +5514,14 @@
     "RoadmapWeek": {
       "properties": {
         "focus": {
-          "description": "Focus is the focus JSON field.",
           "type": "string",
           "x-go-name": "Focus"
         },
         "id": {
-          "description": "ID is the id JSON field.",
           "type": "string",
           "x-go-name": "ID"
         },
         "items": {
-          "description": "Items is the items JSON field.",
           "items": {
             "$ref": "#/definitions/RoadmapItem"
           },
@@ -6010,28 +5530,23 @@
           "x-nullable": true
         },
         "label": {
-          "description": "Label is the label JSON field.",
           "type": "string",
           "x-go-name": "Label"
         },
         "progress": {
-          "description": "Progress is the progress JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Progress"
         },
         "status": {
-          "description": "Status is the status JSON field.",
           "type": "string",
           "x-go-name": "Status"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "topics": {
-          "description": "Topics is the topics JSON field.",
           "items": {
             "type": "string"
           },
@@ -6058,49 +5573,40 @@
     "RoadmapsItem": {
       "properties": {
         "difficulty": {
-          "description": "Difficulty is the difficulty JSON field.",
           "type": "string",
           "x-go-name": "Difficulty"
         },
         "external_id": {
-          "description": "ExternalID is the external_id JSON field.",
           "type": "string",
           "x-go-name": "ExternalID"
         },
         "pattern": {
-          "description": "Pattern is the pattern JSON field.",
           "type": "string",
           "x-go-name": "Pattern"
         },
         "pattern_code": {
-          "description": "PatternCode is the pattern_code JSON field.",
           "type": "string",
           "x-go-name": "PatternCode"
         },
         "position": {
-          "description": "Position is the position JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "Position"
         },
         "problem_id": {
-          "description": "ProblemID is the problem_id JSON field.",
           "format": "int64",
           "type": "integer",
           "x-go-name": "ProblemID"
         },
         "slug": {
-          "description": "Slug is the slug JSON field.",
           "type": "string",
           "x-go-name": "Slug"
         },
         "title": {
-          "description": "Title is the title JSON field.",
           "type": "string",
           "x-go-name": "Title"
         },
         "url": {
-          "description": "URL is the url JSON field.",
           "type": "string",
           "x-go-name": "URL"
         }
@@ -6124,12 +5630,10 @@
     "RoadmapsResponse": {
       "properties": {
         "code": {
-          "description": "Code is the code JSON field.",
           "type": "string",
           "x-go-name": "Code"
         },
         "items": {
-          "description": "Items is the items JSON field.",
           "items": {
             "$ref": "#/definitions/RoadmapsItem"
           },

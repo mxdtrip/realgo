@@ -22,35 +22,21 @@ const (
 //
 // swagger:model CardsCard
 type Card struct {
-	// ID is the id JSON field.
-	//
 	// Required: true
 	ID int64 `json:"id"`
-	// Type is the type JSON field.
-	//
 	// Required: true
 	// Enum: ["pattern_recognition", "algorithm_mechanics", "edge_case"]
 	Type string `json:"type"`
-	// Source is the source JSON field.
-	//
 	// Required: true
 	Source Source `json:"source"`
-	// Front is the front JSON field.
-	//
 	// Required: true
 	Front string `json:"front"`
-	// Back is the back JSON field.
-	//
 	// Required: true
 	Back string `json:"back"`
-	// Status is the status JSON field.
-	//
 	// Required: true
 	// Enum: ["new", "due", "learning", "mastered"]
 	Status string `json:"status"`
 	// swagger:name nextReviewAt
-	// NextReviewAt is the nextReviewAt JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -58,8 +44,6 @@ type Card struct {
 	// ---
 	// swagger:strfmt date-time
 	NextReviewAt *time.Time `json:"nextReviewAt"`
-	// LastRating is the lastRating JSON field.
-	//
 	// Required: true
 	// Enum: ["hard", "normal", "easy"]
 	// Extensions:
@@ -67,13 +51,9 @@ type Card struct {
 	// x-nullable: true
 	// ---
 	LastRating *string `json:"lastRating"`
-	// CreatedByAI is the createdByAi JSON field.
-	//
 	// Required: true
 	CreatedByAI bool `json:"createdByAi"`
 	// swagger:name createdAt
-	// CreatedAt is the createdAt JSON field.
-	//
 	// Required: true
 	// swagger:strfmt date-time
 	CreatedAt time.Time `json:"createdAt"`
@@ -83,20 +63,14 @@ type Card struct {
 //
 // swagger:model CardsSource
 type Source struct {
-	// EntityType is the entityType JSON field.
-	//
 	// Required: true
 	EntityType string `json:"entityType"`
-	// EntityID is the entityId JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	EntityID *int64 `json:"entityId"`
-	// Label is the label JSON field.
-	//
 	// Required: true
 	Label string `json:"label"`
 }
@@ -164,21 +138,13 @@ type SessionParams struct {
 //
 // swagger:model CardsSession
 type Session struct {
-	// SessionID is the sessionId JSON field.
-	//
 	// Required: true
 	SessionID string `json:"sessionId"`
-	// Scope is the scope JSON field.
-	//
 	// Required: true
 	// Enum: ["due", "hard_normal", "all", "practice"]
 	Scope string `json:"scope"`
-	// EstimatedMinutes is the estimatedMinutes JSON field.
-	//
 	// Required: true
 	EstimatedMinutes int `json:"estimatedMinutes"`
-	// Cards is the cards JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -191,33 +157,19 @@ type Session struct {
 //
 // swagger:model CardsSessionCard
 type SessionCard struct {
-	// ID is the id JSON field.
-	//
 	// Required: true
 	ID int64 `json:"id"`
-	// Type is the type JSON field.
-	//
 	// Required: true
 	// Enum: ["pattern_recognition", "algorithm_mechanics", "edge_case"]
 	Type string `json:"type"`
-	// SourceLabel is the sourceLabel JSON field.
-	//
 	// Required: true
 	SourceLabel string `json:"sourceLabel"`
-	// Front is the front JSON field.
-	//
 	// Required: true
 	Front string `json:"front"`
-	// Back is the back JSON field.
-	//
 	// Required: true
 	Back string `json:"back"`
-	// CreatedByAI is the createdByAi JSON field.
-	//
 	// Required: true
 	CreatedByAI bool `json:"createdByAi"`
-	// ReviewState is the reviewState JSON field.
-	//
 	// Required: true
 	ReviewState ReviewState `json:"reviewState"`
 }
@@ -226,12 +178,8 @@ type SessionCard struct {
 //
 // swagger:model CardsReviewState
 type ReviewState struct {
-	// Attempts is the attempts JSON field.
-	//
 	// Required: true
 	Attempts int `json:"attempts"`
-	// LastRating is the lastRating JSON field.
-	//
 	// Required: true
 	// Enum: ["hard", "normal", "easy"]
 	// Extensions:
@@ -240,8 +188,6 @@ type ReviewState struct {
 	// ---
 	LastRating *string `json:"lastRating"`
 	// swagger:name nextReviewAt
-	// NextReviewAt is the nextReviewAt JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -259,16 +205,10 @@ type ReviewState struct {
 //
 // swagger:model CardsDueSummary
 type DueSummary struct {
-	// TotalDue is the totalDue JSON field.
-	//
 	// Required: true
 	TotalDue int `json:"totalDue"`
-	// EstimatedMinutes is the estimatedMinutes JSON field.
-	//
 	// Required: true
 	EstimatedMinutes int `json:"estimatedMinutes"`
-	// ByType is the byType JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -281,19 +221,13 @@ type DueSummary struct {
 //
 // swagger:model CardsDueTypeSummary
 type DueTypeSummary struct {
-	// Type is the type JSON field.
-	//
 	// Required: true
 	// Enum: ["pattern_recognition", "algorithm_mechanics", "edge_case"]
 	Type string `json:"type"`
-	// Count is the count JSON field.
-	//
 	// Required: true
 	Count int `json:"count"`
 	// SampleLabels holds up to 3 source titles (soonest-due first) so the UI
 	// can show what's due without fetching every card's full content.
-	// SampleLabels is the sampleLabels JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -313,14 +247,10 @@ type RateRequest struct {
 	//
 	// Required: false
 	SessionID string `json:"sessionId"`
-	// Rating is the rating JSON field.
-	//
 	// Required: true
 	// Enum: ["hard", "normal", "easy"]
 	Rating string `json:"rating"`
 	// swagger:name reviewedAt
-	// ReviewedAt is the reviewedAt JSON field.
-	//
 	// Required: true
 	// swagger:strfmt date-time
 	ReviewedAt string `json:"reviewedAt"`
@@ -334,26 +264,16 @@ func (r RateRequest) ValidRating() bool {
 //
 // swagger:model CardsRateResult
 type RateResult struct {
-	// CardID is the cardId JSON field.
-	//
 	// Required: true
 	CardID int64 `json:"cardId"`
-	// Rating is the rating JSON field.
-	//
 	// Required: true
 	Rating string `json:"rating"`
 	// swagger:name nextReviewAt
-	// NextReviewAt is the nextReviewAt JSON field.
-	//
 	// Required: true
 	// swagger:strfmt date-time
 	NextReviewAt time.Time `json:"nextReviewAt"`
-	// RepeatInCurrentSession is the repeatInCurrentSession JSON field.
-	//
 	// Required: true
 	RepeatInCurrentSession bool `json:"repeatInCurrentSession"`
-	// SessionProgress is the sessionProgress JSON field.
-	//
 	// Required: true
 	SessionProgress SessionProgress `json:"sessionProgress"`
 }
@@ -362,16 +282,10 @@ type RateResult struct {
 //
 // swagger:model CardsSessionProgress
 type SessionProgress struct {
-	// Reviewed is the reviewed JSON field.
-	//
 	// Required: true
 	Reviewed int `json:"reviewed"`
-	// Total is the total JSON field.
-	//
 	// Required: true
 	Total int `json:"total"`
-	// Remaining is the remaining JSON field.
-	//
 	// Required: true
 	Remaining int `json:"remaining"`
 }
@@ -403,63 +317,41 @@ type UpdateCardInput struct {
 //
 // swagger:model CardsCardDetail
 type CardDetail struct {
-	// ID is the id JSON field.
-	//
 	// Required: true
 	ID int64 `json:"id"`
-	// Type is the type JSON field.
-	//
 	// Required: true
 	// Enum: ["pattern_recognition", "algorithm_mechanics", "edge_case"]
 	Type string `json:"type"`
-	// Front is the front JSON field.
-	//
 	// Required: true
 	Front string `json:"front"`
-	// Back is the back JSON field.
-	//
 	// Required: true
 	Back string `json:"back"`
-	// Explanation is the explanation JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Explanation *string `json:"explanation"`
-	// Source is the source JSON field.
-	//
 	// Required: true
 	Source Source `json:"source"`
-	// CreatedByAI is the createdByAi JSON field.
-	//
 	// Required: true
 	CreatedByAI bool `json:"createdByAi"`
 	// swagger:name createdAt
-	// CreatedAt is the createdAt JSON field.
-	//
 	// Required: true
 	// swagger:strfmt date-time
 	CreatedAt time.Time `json:"createdAt"`
-	// ProblemTitle is the problemTitle JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	ProblemTitle *string `json:"problemTitle"`
-	// ProblemURL is the problemUrl JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	ProblemURL *string `json:"problemUrl"`
-	// PatternName is the patternName JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -482,8 +374,6 @@ type CardDetail struct {
 // swagger:model CardsCreateCardRequest
 // swagger:additionalProperties false
 type createCardRequest struct {
-	// Type is the type JSON field.
-	//
 	// Required: true
 	// Enum: ["pattern_recognition", "algorithm_mechanics", "edge_case"]
 	Type string `json:"type"`
@@ -499,8 +389,6 @@ type createCardRequest struct {
 	// Min Length: 1
 	// Max Length: 4000
 	Back string `json:"back"`
-	// Explanation is the explanation JSON field.
-	//
 	// Required: false
 	// Max Length: 2000
 	// Extensions:
@@ -508,8 +396,6 @@ type createCardRequest struct {
 	// x-nullable: true
 	// ---
 	Explanation *string `json:"explanation"`
-	// SourceText is the sourceText JSON field.
-	//
 	// Required: false
 	// Max Length: 2000
 	// Extensions:
@@ -517,16 +403,12 @@ type createCardRequest struct {
 	// x-nullable: true
 	// ---
 	SourceText *string `json:"sourceText"`
-	// ProblemID is the problemId JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	ProblemID *int64 `json:"problemId"`
-	// PatternID is the patternId JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
@@ -548,8 +430,6 @@ type createCardRequest struct {
 // swagger:model CardsUpdateCardRequest
 // swagger:additionalProperties false
 type updateCardRequest struct {
-	// Type is the type JSON field.
-	//
 	// Required: false
 	// Enum: ["pattern_recognition", "algorithm_mechanics", "edge_case"]
 	// Extensions:
@@ -577,8 +457,6 @@ type updateCardRequest struct {
 	// x-nullable: true
 	// ---
 	Back *string `json:"back"`
-	// Explanation is the explanation JSON field.
-	//
 	// Required: false
 	// Max Length: 2000
 	// Extensions:
@@ -586,8 +464,6 @@ type updateCardRequest struct {
 	// x-nullable: true
 	// ---
 	Explanation *string `json:"explanation"`
-	// SourceText is the sourceText JSON field.
-	//
 	// Required: false
 	// Max Length: 2000
 	// Extensions:

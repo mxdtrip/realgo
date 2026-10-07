@@ -32,8 +32,6 @@ type TokenPair struct {
 	//
 	// Required: false
 	RefreshToken string `json:"refresh_token,omitempty"`
-	// TokenType is the token_type JSON field.
-	//
 	// Required: true
 	TokenType string `json:"token_type"`
 	// Время жизни access token в секундах.

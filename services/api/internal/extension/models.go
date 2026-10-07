@@ -31,8 +31,6 @@ const (
 // swagger:model ExtensionEventRequest
 // swagger:additionalProperties false
 type EventRequest struct {
-	// EventID is the eventId JSON field.
-	//
 	// Required: false
 	EventID string `json:"eventId"`
 	// Код платформы; unknown нормализуется в generic. Если платформа отсутствует в БД, возвращается 422 UNKNOWN_PLATFORM.
@@ -53,12 +51,8 @@ type EventRequest struct {
 	// Required: false
 	// Enum: ["", "hard", "normal", "easy"]
 	Rating string `json:"rating"` // hard | normal | easy (problem_solved)
-	// ExtensionVersion is the extensionVersion JSON field.
-	//
 	// Required: false
 	ExtensionVersion string `json:"extensionVersion"`
-	// Problem is the problem JSON field.
-	//
 	// Required: false
 	Problem EventProblem `json:"problem"`
 
@@ -69,16 +63,10 @@ type EventRequest struct {
 	//
 	// Required: false
 	Platform string `json:"platform"`
-	// TaskTitle is the taskTitle JSON field.
-	//
 	// Required: false
 	TaskTitle string `json:"taskTitle"`
-	// TaskURL is the taskUrl JSON field.
-	//
 	// Required: false
 	TaskURL string `json:"taskUrl"`
-	// PlatformTaskSlug is the platformTaskSlug JSON field.
-	//
 	// Required: false
 	PlatformTaskSlug string `json:"platformTaskSlug"`
 	// accepted без явного event преобразуется в problem_solved; остальные значения — в problem_submitted.
@@ -89,8 +77,6 @@ type EventRequest struct {
 	//
 	// Required: false
 	SubmittedAt string `json:"submittedAt"`
-	// UserDifficulty is the userDifficulty JSON field.
-	//
 	// Required: false
 	// Enum: ["", "hard", "normal", "easy"]
 	UserDifficulty string `json:"userDifficulty"`
@@ -106,16 +92,10 @@ type EventRequest struct {
 // swagger:model ExtensionEventProblem
 // swagger:additionalProperties false
 type EventProblem struct {
-	// ExternalID is the externalId JSON field.
-	//
 	// Required: false
 	ExternalID string `json:"externalId"`
-	// Title is the title JSON field.
-	//
 	// Required: false
 	Title string `json:"title"`
-	// URL is the url JSON field.
-	//
 	// Required: false
 	URL string `json:"url"`
 	// easy, medium или hard. Неизвестное значение очищается, запрос не отклоняется.
@@ -134,29 +114,17 @@ type EventProblem struct {
 //
 // swagger:model ExtensionEventResult
 type EventResult struct {
-	// Accepted is the accepted JSON field.
-	//
 	// Required: true
 	Accepted bool `json:"accepted"`
-	// Duplicate is the duplicate JSON field.
-	//
 	// Required: true
 	Duplicate bool `json:"duplicate"`
-	// ProblemID is the problemId JSON field.
-	//
 	// Required: true
 	ProblemID int64 `json:"problemId"`
-	// ReviewID is the reviewId JSON field.
-	//
 	// Required: false
 	ReviewID int64 `json:"reviewId,omitempty"`
-	// Status is the status JSON field.
-	//
 	// Required: true
 	Status string `json:"status"`
 	// swagger:name nextReviewAt
-	// NextReviewAt is the nextReviewAt JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---

@@ -46,14 +46,10 @@ const (
 // swagger:additionalProperties false
 type credentialsRequest struct {
 	// swagger:name email
-	// Email is the email JSON field.
-	//
 	// Required: true
 	// Min Length: 1
 	// swagger:strfmt email
 	Email string `json:"email"`
-	// Password is the password JSON field.
-	//
 	// Required: true
 	// Min Length: 1
 	// swagger:name password
@@ -77,8 +73,6 @@ type credentialsRequest struct {
 // swagger:additionalProperties false
 type registrationRequest struct {
 	// swagger:name email
-	// Email is the email JSON field.
-	//
 	// Required: true
 	// swagger:strfmt email
 	Email string `json:"email"`
@@ -118,8 +112,6 @@ type refreshRequest struct {
 // swagger:model AuthOauthLoginRequest
 // swagger:additionalProperties false
 type oauthLoginRequest struct {
-	// Code is the code JSON field.
-	//
 	// Required: true
 	// Min Length: 1
 	Code string `json:"code"`
@@ -134,48 +126,36 @@ type oauthLoginRequest struct {
 //
 // swagger:model AuthProfileResponse
 type profileResponse struct {
-	// PrepGoal is the prep_goal JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	PrepGoal *string `json:"prep_goal"`
-	// Grade is the grade JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Grade *string `json:"grade"`
-	// TargetCompany is the target_company JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	TargetCompany *string `json:"target_company"`
-	// TargetPosition is the target_position JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	TargetPosition *string `json:"target_position"`
-	// Platform is the platform JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Platform *string `json:"platform"`
-	// TargetTopics is the target_topics JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -188,20 +168,12 @@ type profileResponse struct {
 //
 // swagger:model AuthNotificationSettingsResponse
 type notificationSettingsResponse struct {
-	// ReviewReminder is the review_reminder JSON field.
-	//
 	// Required: true
 	ReviewReminder bool `json:"review_reminder"`
-	// StreakReminder is the streak_reminder JSON field.
-	//
 	// Required: true
 	StreakReminder bool `json:"streak_reminder"`
-	// WeeklyDigest is the weekly_digest JSON field.
-	//
 	// Required: true
 	WeeklyDigest bool `json:"weekly_digest"`
-	// EmailEnabled is the email_enabled JSON field.
-	//
 	// Required: true
 	EmailEnabled bool `json:"email_enabled"`
 }
@@ -210,35 +182,23 @@ type notificationSettingsResponse struct {
 //
 // swagger:model AuthUserResponse
 type userResponse struct {
-	// ID is the id JSON field.
-	//
 	// Required: true
 	ID int64 `json:"id"`
 	// swagger:name email
-	// Email is the email JSON field.
-	//
 	// Required: true
 	// swagger:strfmt email
 	Email string `json:"email"`
-	// Nickname is the nickname JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	Nickname *string `json:"nickname"`
-	// Timezone is the timezone JSON field.
-	//
 	// Required: true
 	Timezone string `json:"timezone"`
-	// Plan is the plan JSON field.
-	//
 	// Required: true
 	Plan string `json:"plan"`
 	// swagger:name interview_date
-	// InterviewDate is the interview_date JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
@@ -247,21 +207,13 @@ type userResponse struct {
 	// swagger:strfmt date-time
 	InterviewDate *string `json:"interview_date"`
 	// swagger:name created_at
-	// CreatedAt is the created_at JSON field.
-	//
 	// Required: true
 	// swagger:strfmt date-time
 	CreatedAt string `json:"created_at"`
-	// OnboardingCompleted is the onboarding_completed JSON field.
-	//
 	// Required: true
 	OnboardingCompleted bool `json:"onboarding_completed"`
-	// Profile is the profile JSON field.
-	//
 	// Required: true
 	Profile profileResponse `json:"profile"`
-	// NotificationSettings is the notification_settings JSON field.
-	//
 	// Required: true
 	NotificationSettings notificationSettingsResponse `json:"notification_settings"`
 }
@@ -270,12 +222,8 @@ type userResponse struct {
 //
 // swagger:model AuthAuthResponse
 type authResponse struct {
-	// User is the user JSON field.
-	//
 	// Required: true
 	User userResponse `json:"user"`
-	// Tokens is the tokens JSON field.
-	//
 	// Required: true
 	Tokens auth.TokenPair `json:"tokens"`
 }
@@ -413,8 +361,6 @@ type passwordResetRequest struct {
 // swagger:model AuthPasswordResetConfirmRequest
 // swagger:additionalProperties false
 type passwordResetConfirmRequest struct {
-	// Token is the token JSON field.
-	//
 	// Required: true
 	// Min Length: 1
 	Token string `json:"token"`
@@ -451,14 +397,10 @@ type emailVerificationRequest struct {
 // swagger:model AuthEmailVerificationConfirmRequest
 // swagger:additionalProperties false
 type emailVerificationConfirmRequest struct {
-	// Challenge is the challenge JSON field.
-	//
 	// Required: true
 	// Min Length: 32
 	Challenge string `json:"challenge"`
 	// swagger:name email
-	// Email is the email JSON field.
-	//
 	// Required: true
 	// swagger:strfmt email
 	Email string `json:"email"`
@@ -996,8 +938,6 @@ type patchProfileRequest struct {
 	// swagger:strfmt date-time
 	// swagger:type string
 	InterviewDate optionalNullableString `json:"interview_date"`
-	// PrepGoal is the prep_goal JSON field.
-	//
 	// Required: false
 	// Max Length: 100
 	// Extensions:
@@ -1005,8 +945,6 @@ type patchProfileRequest struct {
 	// x-nullable: true
 	// ---
 	PrepGoal *string `json:"prep_goal"`
-	// Grade is the grade JSON field.
-	//
 	// Required: false
 	// Enum: ["", "junior", "middle", "senior", "staff", "principal"]
 	// Extensions:
@@ -1014,8 +952,6 @@ type patchProfileRequest struct {
 	// x-nullable: true
 	// ---
 	Grade *string `json:"grade"`
-	// TargetCompany is the target_company JSON field.
-	//
 	// Required: false
 	// Max Length: 200
 	// Extensions:
@@ -1023,8 +959,6 @@ type patchProfileRequest struct {
 	// x-nullable: true
 	// ---
 	TargetCompany *string `json:"target_company"`
-	// TargetPosition is the target_position JSON field.
-	//
 	// Required: false
 	// Max Length: 200
 	// Extensions:
@@ -1032,8 +966,6 @@ type patchProfileRequest struct {
 	// x-nullable: true
 	// ---
 	TargetPosition *string `json:"target_position"`
-	// Platform is the platform JSON field.
-	//
 	// Required: false
 	// Enum: ["leetcode", "geeksforgeeks", "hackerrank", "codeforces"]
 	// Extensions:
@@ -1230,32 +1162,24 @@ func (h *authHandler) patchProfile(w http.ResponseWriter, r *http.Request) {
 // swagger:model AuthPatchNotificationSettingsRequest
 // swagger:additionalProperties false
 type patchNotificationSettingsRequest struct {
-	// ReviewReminder is the review_reminder JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	ReviewReminder *bool `json:"review_reminder"`
-	// StreakReminder is the streak_reminder JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	StreakReminder *bool `json:"streak_reminder"`
-	// WeeklyDigest is the weekly_digest JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
 	// x-nullable: true
 	// ---
 	WeeklyDigest *bool `json:"weekly_digest"`
-	// EmailEnabled is the email_enabled JSON field.
-	//
 	// Required: false
 	// Extensions:
 	// ---
@@ -1271,8 +1195,6 @@ type patchNotificationSettingsRequest struct {
 // swagger:model AuthChangePasswordRequest
 // swagger:additionalProperties false
 type changePasswordRequest struct {
-	// CurrentPassword is the current_password JSON field.
-	//
 	// Required: true
 	// Min Length: 1
 	// swagger:name current_password
@@ -1445,8 +1367,6 @@ func (h *authHandler) postExport(w http.ResponseWriter, r *http.Request) {
 // swagger:model AuthDeleteMeRequest
 // swagger:additionalProperties false
 type deleteMeRequest struct {
-	// Password is the password JSON field.
-	//
 	// Required: true
 	// Min Length: 1
 	// swagger:name password

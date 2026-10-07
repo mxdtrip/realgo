@@ -22,12 +22,8 @@ var ErrProblemNotFound = errors.New("problem not found")
 //
 // swagger:model ProblemcardsResponse
 type Response struct {
-	// Status is the status JSON field.
-	//
 	// Required: true
 	Status string `json:"status"`
-	// Cards is the cards JSON field.
-	//
 	// Required: true
 	// Extensions:
 	// ---
