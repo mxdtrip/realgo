@@ -779,6 +779,21 @@
     marketCounterPercent.style.width = `${counterMetrics.percent.toFixed(4)}em`;
   }
 
+  function applyStaticNumberGradient(element) {
+    const elementRect = element.getBoundingClientRect();
+    const scale = getStageScale();
+    const gradientWidth = elementRect.width / scale;
+    if (gradientWidth <= 0) return;
+
+    Array.from(element.children).forEach((cell) => {
+      const cellRect = cell.getBoundingClientRect();
+      const gradientOffset = (cellRect.left - elementRect.left) / scale;
+      cell.style.setProperty("--static-gradient-width", `${gradientWidth.toFixed(3)}px`);
+      cell.style.setProperty("--static-gradient-position", `${(-gradientOffset).toFixed(3)}px`);
+    });
+    element.classList.add("is-slotted");
+  }
+
   // Статичные числа на слайдах используют ту же разметку слотов,
   // чтобы при передаче анимации счётчику не было скачка.
   function applyDigitSlotsToStaticNumbers() {
@@ -786,6 +801,7 @@
       const source = element.dataset.display || element.textContent.trim();
       element.dataset.display = source;
       renderDigits(element, source);
+      if (element.classList.contains("giant-number")) applyStaticNumberGradient(element);
     });
   }
 
