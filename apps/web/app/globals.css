@@ -8589,13 +8589,13 @@ a.roadmap-step__practice-card:hover {
   gap: 10px;
 }
 
-/* The marketing modal offers a single OAuth provider. Separate it from the
-   primary action and center the compact button instead of leaving its second
-   grid column empty. */
 .auth-layer:not(.auth-layer--page) .auth-providers {
-  display: flex;
-  justify-content: center;
   margin-top: 16px;
+}
+
+.auth-providers .auth-form__error {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .auth-provider {
@@ -9018,15 +9018,7 @@ a.roadmap-step__practice-card:hover {
 }
 
 .auth-layer--page .auth-providers {
-  display: flex;
-  justify-content: center;
   gap: 10px;
-}
-
-/* Only Yandex ID is currently offered. Keep the single provider visually
-   independent from the primary email action and centered in the panel. */
-.auth-layer--page .auth-provider {
-  width: min(100%, 240px);
 }
 
 .auth-layer--page .auth-panel--login .auth-divider {
