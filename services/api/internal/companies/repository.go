@@ -98,6 +98,32 @@ func (r *Repository) Search(ctx context.Context, query string, limit int) ([]Com
 	return results, nil
 }
 
+func (r *Repository) List(ctx context.Context) ([]Company, error) {
+	results := make([]Company, 0, len(catalog))
+	seen := make(map[string]bool, len(catalog))
+	seenNames := make(map[string]bool, len(catalog))
+	for _, entry := range catalog {
+		results = append(results, entry.Company)
+		seen[entry.ID] = true
+		seenNames[strings.ToLower(entry.Name)] = true
+	}
+	if r.q == nil {
+		return results, nil
+	}
+	rows, err := r.q.ListCompanies(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("companies: list: %w", err)
+	}
+	for _, row := range rows {
+		if seen[row.Code] || seenNames[strings.ToLower(row.Name)] {
+			continue
+		}
+		results = append(results, Company{ID: row.Code, Name: row.Name, Source: "dataset"})
+		seenNames[strings.ToLower(row.Name)] = true
+	}
+	return results, nil
+}
+
 func searchCatalog(query string, limit int) []Company {
 	results := make([]Company, 0, limit)
 	if query == "" {

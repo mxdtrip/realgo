@@ -27,7 +27,7 @@ type StoredSession = {
   sessionCardIds: string[];
 };
 
-const storageKey = "realgo:card-review-session:v1";
+const storageKey = "realgo:card-review-session:v2";
 const replayableRatings = new Set<ReviewRating>(["hard", "normal"]);
 const replayRatingPriority: Record<ReviewRating, number> = {
   hard: 0,
@@ -63,13 +63,13 @@ function priorityReplayQueue(history: readonly ReviewLog[], cards: readonly Revi
     .map((item) => item.cardId);
 }
 
-function readStoredSession(cards: readonly ReviewCard[]): StoredSession {
+function readStoredSession(cards: readonly ReviewCard[], scopedStorageKey: string): StoredSession {
   if (typeof window === "undefined") {
     return initialSession(cards);
   }
 
   const fallback = initialSession(cards);
-  const raw = window.localStorage.getItem(storageKey);
+  const raw = window.localStorage.getItem(scopedStorageKey);
   if (!raw) return fallback;
 
   try {
@@ -122,6 +122,10 @@ export function useCardReviewSession(
   onSessionComplete?: () => void,
   /** Persists a rating before local session state is advanced. */
   onRate?: (cardId: string, rating: ReviewRating, reviewedAt: string) => void | Promise<void>,
+  /** Due and practice sessions must never share progress/history. */
+  sessionScope = "due",
+  /** Explicit user action to start the same optional practice set again. */
+  startFresh = false,
 ) {
   const [isReady, setIsReady] = useState(false);
   const [queue, setQueue] = useState<string[]>([]);
@@ -130,19 +134,20 @@ export function useCardReviewSession(
   const [sessionCardIds, setSessionCardIds] = useState<string[]>([]);
 
   const cardsById = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards]);
+  const scopedStorageKey = `${storageKey}:${sessionScope}`;
 
   useEffect(() => {
-    const stored = readStoredSession(cards);
+    const stored = startFresh ? initialSession(cards) : readStoredSession(cards, scopedStorageKey);
     setQueue(stored.queue);
     setHistory(stored.history);
     setSessionCardIds(stored.sessionCardIds);
     setIsReady(true);
-  }, [cards]);
+  }, [cards, scopedStorageKey, startFresh]);
 
   useEffect(() => {
     if (!isReady) return;
-    window.localStorage.setItem(storageKey, JSON.stringify({ history, queue, sessionCardIds }));
-  }, [history, isReady, queue, sessionCardIds]);
+    window.localStorage.setItem(scopedStorageKey, JSON.stringify({ history, queue, sessionCardIds }));
+  }, [history, isReady, queue, scopedStorageKey, sessionCardIds]);
 
   const currentCard = queue.length > 0 ? cardsById.get(queue[0]) : undefined;
   const completedUnique = Math.max(0, sessionCardIds.length - new Set(queue).size);

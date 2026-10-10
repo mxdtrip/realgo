@@ -18,10 +18,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mxdtrip/realgo/services/api/internal/mail"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 
@@ -56,6 +58,8 @@ type Driver struct {
 	srv    *httptest.Server
 	client *http.Client
 	pg     *postgres.Storage
+	auth   *auth.Service
+	mailer *mailbox
 }
 
 // Option configures the driver's server.Deps beyond the test harness defaults.
@@ -110,7 +114,9 @@ func New(t *testing.T, h *testutil.Harness, opts ...Option) *Driver {
 		Issuer:     "freeburger",
 	})
 
+	mailer := &mailbox{}
 	deps := server.Deps{
+		Mailer:   mailer,
 		Logger:   slog.Default(),
 		Postgres: pg,
 		Redis:    rd,
@@ -125,7 +131,7 @@ func New(t *testing.T, h *testutil.Harness, opts ...Option) *Driver {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	return &Driver{t: t, srv: srv, client: srv.Client(), pg: pg}
+	return &Driver{t: t, srv: srv, client: srv.Client(), pg: pg, auth: authSvc, mailer: mailer}
 }
 
 func (d *Driver) Close() { d.srv.Close() }
@@ -154,36 +160,15 @@ type fsrsUser struct {
 func (u *fsrsUser) OwnIdentity(t *testing.T) string { return u.user.OwnIdentity(t) }
 func (u *fsrsUser) UserID(t *testing.T) int64       { return u.user.UserID(t) }
 
-// SubmitExtensionSolved posts a "problem solved" extension event and returns
-// nextReviewAt from the server's response. The rating is the user's perceived
-// difficulty (hard/normal/easy), which the extension maps into an FSRS grade.
+// SubmitExtensionSolved отправляет событие «задача решена» через расширение (POST /api/v1/extension/events)
+// и возвращает nextReviewAt из ответа сервера, прерывая тест через t.Fatalf при любой ошибке.
 func (u *fsrsUser) SubmitExtensionSolved(t *testing.T, title, url, slug, rating string) time.Time {
 	t.Helper()
-	body := map[string]any{
-		"eventId":          fmt.Sprintf("evt-%s-%d", slug, time.Now().UnixNano()),
-		"source":           "leetcode",
-		"event":            "problem_solved",
-		"occurredAt":       time.Now().UTC().Format(time.RFC3339),
-		"rating":           rating,
-		"extensionVersion": "0.0.1-acceptance",
-		"problem": map[string]any{
-			"externalId": slug,
-			"title":      title,
-			"url":        url,
-		},
+	due, err := u.TrySubmitExtensionSolved(title, url, slug, rating)
+	if err != nil {
+		t.Fatalf("driver: SubmitExtensionSolved: %v", err)
 	}
-	resp := u.driver.do(t, http.MethodPost, "/api/v1/extension/events", body, u.token())
-
-	var out struct {
-		Data struct {
-			NextReviewAt time.Time `json:"nextReviewAt"`
-		} `json:"data"`
-	}
-	u.driver.decode(t, resp, &out)
-	if out.Data.NextReviewAt.IsZero() {
-		t.Fatalf("driver: extension solve: empty nextReviewAt in response")
-	}
-	return out.Data.NextReviewAt
+	return due
 }
 
 // RateFirstReview creates a card and rates it once with the given rating,
@@ -287,12 +272,47 @@ func (u *fsrsUser) readCardNextReviewAt(t *testing.T, cardID int64, info any) ti
 	return due.Time.UTC()
 }
 
-func (u *fsrsUser) token() string {
-	if au, ok := u.user.(*authenticatedUser); ok {
-		return au.token
+// TrySubmitExtensionSolved отправляет событие «задача решена» через расширение (POST /api/v1/extension/events)
+// и возвращает nextReviewAt либо ошибку, не вызывая t.Fatalf. Метод безопасен для выполнения в параллельных горутинах.
+func (u *fsrsUser) TrySubmitExtensionSolved(title, url, slug, rating string) (time.Time, error) {
+	au, ok := u.user.(*authenticatedUser)
+	if !ok {
+		return time.Time{}, fmt.Errorf("fsrsUser: expected *authenticatedUser, got %T", u.user)
 	}
-	u.t.Fatalf("fsrsUser: expected *authenticatedUser, got %T", u.user)
-	return ""
+
+	body := map[string]any{
+		"eventId":          fmt.Sprintf("evt-%s-%d", slug, time.Now().UnixNano()),
+		"source":           "leetcode",
+		"event":            "problem_solved",
+		"occurredAt":       time.Now().UTC().Format(time.RFC3339),
+		"rating":           rating,
+		"extensionVersion": "0.0.1-acceptance",
+		"problem": map[string]any{
+			"externalId": slug,
+			"title":      title,
+			"url":        url,
+		},
+	}
+
+	resp, err := u.driver.tryDo(http.MethodPost, "/api/v1/extension/events", body, au.token)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	var out struct {
+		Data struct {
+			NextReviewAt time.Time `json:"nextReviewAt"`
+		} `json:"data"`
+	}
+
+	if err := u.driver.tryDecode(resp, &out); err != nil {
+		return time.Time{}, err
+	}
+
+	if out.Data.NextReviewAt.IsZero() {
+		return time.Time{}, errors.New("driver: extension solve: empty nextReviewAt in response")
+	}
+	return out.Data.NextReviewAt, nil
 }
 
 // --- FSRSStateProbe (test-only read) ---
@@ -535,7 +555,26 @@ func (d *Driver) Register(t *testing.T, email, password string) specifications.A
 	t.Helper()
 	resp := d.do(t, http.MethodPost, "/api/v1/auth/register",
 		map[string]string{"email": email, "password": password}, "")
-
+	var pending struct {
+		Data struct {
+			Challenge string `json:"challenge"`
+		} `json:"data"`
+	}
+	d.decode(t, resp, &pending)
+	if pending.Data.Challenge == "" {
+		t.Fatal("registration did not return a challenge")
+	}
+	for range 100 {
+		worked, err := d.auth.ProcessNextMail(context.Background(), d.mailer, "https://realgo.test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !worked {
+			break
+		}
+	}
+	code := regexp.MustCompile(`код: (\d{6})`).FindStringSubmatch(d.mailer.messages[len(d.mailer.messages)-1].Text)[1]
+	resp = d.do(t, http.MethodPost, "/api/v1/auth/email-verification/confirm", map[string]string{"email": email, "code": code, "challenge": pending.Data.Challenge}, "")
 	var out struct {
 		Data struct {
 			Tokens struct {
@@ -746,17 +785,27 @@ func (u *authenticatedUser) UserID(t *testing.T) int64 {
 // если он передан, и завершает тест при любой транспортной ошибке.
 func (d *Driver) do(t *testing.T, method, path string, body any, token string) *http.Response {
 	t.Helper()
+	resp, err := d.tryDo(method, path, body, token)
+	if err != nil {
+		t.Fatalf("driver: %v", err)
+	}
+	return resp
+}
+
+// tryDo выполняет HTTP-запрос к тестовому серверу, добавляя Bearer-токен (если передан),
+// и возвращает *http.Response либо ошибку без вызова t.Fatalf.
+func (d *Driver) tryDo(method, path string, body any, token string) (*http.Response, error) {
 	var rdr io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
 		if err != nil {
-			t.Fatalf("driver: marshal body: %v", err)
+			return nil, fmt.Errorf("marshal body: %w", err)
 		}
 		rdr = bytes.NewReader(raw)
 	}
 	req, err := http.NewRequest(method, d.srv.URL+path, rdr)
 	if err != nil {
-		t.Fatalf("driver: build request: %v", err)
+		return nil, fmt.Errorf("build request: %w", err)
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
@@ -766,9 +815,9 @@ func (d *Driver) do(t *testing.T, method, path string, body any, token string) *
 	}
 	resp, err := d.client.Do(req)
 	if err != nil {
-		t.Fatalf("driver: %s %s: %v", method, path, err)
+		return nil, fmt.Errorf("%s %s: %w", method, path, err)
 	}
-	return resp
+	return resp, nil
 }
 
 // decode считывает тело ответа в dst, убеждается, что сервер вернул
@@ -776,20 +825,124 @@ func (d *Driver) do(t *testing.T, method, path string, body any, token string) *
 // чтобы причина сбоя была сразу видна.
 func (d *Driver) decode(t *testing.T, resp *http.Response, dst any) {
 	t.Helper()
+	if err := d.tryDecode(resp, dst); err != nil {
+		t.Fatalf("driver: %v", err)
+	}
+}
+
+// tryDecode считывает тело ответа в dst, убеждается, что сервер вернул
+// успешный статус (2xx), закрывает тело ответа и возвращает ошибку без вызова t.Fatalf.
+func (d *Driver) tryDecode(resp *http.Response, dst any) error {
 	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			t.Fatalf("driver: close response body: %v", err)
-		}
+		_ = resp.Body.Close()
 	}()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		raw, err := io.ReadAll(resp.Body)
 		if err != nil {
-			t.Fatalf("driver: read error response body: %v", err)
+			return fmt.Errorf("%s %s: status %d (read body failed: %w)", resp.Request.Method, resp.Request.URL.Path, resp.StatusCode, err)
 		}
-		t.Fatalf("driver: %s %s: status %d, body %s",
-			resp.Request.Method, resp.Request.URL.Path, resp.StatusCode, string(raw))
+		return fmt.Errorf("%s %s: status %d, body %s", resp.Request.Method, resp.Request.URL.Path, resp.StatusCode, string(raw))
 	}
 	if err := json.NewDecoder(resp.Body).Decode(dst); err != nil {
-		t.Fatalf("driver: decode response: %v", err)
+		return fmt.Errorf("driver: decode response: %w", err)
 	}
+	return nil
+}
+
+// ProblemScheduleState возвращает FSRS-поля строки review_schedules для задачи
+// по её external_slug. Возвращает (state, false), если расписание отсутствует в БД.
+func (d *Driver) ProblemScheduleState(t *testing.T, userID int64, slug string) (specifications.FSRSState, bool) {
+	t.Helper()
+	var (
+		state        int16
+		stability    float64
+		difficulty   float64
+		intervalDays float64
+		reviewCount  int32
+		lapses       int32
+		lastReview   pgtype.Timestamptz
+		nextReview   pgtype.Timestamptz
+	)
+	err := d.pg.Pool.QueryRow(context.Background(),
+		`SELECT rs.state, rs.stability, rs.difficulty, rs.interval_days, rs.review_count, rs.lapses, rs.last_review_at, rs.
+  next_review_at
+             FROM review_schedules rs
+             JOIN problems p ON p.id = rs.problem_id
+             WHERE rs.user_id = $1 AND p.external_slug = $2`,
+		userID, slug,
+	).Scan(&state, &stability, &difficulty, &intervalDays, &reviewCount, &lapses, &lastReview, &nextReview)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return specifications.FSRSState{}, false
+	}
+	if err != nil {
+		t.Fatalf("driver: read problem schedule state (slug=%q): %v", slug, err)
+	}
+	out := specifications.FSRSState{
+		State:        int8(state),
+		Stability:    stability,
+		Difficulty:   difficulty,
+		IntervalDays: intervalDays,
+		ReviewCount:  int(reviewCount),
+		Lapses:       int(lapses),
+		NextReviewAt: nextReview.Time.UTC(),
+	}
+	if lastReview.Valid {
+		last := lastReview.Time.UTC()
+		out.LastReviewAt = &last
+	}
+	return out, true
+}
+
+// ProblemReviewAttempts возвращает список зафиксированных попыток повторения задачи по её external_slug.
+// Выполняет прямое чтение из таблицы review_attempts через пул соединений d.pg.Pool,
+// упорядочивая попытки по возрастанию ID (хронологически).
+func (d *Driver) ProblemReviewAttempts(t *testing.T, userID int64, slug string) []specifications.FSRSAttemptState {
+	t.Helper()
+	query := `
+SELECT ra.rating, ra.review_type, ra.duration_sec, ra.created_at
+FROM review_attempts ra
+JOIN problems p ON p.id = ra.problem_id
+WHERE ra.user_id = $1 AND p.external_slug = $2
+ORDER BY ra.id ASC
+	`
+	rows, err := d.pg.Pool.Query(context.Background(), query, userID, slug)
+	if err != nil {
+		t.Fatalf("driver: read problem review attempts (slug=%q): %v", slug, err)
+	}
+	defer rows.Close()
+
+	attempts := []specifications.FSRSAttemptState{}
+	for rows.Next() {
+		var (
+			rating      string
+			reviewType  string
+			durationSec pgtype.Int4
+			createdAt   pgtype.Timestamptz
+		)
+		if err := rows.Scan(&rating, &reviewType, &durationSec, &createdAt); err != nil {
+			t.Fatalf("driver: scan problem review attempt (slug=%q): %v", slug, err)
+		}
+		var dur *int
+		if durationSec.Valid {
+			v := int(durationSec.Int32)
+			dur = &v
+		}
+		attempts = append(attempts, specifications.FSRSAttemptState{
+			Rating:      rating,
+			ReviewType:  reviewType,
+			DurationSec: dur,
+			CreatedAt:   createdAt.Time.UTC(),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("driver: iterate problem review attempts (slug=%q): %v", slug, err)
+	}
+	return attempts
+}
+
+type mailbox struct{ messages []mail.Message }
+
+func (m *mailbox) Send(_ context.Context, message mail.Message) error {
+	m.messages = append(m.messages, message)
+	return nil
 }

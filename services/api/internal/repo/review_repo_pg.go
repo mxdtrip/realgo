@@ -129,6 +129,23 @@ func (r *pgReviewRepository) SaveReview(ctx context.Context, schedule entity.Rev
 		return entity.ReviewSchedule{}, fmt.Errorf("reviews: create attempt: %w", err)
 	}
 
+	// Manual ratings from the roadmap must advance progress even without the
+	// extension. Persist progress in the same transaction as the FSRS attempt.
+	if attempt.ProblemID != nil {
+		progressAt := time.Now().UTC()
+		if schedule.LastReviewAt != nil {
+			progressAt = schedule.LastReviewAt.UTC()
+		}
+		if err := q.UpsertSolvedProgress(ctx, db.UpsertSolvedProgressParams{
+			UserID:      attempt.UserID,
+			ProblemID:   *attempt.ProblemID,
+			Rating:      toPgText(&attempt.Rating),
+			FirstSeenAt: toPgTimestamptz(progressAt),
+		}); err != nil {
+			return entity.ReviewSchedule{}, fmt.Errorf("reviews: update solved progress: %w", err)
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return entity.ReviewSchedule{}, fmt.Errorf("reviews: commit tx: %w", err)
 	}
@@ -168,6 +185,21 @@ func (r *pgReviewRepository) EnsureScheduleForProblem(ctx context.Context, userI
 		return 0, fmt.Errorf("reviews: ensure schedule lookup: %w", err)
 	}
 	return id, nil
+}
+
+func (r *pgReviewRepository) MarkProblemAttempted(ctx context.Context, userID, problemID int64, attemptedAt time.Time) (string, error) {
+	status, err := r.q.MarkProblemAttempted(ctx, db.MarkProblemAttemptedParams{
+		UserID:      userID,
+		ProblemID:   problemID,
+		AttemptedAt: toPgTimestamptz(attemptedAt),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrReviewNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("reviews: mark problem attempted: %w", err)
+	}
+	return status.String, nil
 }
 
 // UpdateProgressConfidence обновляет confidence по задаче.

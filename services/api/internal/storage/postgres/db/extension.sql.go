@@ -25,20 +25,22 @@ SET next_review_at = $2,
     last_rating = $10,
     updated_at = NOW()
 WHERE id = $1
+    AND COALESCE(review_count, 0) = $11::int
 RETURNING id, next_review_at
 `
 
 type AdvanceProblemReviewScheduleParams struct {
-	ID             int64
-	NextReviewAt   pgtype.Timestamptz
-	IntervalDays   float64
-	Stability      float64
-	Difficulty     float64
-	State          int16
-	Lapses         int32
-	RemainingSteps int32
-	LastReviewAt   pgtype.Timestamptz
-	LastRating     pgtype.Text
+	ID                  int64
+	NextReviewAt        pgtype.Timestamptz
+	IntervalDays        float64
+	Stability           float64
+	Difficulty          float64
+	State               int16
+	Lapses              int32
+	RemainingSteps      int32
+	LastReviewAt        pgtype.Timestamptz
+	LastRating          pgtype.Text
+	ExpectedReviewCount int32
 }
 
 type AdvanceProblemReviewScheduleRow struct {
@@ -58,6 +60,7 @@ func (q *Queries) AdvanceProblemReviewSchedule(ctx context.Context, arg AdvanceP
 		arg.RemainingSteps,
 		arg.LastReviewAt,
 		arg.LastRating,
+		arg.ExpectedReviewCount,
 	)
 	var i AdvanceProblemReviewScheduleRow
 	err := row.Scan(&i.ID, &i.NextReviewAt)
@@ -71,18 +74,7 @@ INSERT INTO review_schedules (
     last_review_at, review_count, last_rating, algorithm
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 1, $12, $13)
-ON CONFLICT (user_id, problem_id) WHERE problem_id IS NOT NULL DO UPDATE
-SET next_review_at = EXCLUDED.next_review_at,
-    interval_days = EXCLUDED.interval_days,
-    stability = EXCLUDED.stability,
-    difficulty = EXCLUDED.difficulty,
-    state = EXCLUDED.state,
-    lapses = EXCLUDED.lapses,
-    remaining_steps = EXCLUDED.remaining_steps,
-    last_review_at = EXCLUDED.last_review_at,
-    review_count = review_schedules.review_count + 1,
-    last_rating = EXCLUDED.last_rating,
-    updated_at = NOW()
+ON CONFLICT (user_id, problem_id) WHERE problem_id IS NOT NULL DO NOTHING
 RETURNING id, next_review_at
 `
 

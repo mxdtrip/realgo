@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Публичная оферта",
+  description:
+    "Публичная оферта ReAlgo: предмет договора, цена и порядок оплаты тарифа Pro, отказ от договора и возврат средств, ответственность сторон.",
+  alternates: { canonical: "/offer" },
 };
 
 const sections = [
@@ -205,7 +208,7 @@ export default function OfferPage() {
           </div>
         </section>
 
-        <p className="legal-page__date">Дата последней редакции: [указать дату публикации].</p>
+        <p className="legal-page__date">Дата последней редакции: 03.08.2026.</p>
       </article>
     </main>
   );

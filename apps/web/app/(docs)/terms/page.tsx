@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Пользовательское соглашение",
+  description:
+    "Условия использования ReAlgo: описание сервиса, тарифы, права на контент, обязанности пользователя и применимое право.",
+  alternates: { canonical: "/terms" },
 };
 
 const sections = [
@@ -202,7 +205,7 @@ export default function TermsPage() {
           </div>
         </section>
 
-        <p className="legal-page__date">Дата последней редакции: [указать дату публикации].</p>
+        <p className="legal-page__date">Дата последней редакции: 03.08.2026.</p>
       </article>
     </main>
   );

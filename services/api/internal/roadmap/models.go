@@ -11,6 +11,11 @@ const (
 
 	weeklyCapacityDefault = 3
 	algorithmVersion      = 1
+
+	StageTheory   = "theory"
+	StageTasks    = "tasks"
+	StageCards    = "cards"
+	StageComplete = "complete"
 )
 
 var allPriorityModes = []string{
@@ -29,19 +34,39 @@ type ConfigRequest struct {
 }
 
 type Response struct {
-	OverallProgress  int      `json:"overallProgress"`
-	Target           Target   `json:"target"`
-	PriorityMode     string   `json:"priorityMode"`
-	AvailableModes   []string `json:"availableModes"`
-	AlgorithmVersion int      `json:"algorithmVersion"`
-	Source           string   `json:"source"`
-	HorizonWeeks     int      `json:"horizonWeeks"`
-	WeeklyCapacity   int      `json:"weeklyCapacity"`
-	SelectedCount    int      `json:"selectedCount"`
-	ReserveCount     int      `json:"reserveCount"`
-	Configured       bool     `json:"configured"`
-	GeneratedAt      *string  `json:"generatedAt,omitempty"`
-	Weeks            []Week   `json:"weeks"`
+	PlanKey          string      `json:"planKey,omitempty"`
+	OverallProgress  int         `json:"overallProgress"`
+	Target           Target      `json:"target"`
+	PriorityMode     string      `json:"priorityMode"`
+	AvailableModes   []string    `json:"availableModes"`
+	AlgorithmVersion int         `json:"algorithmVersion"`
+	Source           string      `json:"source"`
+	HorizonWeeks     int         `json:"horizonWeeks"`
+	WeeklyCapacity   int         `json:"weeklyCapacity"`
+	SelectedCount    int         `json:"selectedCount"`
+	ReserveCount     int         `json:"reserveCount"`
+	Configured       bool        `json:"configured"`
+	GeneratedAt      *string     `json:"generatedAt,omitempty"`
+	NextAction       *NextAction `json:"nextAction,omitempty"`
+	Weeks            []Week      `json:"weeks"`
+}
+
+type Summary struct {
+	PlanKey       string   `json:"planKey"`
+	Company       *Company `json:"company"`
+	InterviewDate *string  `json:"interviewDate"`
+	PriorityMode  string   `json:"priorityMode"`
+	GeneratedAt   *string  `json:"generatedAt,omitempty"`
+	Active        bool     `json:"active"`
+}
+
+type NextAction struct {
+	Stage       string `json:"stage"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Href        string `json:"href"`
+	PatternCode string `json:"patternCode"`
+	WeekID      string `json:"weekId"`
 }
 
 type Target struct {
@@ -72,6 +97,60 @@ type Item struct {
 	RelevantProblemCount int            `json:"relevantProblemCount"`
 	DifficultyCounts     map[string]int `json:"difficultyCounts"`
 	MasteryPercent       int            `json:"masteryPercent"`
+	PlanProgress         int            `json:"planProgress"`
+	Stage                string         `json:"stage"`
+	Theory               TheoryProgress `json:"theory"`
+	Tasks                []Task         `json:"tasks"`
+	CardProgress         CardProgress   `json:"cardProgress"`
+	Reinforcement        Reinforcement  `json:"reinforcement"`
+}
+
+type TheoryProgress struct {
+	Completed   bool    `json:"completed"`
+	CompletedAt *string `json:"completedAt,omitempty"`
+}
+
+type Task struct {
+	ID           int64   `json:"id"`
+	OriginalID   int64   `json:"originalId"`
+	Title        string  `json:"title"`
+	URL          string  `json:"url"`
+	Difficulty   string  `json:"difficulty"`
+	Tier         string  `json:"tier"`
+	Status       string  `json:"status"`
+	AccessStatus string  `json:"accessStatus,omitempty"`
+	LastRating   *string `json:"lastRating,omitempty"`
+	NextReviewAt *string `json:"nextReviewAt,omitempty"`
+	ReviewCount  int     `json:"reviewCount"`
+}
+
+type CardProgress struct {
+	Total         int     `json:"total"`
+	Reviewed      int     `json:"reviewed"`
+	Due           int     `json:"due"`
+	Reinforcement int     `json:"reinforcement"`
+	NextReviewAt  *string `json:"nextReviewAt,omitempty"`
+}
+
+type Reinforcement struct {
+	Count        int     `json:"count"`
+	Due          int     `json:"due"`
+	NextReviewAt *string `json:"nextReviewAt,omitempty"`
+}
+
+type TheoryCompletion struct {
+	Code        string `json:"code"`
+	CompletedAt string `json:"completedAt"`
+}
+
+type TaskAccessRequest struct {
+	Action string `json:"action"`
+}
+
+type TaskAccessResolution struct {
+	Action               string `json:"action"`
+	OriginalProblemID    int64  `json:"originalProblemId"`
+	ReplacementProblemID *int64 `json:"replacementProblemId,omitempty"`
 }
 
 type planItem struct {

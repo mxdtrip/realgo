@@ -181,7 +181,7 @@ export function ReviewsJournalClient({ copy }: Readonly<{ copy: ReviewsJournalCo
           </span>
         }
       >
-        <div className="data-table-wrap">
+        <div className="data-table-wrap reviews-journal-table">
           <table className="data-table">
             <thead>
               <tr>
@@ -225,7 +225,7 @@ export function ReviewsJournalClient({ copy }: Readonly<{ copy: ReviewsJournalCo
                     const rating = item.lastRating ? copy.ratings[item.lastRating] : null;
                     return (
                       <tr key={item.id}>
-                        <td>
+                        <td data-label={copy.columns.problem}>
                           <div className="problem-cell">
                             <a
                               className="problem-cell__link"
@@ -247,10 +247,10 @@ export function ReviewsJournalClient({ copy }: Readonly<{ copy: ReviewsJournalCo
                             ) : null}
                           </div>
                         </td>
-                        <td>
+                        <td data-label={copy.columns.platform}>
                           <span className="meta-chip">{item.platform}</span>
                         </td>
-                        <td className="data-table__mono">
+                        <td className="data-table__mono" data-label={copy.columns.pattern}>
                           {item.pattern ? (
                             <Link className="problem-cell__pattern" href={`/patterns/${item.pattern.id}`}>
                               {item.pattern.name}
@@ -259,15 +259,15 @@ export function ReviewsJournalClient({ copy }: Readonly<{ copy: ReviewsJournalCo
                             copy.noValue
                           )}
                         </td>
-                        <td>
+                        <td data-label={copy.columns.status}>
                           <StatusPill tone={(meta?.tone ?? "default") as Tone}>
                             {meta?.label ?? item.status}
                           </StatusPill>
                         </td>
-                        <td className="data-table__mono">
+                        <td className="data-table__mono" data-label={copy.columns.hints}>
                           {item.hintsUsed > 0 ? item.hintsUsed : copy.hintsNone}
                         </td>
-                        <td>
+                        <td data-label={copy.columns.rating}>
                           {rating ? (
                             <span className={`review-badge review-badge--${ratingTone[item.lastRating ?? ""] ?? "default"}`}>
                               {rating}

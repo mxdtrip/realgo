@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -11,14 +13,20 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/go-chi/chi/v5/middleware"
+
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
+	"github.com/mxdtrip/realgo/services/api/internal/mail"
 	"github.com/mxdtrip/realgo/services/api/internal/server/response"
 	"github.com/mxdtrip/realgo/services/api/internal/storage/postgres/db"
 )
 
 // authHandler exposes the authentication endpoints over the auth service.
 type authHandler struct {
-	svc *auth.Service
+	svc                   *auth.Service
+	mailer                mail.Sender
+	mailBaseURL           string
+	skipEmailVerification bool
 }
 
 const maxJSONBodyBytes = 1 << 20
@@ -37,8 +45,22 @@ type credentialsRequest struct {
 	Timezone string `json:"timezone,omitempty"`
 }
 
+type registrationRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Nickname string `json:"nickname"`
+}
+
 type refreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
+}
+
+// oauthLoginRequest is the body shape shared by every "second leg" OAuth
+// endpoint (/auth/yandex, /auth/github): the callback route forwards the
+// authorization code and the exact redirect_uri it was issued for.
+type oauthLoginRequest struct {
+	Code        string `json:"code"`
+	RedirectURI string `json:"redirect_uri"`
 }
 
 type profileResponse struct {
@@ -60,6 +82,7 @@ type notificationSettingsResponse struct {
 type userResponse struct {
 	ID                   int64                        `json:"id"`
 	Email                string                       `json:"email"`
+	Nickname             *string                      `json:"nickname"`
 	Timezone             string                       `json:"timezone"`
 	Plan                 string                       `json:"plan"`
 	InterviewDate        *string                      `json:"interview_date"`
@@ -91,6 +114,9 @@ func newUserResponse(u db.User) userResponse {
 	if u.CreatedAt.Valid {
 		resp.CreatedAt = u.CreatedAt.Time.UTC().Format(time.RFC3339)
 	}
+	if u.Nickname.Valid {
+		resp.Nickname = &u.Nickname.String
+	}
 	if u.InterviewDate.Valid {
 		d := u.InterviewDate.Time.UTC().Format(time.RFC3339)
 		resp.InterviewDate = &d
@@ -118,11 +144,149 @@ func newUserResponse(u db.User) userResponse {
 }
 
 func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
-	h.handleCredentials(w, r, h.svc.Register, http.StatusCreated, "Register")
+	if h.unavailable(w) {
+		return
+	}
+	var req registrationRequest
+	if !decodeJSON(w, r, &req) || !validateCredentials(w, req.Email, req.Password, "Register") {
+		return
+	}
+	if h.skipEmailVerification {
+		user, tokens, err := h.svc.RegisterWithoutEmailVerification(r.Context(), req.Email, req.Password)
+		if err != nil {
+			writeAuthError(w, err, "Register", slog.String("email_hash", emailLogHash(req.Email)))
+			return
+		}
+		response.JSON(w, http.StatusCreated, authResponse{User: newUserResponse(user), Tokens: h.browserTokens(w, r, tokens)})
+		return
+	}
+	if h.mailUnavailable(w) {
+		return
+	}
+	challenge, err := h.svc.QueueRegistration(r.Context(), req.Email, req.Password, req.Nickname)
+	if err != nil {
+		writeAuthError(w, err, "Register", slog.String("email_hash", emailLogHash(req.Email)))
+		return
+	}
+	response.JSON(w, http.StatusAccepted, map[string]string{"status": "verification_requested", "challenge": challenge})
 }
 
 func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 	h.handleCredentials(w, r, h.svc.Login, http.StatusOK, "Login")
+}
+
+type passwordResetRequest struct {
+	Email string `json:"email"`
+}
+type passwordResetConfirmRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+type emailVerificationRequest struct {
+	Challenge string `json:"challenge"`
+	Email     string `json:"email"`
+}
+type emailVerificationConfirmRequest struct {
+	Challenge string `json:"challenge"`
+	Email     string `json:"email"`
+	Code      string `json:"code"`
+}
+
+// requestPasswordReset is deliberately indistinguishable for known and
+// unknown accounts. Logs use an irreversible short hash rather than email.
+func (h *authHandler) requestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	var req passwordResetRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if h.mailUnavailable(w) {
+		return
+	}
+	if err := h.svc.QueuePasswordReset(r.Context(), req.Email); err != nil {
+		writeAuthError(w, err, "QueuePasswordReset")
+		return
+	}
+	response.JSON(w, http.StatusAccepted, map[string]string{"status": "reset_requested"})
+}
+
+func (h *authHandler) confirmPasswordReset(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	var req passwordResetConfirmRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if strings.TrimSpace(req.Token) == "" || req.NewPassword == "" {
+		response.Fail(w, http.StatusBadRequest, "validation_error", "token and new_password are required")
+		return
+	}
+	if _, err := h.svc.ResetPassword(r.Context(), req.Token, req.NewPassword); err != nil {
+		if errors.Is(err, auth.ErrInvalidToken) {
+			slog.Info("password_reset_invalid_token", slog.String("request_id", middleware.GetReqID(r.Context())))
+		}
+		writeAuthError(w, err, "ConfirmPasswordReset")
+		return
+	}
+	slog.Info("password_reset_completed", slog.String("request_id", middleware.GetReqID(r.Context())))
+	response.JSON(w, http.StatusOK, map[string]string{"status": "password_reset"})
+}
+
+func (h *authHandler) requestEmailVerification(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	var req emailVerificationRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if h.mailUnavailable(w) {
+		return
+	}
+	if err := h.svc.QueueRegistrationResend(r.Context(), req.Email, req.Challenge); err != nil {
+		writeAuthError(w, err, "QueueEmailVerification")
+		return
+	}
+	response.JSON(w, http.StatusAccepted, map[string]string{"status": "verification_requested"})
+}
+
+func (h *authHandler) confirmEmailVerification(w http.ResponseWriter, r *http.Request) {
+	if h.unavailable(w) {
+		return
+	}
+	var req emailVerificationConfirmRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	user, tokens, err := h.svc.CompleteRegistration(r.Context(), req.Email, strings.TrimSpace(req.Code), req.Challenge)
+	if err != nil {
+		if errors.Is(err, auth.ErrInvalidToken) || errors.Is(err, auth.ErrEmailTaken) {
+			slog.Info("email_verification_invalid_code", slog.String("email_hash", emailLogHash(req.Email)), slog.String("request_id", middleware.GetReqID(r.Context())))
+			response.Fail(w, http.StatusBadRequest, "invalid_code", "invalid or expired verification code")
+			return
+		}
+		slog.Error("email_verification_confirm_failed", slog.String("email_hash", emailLogHash(req.Email)), slog.String("request_id", middleware.GetReqID(r.Context())), slog.String("reason", "request_failed"))
+		response.Fail(w, http.StatusInternalServerError, "internal_error", "something went wrong")
+		return
+	}
+	slog.Info("email_verification_completed", slog.Int64("user_id", user.ID), slog.String("request_id", middleware.GetReqID(r.Context())))
+	response.JSON(w, http.StatusCreated, authResponse{User: newUserResponse(user), Tokens: h.browserTokens(w, r, tokens)})
+}
+
+func (h *authHandler) mailUnavailable(w http.ResponseWriter) bool {
+	if h.mailer != nil {
+		return false
+	}
+	response.Fail(w, http.StatusServiceUnavailable, "mail_unavailable", "Отправка писем временно недоступна. Попробуйте позже.")
+	return true
+}
+
+func emailLogHash(email string) string {
+	sum := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(email))))
+	return fmt.Sprintf("%x", sum[:])[:16]
 }
 
 func (h *authHandler) handleCredentials(
@@ -141,10 +305,57 @@ func (h *authHandler) handleCredentials(
 	}
 	user, tokens, err := fn(r.Context(), req.Email, req.Password)
 	if err != nil {
-		writeAuthError(w, err, method, slog.String("email", req.Email))
+		writeAuthError(w, err, method, slog.String("email_hash", emailLogHash(req.Email)))
 		return
 	}
-	response.JSON(w, status, authResponse{User: newUserResponse(user), Tokens: tokens})
+	response.JSON(w, status, authResponse{User: newUserResponse(user), Tokens: h.browserTokens(w, r, tokens)})
+}
+
+// yandexLogin handles POST /auth/yandex — the second leg of "Sign in with
+// Yandex ID": the browser has already redirected through
+// https://oauth.yandex.ru/authorize and landed back on the app's callback
+// route with an authorization code, which it forwards here to be exchanged
+// server-side (client_secret never reaches the browser).
+func (h *authHandler) yandexLogin(w http.ResponseWriter, r *http.Request) {
+	h.handleOAuthLogin(w, r, h.svc.LoginWithYandex, "YandexLogin")
+}
+
+// githubLogin handles POST /auth/github — the second leg of "Sign in with
+// GitHub", mirroring yandexLogin for the GitHub OAuth App authorization code
+// flow (https://docs.github.com/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps).
+func (h *authHandler) githubLogin(w http.ResponseWriter, r *http.Request) {
+	h.handleOAuthLogin(w, r, h.svc.LoginWithGitHub, "GithubLogin")
+}
+
+func (h *authHandler) handleOAuthLogin(
+	w http.ResponseWriter,
+	r *http.Request,
+	fn func(context.Context, string, string) (db.User, auth.TokenPair, error),
+	method string,
+) {
+	if h.unavailable(w) {
+		return
+	}
+	var req oauthLoginRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if req.Code == "" {
+		slog.Warn("auth: "+method+" failed", slog.String("field", "code"))
+		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "code is required", "code")
+		return
+	}
+	if req.RedirectURI == "" {
+		slog.Warn("auth: "+method+" failed", slog.String("field", "redirect_uri"))
+		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "redirect_uri is required", "redirect_uri")
+		return
+	}
+	user, tokens, err := fn(r.Context(), req.Code, req.RedirectURI)
+	if err != nil {
+		writeAuthError(w, err, method)
+		return
+	}
+	response.JSON(w, http.StatusOK, authResponse{User: newUserResponse(user), Tokens: h.browserTokens(w, r, tokens)})
 }
 
 func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
@@ -155,6 +366,7 @@ func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &req) {
 		return
 	}
+	req.RefreshToken = h.requestRefreshToken(r, req.RefreshToken)
 	if req.RefreshToken == "" {
 		slog.Warn("auth: Refresh failed", slog.String("field", "refresh_token"))
 		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "refresh_token is required", "refresh_token")
@@ -165,7 +377,7 @@ func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
 		writeAuthError(w, err, "Refresh")
 		return
 	}
-	response.JSON(w, http.StatusOK, map[string]auth.TokenPair{"tokens": tokens})
+	response.JSON(w, http.StatusOK, map[string]auth.TokenPair{"tokens": h.browserTokens(w, r, tokens)})
 }
 
 // deviceSession exchanges an already authenticated access token for an
@@ -180,12 +392,17 @@ func (h *authHandler) deviceSession(w http.ResponseWriter, r *http.Request) {
 		response.Fail(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 		return
 	}
-	tokens, err := h.svc.NewSession(r.Context(), userID)
+	var req refreshRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	parentRefresh := h.requestRefreshToken(r, req.RefreshToken)
+	tokens, err := h.svc.NewSessionFromAccess(r.Context(), strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "), parentRefresh)
 	if err != nil {
 		writeAuthError(w, err, "DeviceSession", slog.Int64("user_id", userID))
 		return
 	}
-	response.JSON(w, http.StatusCreated, map[string]auth.TokenPair{"tokens": tokens})
+	response.JSON(w, http.StatusCreated, map[string]auth.TokenPair{"tokens": h.browserTokens(w, r, tokens)})
 }
 
 func (h *authHandler) logout(w http.ResponseWriter, r *http.Request) {
@@ -196,16 +413,18 @@ func (h *authHandler) logout(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &req) {
 		return
 	}
+	req.RefreshToken = h.requestRefreshToken(r, req.RefreshToken)
 	if req.RefreshToken == "" {
 		slog.Warn("auth: Logout failed", slog.String("field", "refresh_token"))
 		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "refresh_token is required", "refresh_token")
 		return
 	}
 	if err := h.svc.Logout(r.Context(), req.RefreshToken); err != nil {
-		slog.Error("auth: Logout failed", slog.Any("err", err))
+		slog.Error("auth: Logout failed", slog.String("reason", "request_failed"))
 		response.Fail(w, http.StatusInternalServerError, "internal_error", "could not log out")
 		return
 	}
+	h.clearBrowserCookie(w, r)
 	response.JSON(w, http.StatusOK, map[string]string{"status": "logged_out"})
 }
 
@@ -241,17 +460,24 @@ func decodeCredentials(w http.ResponseWriter, r *http.Request, method string) (c
 	if !decodeJSON(w, r, &req) {
 		return req, false
 	}
-	if req.Email == "" {
-		slog.Warn("auth: "+method+" failed", slog.String("field", "email"))
-		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "email is required", "email")
-		return req, false
-	}
-	if req.Password == "" {
-		slog.Warn("auth: "+method+" failed", slog.String("field", "password"))
-		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "password is required", "password")
+	if !validateCredentials(w, req.Email, req.Password, method) {
 		return req, false
 	}
 	return req, true
+}
+
+func validateCredentials(w http.ResponseWriter, email, password, method string) bool {
+	if email == "" {
+		slog.Warn("auth: "+method+" failed", slog.String("field", "email"))
+		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "email is required", "email")
+		return false
+	}
+	if password == "" {
+		slog.Warn("auth: "+method+" failed", slog.String("field", "password"))
+		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "password is required", "password")
+		return false
+	}
+	return true
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
@@ -261,10 +487,10 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	if err := dec.Decode(dst); err != nil {
 		var maxBytesErr *http.MaxBytesError
 		if errors.As(err, &maxBytesErr) {
-			slog.Warn("auth: decodeJSON failed", slog.Any("err", err))
+			slog.Warn("auth: decodeJSON failed", slog.String("reason", "request_failed"))
 			response.Fail(w, http.StatusRequestEntityTooLarge, "request_too_large", "request body is too large")
 		} else {
-			slog.Warn("auth: decodeJSON failed", slog.Any("err", err))
+			slog.Warn("auth: decodeJSON failed", slog.String("reason", "request_failed"))
 			response.Fail(w, http.StatusBadRequest, "invalid_request", "request body is not valid JSON")
 		}
 		return false
@@ -430,7 +656,7 @@ func (h *authHandler) patchProfile(w http.ResponseWriter, r *http.Request) {
 		} else {
 			t, err := time.Parse(time.RFC3339, *req.InterviewDate.Value)
 			if err != nil {
-				slog.Warn("auth: PatchProfile failed", slog.Int64("user_id", userID), slog.Any("err", err), slog.String("field", "interview_date"))
+				slog.Warn("auth: PatchProfile failed", slog.Int64("user_id", userID), slog.String("reason", "request_failed"), slog.String("field", "interview_date"))
 				response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "interview_date must be RFC3339 or null", "interview_date")
 				return
 			}
@@ -589,7 +815,7 @@ func (h *authHandler) deleteMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeAuthError(w http.ResponseWriter, err error, handler string, extra ...any) {
-	logArgs := append([]any{slog.Any("err", err)}, extra...)
+	logArgs := append([]any{slog.String("reason", "request_failed")}, extra...)
 	switch {
 	case errors.Is(err, auth.ErrInvalidEmail):
 		slog.Warn("auth: "+handler+" failed", logArgs...)
@@ -600,6 +826,9 @@ func writeAuthError(w http.ResponseWriter, err error, handler string, extra ...a
 	case errors.Is(err, auth.ErrPasswordTooLong):
 		slog.Warn("auth: "+handler+" failed", logArgs...)
 		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "password must be at most 72 bytes", "password")
+	case errors.Is(err, auth.ErrInvalidNickname):
+		slog.Warn("auth: "+handler+" failed", logArgs...)
+		response.FailWithDetails(w, http.StatusBadRequest, "validation_error", "nickname must be 3–32 letters, digits, _ or -", "nickname")
 	case errors.Is(err, auth.ErrEmailTaken):
 		slog.Warn("auth: "+handler+" failed", logArgs...)
 		response.FailWithDetails(w, http.StatusConflict, "email_taken", "email is already registered", "email")
@@ -609,6 +838,15 @@ func writeAuthError(w http.ResponseWriter, err error, handler string, extra ...a
 	case errors.Is(err, auth.ErrInvalidToken):
 		slog.Warn("auth: "+handler+" failed", logArgs...)
 		response.Fail(w, http.StatusUnauthorized, "invalid_token", "invalid or expired token")
+	case errors.Is(err, auth.ErrOAuthUnavailable):
+		slog.Error("auth: "+handler+" failed", logArgs...)
+		response.Fail(w, http.StatusServiceUnavailable, "oauth_unavailable", "this sign-in method is not configured")
+	case errors.Is(err, auth.ErrOAuthNoEmail):
+		slog.Warn("auth: "+handler+" failed", logArgs...)
+		response.Fail(w, http.StatusUnprocessableEntity, "oauth_no_email", "the provider account has no email to sign in with")
+	case errors.Is(err, auth.ErrOAuthProviderFailed):
+		slog.Error("auth: "+handler+" failed", logArgs...)
+		response.Fail(w, http.StatusBadGateway, "oauth_provider_failed", "the sign-in provider did not respond as expected")
 	default:
 		slog.Error("auth: "+handler+" failed", logArgs...)
 		response.Fail(w, http.StatusInternalServerError, "internal_error", "something went wrong")

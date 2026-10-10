@@ -15,11 +15,21 @@ export async function generateMetadata({
 
 export default async function PatternDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { code } = await params;
+  const { from } = await searchParams;
   const { pages } = getDictionary().cabinet;
 
-  return <AtlasNodeClient code={code} copy={pages.atlasNode} atlasCopy={pages.atlas} />;
+  return (
+    <AtlasNodeClient
+      code={code}
+      copy={pages.atlasNode}
+      atlasCopy={pages.atlas}
+      fromRoadmap={from === "roadmap"}
+    />
+  );
 }

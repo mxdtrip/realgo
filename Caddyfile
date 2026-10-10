@@ -24,7 +24,7 @@
 			header @allowed_origin Access-Control-Allow-Origin "{http.request.header.Origin}"
 			header @allowed_origin Access-Control-Allow-Credentials "true"
 			header @allowed_origin Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-			header @allowed_origin Access-Control-Allow-Headers "Authorization, Content-Type"
+			header @allowed_origin Access-Control-Allow-Headers "Authorization, Content-Type, X-Realgo-Client, X-Realgo-Session"
 			header @allowed_origin Access-Control-Max-Age "86400"
 			header @allowed_origin Vary "Origin"
 

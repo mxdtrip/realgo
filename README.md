@@ -72,58 +72,125 @@ extension, patterns, practice, problems, quiz, roadmap и scheduler.
 - [Presentation](apps/presentation/README.md)
 - [Backend API contract](docs/cabinet-api-contract.md)
 
-## Быстрый запуск
+## Окружения и ветки
 
-Понадобятся Docker и Docker Compose.
+В проекте используются три независимых окружения:
+
+| Окружение | Источник | Compose | Адрес |
+| --- | --- | --- | --- |
+| Локальное | текущая feature-ветка | `docker-compose.yml` | `http://localhost:8080` |
+| Тестовый стенд | ветка `dev` | base + `docker-compose.staging.yml` | `https://staging.realgo.dev` |
+| Production | ветка `main` | base + `docker-compose.prod.yml` | `https://realgo.dev` |
+
+Изменения проходят один маршрут:
+
+```text
+feature-ветка → pull request в dev → staging → pull request в main → production
+```
+
+Не запускайте серверные окружения обычной командой `docker compose up`: без
+overlay-файла она поднимает локальный стек с локальными настройками и seed
+jobs. Полная схема окружений приведена в
+[руководстве по запуску и деплою](docs/deployment.md).
+
+## Локальный запуск
+
+Понадобятся Docker Engine и Docker Compose plugin.
 
 ```sh
 cp .env.example .env
-# Задайте в .env случайный AUTH_JWT_SECRET длиной не менее 32 символов.
-docker compose up -d --build --wait
 ```
 
-После запуска:
+В `.env` обязательно замените `AUTH_JWT_SECRET` на случайную строку длиной не
+менее 32 символов. Для стандартного запуска оставьте:
 
-- web и API через Caddy: [http://localhost:8080](http://localhost:8080);
+```env
+APP_ENV=local
+MAIL_BASE_URL=http://localhost:8080
+MAIL_ENABLED=false
+```
+
+Запустите весь стек из корня репозитория:
+
+```sh
+docker compose up -d --build --wait
+docker compose logs ready
+```
+
+После запуска доступны:
+
+- приложение: [http://localhost:8080](http://localhost:8080);
 - health check: [http://localhost:8080/healthz](http://localhost:8080/healthz);
 - readiness check: [http://localhost:8080/readyz](http://localhost:8080/readyz);
 - презентация: [http://localhost:8080/presentation/](http://localhost:8080/presentation/).
 
-Сервис `ready` дожидается миграций, сидеров, API, web и презентации. При
-успехе он печатает `REALGO — СТЕК ПОЛНОСТЬЮ ЗАПУЩЕН`; при ошибке указывает
-эндпоинт, который не ответил. Диагностика:
+Сервис `ready` ждёт завершения миграций и seed jobs, затем проверяет API, web и
+презентацию. Для диагностики:
 
 ```sh
 docker compose ps
-docker compose logs ready
+docker compose logs --tail=200 api web caddy ready
 ```
 
-Backend можно поднять отдельно:
+Остановить контейнеры без удаления данных:
 
 ```sh
-cd services/api
-make up-api
-make health
+docker compose down
 ```
 
-Полный список переменных находится в [`.env.example`](.env.example), а
-серверный сценарий — в [prod-demo runbook](docs/prod-demo-deploy-runbook.md).
-Секреты и локальный `.env` коммитить нельзя.
+Не используйте `docker compose down -v`, если хотите сохранить локальную БД.
+Локальный `seed-users` может возвращать демонстрационные аккаунты к исходному
+состоянию; для проверки сохранения прогресса используйте отдельно
+зарегистрированный аккаунт.
 
-## Разработка и проверка
+## Тестовый стенд: `dev`
 
-Основные проверки запускаются автоматически из `.github/workflows/ci.yml` для
-push в `main` и `dev`, а также для pull request. CI проверяет Go build/vet/tests,
-sqlc и форматирование, собирает web и расширение и запускает Playwright e2e.
+Merge в `dev` автоматически запускает CI и workflow
+`.github/workflows/deploy.yml`. Стенд разворачивается как отдельный Compose-
+проект `realgo-staging`, поэтому его контейнеры и volumes не пересекаются с
+production.
 
-Production автоматически разворачивается из `main` workflow
-`deploy-prod.yml`; staging — из `dev` workflow `deploy.yml`. Перед релизом
-проверяйте зелёный CI именно для выпускаемого commit SHA и состояние
-[realgo.dev](https://realgo.dev).
+Серверные secrets хранятся в GitHub Environment `staging`; `.env.staging` в
+Git не добавляется. Для ручного запуска используется шаблон
+[`.env.staging.example`](.env.staging.example):
 
-Правила веток, коммитов и pull request описаны в
-[CONTRIBUTING.md](CONTRIBUTING.md). О проблемах безопасности сообщайте по
-[SECURITY.md](SECURITY.md), не через публичный issue.
+```sh
+cp .env.staging.example .env.staging
+# заполнить все change-me и указать COMMIT_SHA
+docker compose --env-file .env.staging \
+  -f docker-compose.yml -f docker-compose.staging.yml \
+  --profile prod-demo up -d --build --remove-orphans --wait
+```
+
+Подготовка runner, GitHub secrets, FRP, обновление и диагностика описаны в
+[staging runbook](docs/staging-deploy-runbook.md).
+
+## Production: `main`
+
+В production попадает только уже проверенный на staging код. Merge из `dev` в
+`main` запускает CI и `.github/workflows/deploy-prod.yml`; успешный workflow
+пересобирает production Compose-проект и выполняет smoke-проверки.
+
+Production обязательно использует `APP_ENV=production`, стабильный
+`AUTH_JWT_SECRET`, `MAIL_BASE_URL=https://realgo.dev` и отдельные пароли БД и
+Redis. Для ручного запуска используйте
+[`.env.production.example`](.env.production.example). Seed демонстрационных
+пользователей в штатный deploy не входит.
+
+Инфраструктура VPS, обязательные secrets, ручной deploy, healthcheck и rollback
+описаны в [production runbook](docs/prod-demo-deploy-runbook.md).
+
+## Разработка и проверки
+
+CI запускается для pull request и push в `dev`/`main`. Он проверяет Go
+build/vet/tests, sqlc и форматирование, собирает web и расширение, запускает
+Playwright e2e и валидирует Compose-конфигурации.
+
+Перед merge убедитесь, что зелёный CI относится к нужному commit SHA. Правила
+веток, коммитов и pull request описаны в [CONTRIBUTING.md](CONTRIBUTING.md).
+Секреты, `.env`, `.env.staging` и другие локальные env-файлы коммитить нельзя.
+О проблемах безопасности сообщайте по [SECURITY.md](SECURITY.md), а не через
+публичный issue.
 
 ## Текущие ограничения
 

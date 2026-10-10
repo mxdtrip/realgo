@@ -25,7 +25,15 @@ COPY . .
 ARG NEXT_PUBLIC_API_BASE_URL=""
 ARG NEXT_PUBLIC_APP_VERSION=""
 ARG NEXT_PUBLIC_COMMIT_SHA=""
+# Public Yandex ID OAuth client id (not a secret). Empty hides the "Войти
+# через Яндекс ID" button; the api's YANDEX_CLIENT_SECRET stays server-only.
+ARG NEXT_PUBLIC_YANDEX_CLIENT_ID=""
+# Public GitHub OAuth App client id (not a secret). Empty hides the "Войти
+# через GitHub" button; the api's GITHUB_CLIENT_SECRET stays server-only.
+ARG NEXT_PUBLIC_GITHUB_CLIENT_ID=""
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_YANDEX_CLIENT_ID=$NEXT_PUBLIC_YANDEX_CLIENT_ID
+ENV NEXT_PUBLIC_GITHUB_CLIENT_ID=$NEXT_PUBLIC_GITHUB_CLIENT_ID
 ENV NEXT_TELEMETRY_DISABLED=1
 # Resolve release metadata inside the build so the ordinary compose command is
 # sufficient. `repository_metadata` is a named BuildKit context limited by the

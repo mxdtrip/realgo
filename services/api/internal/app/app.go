@@ -24,6 +24,7 @@ import (
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
 	"github.com/mxdtrip/realgo/services/api/internal/cards"
 	"github.com/mxdtrip/realgo/services/api/internal/config"
+	"github.com/mxdtrip/realgo/services/api/internal/mail"
 	"github.com/mxdtrip/realgo/services/api/internal/reports"
 	"github.com/mxdtrip/realgo/services/api/internal/scheduler"
 	"github.com/mxdtrip/realgo/services/api/internal/server"
@@ -81,6 +82,18 @@ func Run(ctx context.Context) error {
 	}
 
 	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, authCfg)
+	smtpMailer, err := mail.NewSMTP(mail.Config{Enabled: cfg.Mail.Enabled, Host: cfg.Mail.Host, Port: cfg.Mail.Port, Username: cfg.Mail.Username, Password: cfg.Mail.Password, BaseURL: cfg.Mail.BaseURL, Timeout: cfg.Mail.Timeout, TLSMode: cfg.Mail.TLSMode})
+	if err != nil {
+		return fmt.Errorf("configure mailer: %w", err)
+	}
+	var mailer mail.Sender
+	if smtpMailer != nil {
+		mailer = smtpMailer
+		go authSvc.RunMailWorker(ctx, mailer, cfg.Mail.BaseURL)
+		logger.Info("transactional mail enabled", slog.String("from", mail.SenderAddress), slog.String("smtp_host", cfg.Mail.Host), slog.Int("smtp_port", cfg.Mail.Port))
+	} else {
+		logger.Warn("transactional mail disabled: MAIL_ENABLED is false")
+	}
 
 	// Single FSRS scheduler shared by extension ingest and review/cards/quiz
 	// rate paths (FSRS audit A1). Built once from operator-facing config so
@@ -94,11 +107,14 @@ func Run(ctx context.Context) error {
 	})
 
 	deps := server.Deps{
-		Logger:    logger,
-		Postgres:  pg,
-		Redis:     rdb,
-		Auth:      authSvc,
-		Scheduler: sched,
+		Logger:                logger,
+		Postgres:              pg,
+		Redis:                 rdb,
+		Auth:                  authSvc,
+		Mailer:                mailer,
+		MailBaseURL:           cfg.Mail.BaseURL,
+		SkipEmailVerification: cfg.Env != "production",
+		Scheduler:             sched,
 	}
 	if cfg.Enabled() {
 		geminiProvider := ai.NewGeminiProvider(cfg.AI)
@@ -148,6 +164,7 @@ func Run(ctx context.Context) error {
 	eng.HTML(http.MethodGet, "/admin", adminui.Dashboard)
 	eng.Data(http.MethodGet, "/admin/api/problem_reports/:id/attachment", adminui.DownloadProblemReportAttachment(pg.Pool))
 	handler.Handle("/admin", adminRouter)
+	handler.Handle("/admin/", http.RedirectHandler("/admin", http.StatusPermanentRedirect))
 	handler.Handle("/admin/*", adminRouter)
 
 	srv := &http.Server{

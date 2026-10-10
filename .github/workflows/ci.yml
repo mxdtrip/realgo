@@ -2,8 +2,7 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main, dev]
+  workflow_call:
 
 jobs:
   api:
@@ -91,10 +90,23 @@ jobs:
         run: ./scripts/check-migrations.sh
 
       - name: Check Docker Compose config
-        working-directory: .
+        # The API job defaults to services/api; Compose files live at repo root.
+        working-directory: ${{ github.workspace }}
         env:
           AUTH_JWT_SECRET: ci-secret-with-more-than-32-random-looking-characters
         run: docker compose config --quiet
+
+      - name: Check staging Docker Compose config
+        working-directory: ${{ github.workspace }}
+        env:
+          AUTH_JWT_SECRET: ci-secret-with-more-than-32-random-looking-characters
+          DB_PASSWORD: ci-database-password
+          REDIS_PASSWORD: ci-redis-password
+          SMTP2GO_SMTP_USERNAME: ci-user
+          SMTP2GO_SMTP_PASSWORD: ci-password
+          FRP_VPS_HOST: 127.0.0.1
+          FRP_TOKEN: ci-frp-token
+        run: docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo config --quiet
 
   web:
     name: Web
@@ -161,3 +173,19 @@ jobs:
       # (see playwright.config.mjs) and drives the auth flow end to end.
       - name: Run e2e
         run: npm run e2e
+
+  smtp-relay:
+    name: SMTP relay
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/smtp-relay
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=moderate
+      - run: node --check server.mjs
+      - run: node --test

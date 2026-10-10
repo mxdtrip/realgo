@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { updateProfile } from "../../../_api/account";
 import { useAuth } from "../../../_api/AuthProvider";
-import { searchCompanies, type Company } from "../../../_api/companies";
+import { listCompanies, searchCompanies, type Company } from "../../../_api/companies";
 import {
   previewRoadmap,
   saveRoadmap,
@@ -87,6 +87,7 @@ function WheelColumn({
   // а не встало ровно там, где отпустили палец/кнопку мыши.
   const velocitySamples = useRef<{ time: number; y: number }[]>([]);
   const momentumFrame = useRef(0);
+  const lastWheelStep = useRef(0);
 
   useEffect(() => {
     setCentered(value);
@@ -214,10 +215,34 @@ function WheelColumn({
     [runMomentum],
   );
 
+  const stepValue = useCallback(
+    (direction: -1 | 1) => {
+      const index = Math.max(0, items.findIndex((item) => item.key === value));
+      const next = items[Math.min(items.length - 1, Math.max(0, index + direction))];
+      if (next && next.key !== value) onChange(next.key);
+    },
+    [items, onChange, value],
+  );
+
+  const handleWheel = useCallback(
+    (event: ReactWheelEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const now = performance.now();
+      if (now - lastWheelStep.current < 140 || event.deltaY === 0) return;
+      lastWheelStep.current = now;
+      stepValue(event.deltaY > 0 ? 1 : -1);
+    },
+    [stepValue],
+  );
+
+  const selectedIndex = Math.max(0, items.findIndex((item) => item.key === value));
+
   return (
-    <div className="onboarding-wheel" role="listbox" aria-label={ariaLabel}>
-      <div className="onboarding-wheel__band" aria-hidden="true" />
-      <div
+    <div className="onboarding-wheel-control">
+      <button className="onboarding-wheel-control__arrow" type="button" disabled={selectedIndex === 0} aria-label={`${ariaLabel}: назад`} onClick={() => stepValue(-1)}>↑</button>
+      <div className="onboarding-wheel" role="listbox" aria-label={ariaLabel}>
+        <div className="onboarding-wheel__band" aria-hidden="true" />
+        <div
         className={[
           "onboarding-wheel__list",
           dragging ? "is-dragging" : "",
@@ -231,6 +256,7 @@ function WheelColumn({
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onWheel={handleWheel}
       >
         {items.map((item) => (
           <button
@@ -247,7 +273,9 @@ function WheelColumn({
             {item.label}
           </button>
         ))}
+        </div>
       </div>
+      <button className="onboarding-wheel-control__arrow" type="button" disabled={selectedIndex === items.length - 1} aria-label={`${ariaLabel}: вперёд`} onClick={() => stepValue(1)}>↓</button>
     </div>
   );
 }
@@ -262,6 +290,10 @@ export default function OnboardingProfilePage() {
   const [companySuggestions, setCompanySuggestions] = useState<Company[]>([...fallbackCompanies]);
   const [companyCodesByName, setCompanyCodesByName] = useState<Record<string, string>>(fallbackCompanyCodes);
   const [companyInput, setCompanyInput] = useState("");
+  const [selectedCompanies, setSelectedCompanies] = useState<Company[]>([]);
+  const [companyCatalog, setCompanyCatalog] = useState<Company[]>([]);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogLoading, setCatalogLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [priorityMode, setPriorityMode] = useState<RoadmapPriorityMode>("balanced");
   const [step, setStep] = useState<OnboardingStep>("platform");
@@ -281,11 +313,12 @@ export default function OnboardingProfilePage() {
   }, [router, status, user?.onboarding_completed]);
 
   const currentStepIndex = Math.max(0, steps.indexOf(step));
-  const targetCompany = companyInput.trim();
-  const targetCompanyCode = companyCodesByName[targetCompany.toLowerCase()] ?? "";
+  const primaryCompany = selectedCompanies[0] ?? null;
+  const targetCompany = primaryCompany?.name ?? "";
+  const targetCompanyCode = primaryCompany?.id ?? "";
   const currentStepHasValue =
     (step === "platform" && selectedPlatform.length > 0) ||
-    (step === "company" && targetCompany.length > 0) ||
+    (step === "company" && (selectedCompanies.length > 0 || companyInput.trim().length > 0)) ||
     (step === "date" && selectedDate.length > 0) ||
     step === "roadmap";
 
@@ -350,13 +383,78 @@ export default function OnboardingProfilePage() {
     [selected, today],
   );
 
+  const addCompany = useCallback(
+    (value: Company | string) => {
+      const rawName = typeof value === "string" ? value.trim() : value.name;
+      if (!rawName) return;
+      const known =
+        typeof value === "string"
+          ? companySuggestions.find((item) => item.name.toLowerCase() === rawName.toLowerCase()) ??
+            companyCatalog.find((item) => item.name.toLowerCase() === rawName.toLowerCase())
+          : value;
+      const company: Company = known ?? {
+        id: companyCodesByName[rawName.toLowerCase()] ?? "",
+        name: rawName,
+        source: "custom",
+      };
+      setSelectedCompanies((current) =>
+        current.some((item) => item.name.toLowerCase() === company.name.toLowerCase())
+          ? current
+          : [...current, company],
+      );
+      setCompanyInput("");
+    },
+    [companyCatalog, companyCodesByName, companySuggestions],
+  );
+
+  const removeCompany = useCallback((name: string) => {
+    setSelectedCompanies((current) => current.filter((item) => item.name !== name));
+  }, []);
+
+  const handleCompanyInput = useCallback(
+    (value: string) => {
+      if (!value.includes(",")) {
+        setCompanyInput(value);
+        return;
+      }
+      const parts = value.split(",");
+      const remainder = parts.pop() ?? "";
+      for (const part of parts) addCompany(part);
+      setCompanyInput(remainder.replace(/^\s+/, ""));
+    },
+    [addCompany],
+  );
+
+  const toggleCatalog = useCallback(async () => {
+    const opening = !catalogOpen;
+    setCatalogOpen(opening);
+    if (!opening || companyCatalog.length > 0 || catalogLoading) return;
+    setCatalogLoading(true);
+    try {
+      const companies = await listCompanies();
+      setCompanyCatalog(companies);
+      setCompanyCodesByName((current) => ({
+        ...current,
+        ...Object.fromEntries(companies.map((company) => [company.name.toLowerCase(), company.id])),
+      }));
+    } catch {
+      setCompanyCatalog([...fallbackCompanies]);
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, [catalogLoading, catalogOpen, companyCatalog.length]);
+
   const suggestions = useMemo(() => {
     const query = companyInput.trim().toLowerCase();
     if (query.length < 2) return [];
     return companySuggestions
-      .filter((item) => item.name.toLowerCase().includes(query) && item.name.toLowerCase() !== query)
+      .filter(
+        (item) =>
+          item.name.toLowerCase().includes(query) &&
+          !selectedCompanies.some((selectedCompany) => selectedCompany.id === item.id),
+      )
       .slice(0, 6);
-  }, [companySuggestions, companyInput]);
+  }, [companySuggestions, companyInput, selectedCompanies]);
 
   // Debounced company autocomplete from the backend API.
   useEffect(() => {
@@ -430,13 +528,20 @@ export default function OnboardingProfilePage() {
     try {
       const timezone =
         Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-      const result = await saveRoadmap({
-        companyCode: targetCompanyCode,
-        companyName: targetCompany,
-        interviewDate: selectedDate || null,
-        priorityMode,
-        preserveProgress: false,
-      });
+      const plans = selectedCompanies.length > 0
+        ? [...selectedCompanies].reverse()
+        : [{ id: "", name: "", source: "core" }];
+      let result: RoadmapResponse | null = null;
+      for (const company of plans) {
+        result = await saveRoadmap({
+          companyCode: company.id,
+          companyName: company.name,
+          interviewDate: selectedDate || null,
+          priorityMode,
+          preserveProgress: false,
+        });
+      }
+      if (!result) throw new Error("roadmap was not created");
 
       // Persist every client-side prerequisite before committing
       // onboarding_completed on the server. A failed roadmap request can now
@@ -446,15 +551,15 @@ export default function OnboardingProfilePage() {
         JSON.stringify({
           platform: selectedPlatform || null,
           interviewDate: selectedDate || null,
-          targetCompany: targetCompany || null,
-          targetCompanyCode: targetCompanyCode || null,
+          targetCompany: selectedCompanies.map((company) => company.name).join(", ") || null,
+          targetCompanyCode: selectedCompanies.map((company) => company.id).filter(Boolean).join(",") || null,
           priorityMode,
           savedAt: new Date().toISOString(),
         }),
       );
 
       await updateProfile({
-        target_company: targetCompany,
+        target_company: selectedCompanies.map((company) => company.name).join(", "),
         interview_date: selectedDate ? `${selectedDate}T09:00:00Z` : undefined,
         platform: selectedPlatform || undefined,
         timezone,
@@ -467,15 +572,37 @@ export default function OnboardingProfilePage() {
     } finally {
       setSaving(false);
     }
-  }, [priorityMode, selectedDate, selectedPlatform, targetCompany, targetCompanyCode]);
+  }, [priorityMode, selectedCompanies, selectedDate, selectedPlatform]);
 
-  const goNext = useCallback(() => {
+  const goNext = useCallback(async () => {
     if (step === "platform") {
       setStep("company");
       return;
     }
 
     if (step === "company") {
+      const pending = [...selectedCompanies];
+      if (
+        companyInput.trim() &&
+        !pending.some((company) => company.name.toLowerCase() === companyInput.trim().toLowerCase())
+      ) {
+        pending.push({ id: "", name: companyInput.trim(), source: "custom" });
+      }
+      const resolved = await Promise.all(
+        pending.map(async (company) => {
+          if (company.id) return company;
+          const localCode = companyCodesByName[company.name.toLowerCase()];
+          if (localCode) return { ...company, id: localCode };
+          try {
+            const matches = await searchCompanies(company.name, undefined, 8);
+            return matches.find((item) => item.name.toLowerCase() === company.name.toLowerCase()) ?? company;
+          } catch {
+            return company;
+          }
+        }),
+      );
+      setSelectedCompanies(resolved);
+      setCompanyInput("");
       setStep("date");
       return;
     }
@@ -487,7 +614,7 @@ export default function OnboardingProfilePage() {
 
     // step === "roadmap" → save and transition to welcome on success.
     void saveProfile();
-  }, [saveProfile, step]);
+  }, [companyCodesByName, companyInput, saveProfile, selectedCompanies, step]);
 
   const goBack = useCallback(() => {
     if (step === "company") setStep("platform");
@@ -503,6 +630,7 @@ export default function OnboardingProfilePage() {
 
     if (step === "company") {
       setCompanyInput("");
+      setSelectedCompanies([]);
       setStep("date");
     }
 
@@ -547,7 +675,7 @@ export default function OnboardingProfilePage() {
               </div>
               <div>
                 <dt>{summary.companies}</dt>
-                <dd>{targetCompany || summary.empty}</dd>
+                <dd>{selectedCompanies.map((company) => company.name).join(", ") || summary.empty}</dd>
               </div>
               <div>
                 <dt>{summary.date}</dt>
@@ -578,7 +706,7 @@ export default function OnboardingProfilePage() {
   const stepTag = `${String(currentStepIndex + 1).padStart(2, "0")} / ${step}`;
   const visiblePriorityModes =
     roadmapResult?.availableModes ??
-    (["balanced", "easy_first", ...(targetCompany ? ["company_frequency"] : [])] as RoadmapPriorityMode[]);
+    (["balanced", "easy_first", ...(selectedCompanies.length > 0 ? ["company_frequency"] : [])] as RoadmapPriorityMode[]);
 
   return (
     <main className="onboarding-page">
@@ -635,33 +763,68 @@ export default function OnboardingProfilePage() {
               <label className="onboarding-input">
                 {copy.company.label}
                 <input
-                  autoComplete="organization"
-                  list="realgo-company-suggestions"
+                  autoComplete="off"
+                  name="realgo-company-search"
                   placeholder={copy.company.placeholder}
                   value={companyInput}
-                  onChange={(event) => setCompanyInput(event.target.value)}
+                  onChange={(event) => handleCompanyInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && companyInput.trim()) {
+                      event.preventDefault();
+                      addCompany(companyInput);
+                    }
+                  }}
                 />
               </label>
-              <datalist id="realgo-company-suggestions">
-                {suggestions.map((item) => (
-                  <option key={item.id} value={item.name} />
-                ))}
-              </datalist>
-              {targetCompany ? (
+              {selectedCompanies.length > 0 ? (
                 <div className="selected-companies" aria-label={copy.company.selectedLabel}>
-                  <button type="button" onClick={() => setCompanyInput("")}>
-                    {targetCompany}
-                    <span>×</span>
-                  </button>
+                  {selectedCompanies.map((company) => (
+                    <button type="button" key={company.id || company.name} onClick={() => removeCompany(company.name)}>
+                      {company.name}
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  ))}
                 </div>
               ) : null}
               {suggestions.length > 0 ? (
                 <div className="company-suggestions" aria-label={copy.company.suggestionsLabel}>
                   {suggestions.map((item) => (
-                    <button key={item.id} type="button" onClick={() => setCompanyInput(item.name)}>
+                    <button key={item.id} type="button" onClick={() => addCompany(item)}>
                       {item.name}
                     </button>
                   ))}
+                </div>
+              ) : null}
+              <button
+                className="company-catalog-toggle"
+                type="button"
+                aria-expanded={catalogOpen}
+                onClick={() => void toggleCatalog()}
+              >
+                {catalogOpen ? copy.company.hideCatalog : copy.company.showCatalog}
+                <span aria-hidden="true">{catalogOpen ? "↑" : "↓"}</span>
+              </button>
+              {catalogOpen ? (
+                <div className="company-catalog" aria-label={copy.company.catalogLabel}>
+                  {catalogLoading ? (
+                    <span>{copy.company.catalogLoading}</span>
+                  ) : (
+                    (companyCatalog.length > 0 ? companyCatalog : fallbackCompanies).map((company) => {
+                      const selectedCompany = selectedCompanies.some((item) => item.id === company.id);
+                      return (
+                        <button
+                          className={selectedCompany ? "selected" : ""}
+                          disabled={selectedCompany}
+                          key={company.id}
+                          type="button"
+                          onClick={() => addCompany(company)}
+                        >
+                          {company.name}
+                          {selectedCompany ? <span aria-hidden="true">✓</span> : null}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               ) : null}
               <p className="onboarding-hint">{copy.company.skipHint}</p>

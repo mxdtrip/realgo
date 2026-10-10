@@ -6,7 +6,13 @@
 
 import { apiFetch } from "./client";
 
-export type DashboardStatKey = "today_queue" | "solved_total" | "streak" | "readiness" | string;
+export type DashboardStatKey =
+  | "today_queue"
+  | "solved_total"
+  | "streak"
+  | "readiness"
+  | "roadmap_progress"
+  | string;
 export type DashboardTone = "default" | "accent" | "success" | "warning" | "danger";
 
 export type DashboardStat = {
@@ -16,6 +22,7 @@ export type DashboardStat = {
   displayValue: string;
   hint: string;
   tone: DashboardTone;
+  href?: string;
 };
 
 export type DashboardNextAction = {

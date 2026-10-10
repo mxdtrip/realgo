@@ -34,3 +34,21 @@ export function getReviewQueue(signal?: AbortSignal) {
     signal,
   });
 }
+
+export type RateReviewResult = {
+  id: ReviewID;
+  rating: ReviewRating;
+  status: ReviewStatus;
+  nextReviewAt?: string;
+};
+
+export function rateReview(
+  reviewId: ReviewID,
+  rating: ReviewRating,
+  reviewedAt = new Date().toISOString(),
+) {
+  return apiFetchEnvelope<RateReviewResult>(`/me/reviews/${encodeURIComponent(String(reviewId))}/rate`, {
+    method: "POST",
+    body: { rating, reviewedAt },
+  });
+}

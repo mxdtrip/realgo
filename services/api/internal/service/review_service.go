@@ -26,6 +26,7 @@ const maxReviewSaveAttempts = 3
 type ReviewService interface {
 	GetQueue(ctx context.Context, userID int64, status string, cursor entity.ReviewQueueCursor, limit int32) (response.QueueResponse, error)
 	RateReview(ctx context.Context, reviewID, userID int64, rating string, reviewedAt time.Time) (response.RateReviewData, error)
+	RecordProblemAttempt(ctx context.Context, userID, problemID int64, outcome string, attemptedAt time.Time) (response.ProblemAttemptData, error)
 	// RateByProblemID оценивает задачу в FSRS по problem_id (без expose schedule
 	// id): гарантирует наличие расписания и делегирует в RateReview. Используется
 	// викториной, у которой есть только problem_id.
@@ -51,6 +52,27 @@ func NewReviewService(repo repo.ReviewRepository, sched scheduler.Scheduler, log
 		sched:  sched,
 		logger: logger,
 	}
+}
+
+func (s *reviewService) RecordProblemAttempt(ctx context.Context, userID, problemID int64, outcome string, attemptedAt time.Time) (response.ProblemAttemptData, error) {
+	if outcome == "not_solved" {
+		status, err := s.repo.MarkProblemAttempted(ctx, userID, problemID, attemptedAt)
+		if errors.Is(err, repo.ErrReviewNotFound) {
+			return response.ProblemAttemptData{}, ErrReviewNotFound
+		}
+		if err != nil {
+			return response.ProblemAttemptData{}, fmt.Errorf("reviews: RecordProblemAttempt: %w", err)
+		}
+		return response.ProblemAttemptData{ProblemID: problemID, Outcome: outcome, Status: status}, nil
+	}
+
+	if !scheduler.Rating(outcome).Valid() {
+		return response.ProblemAttemptData{}, fmt.Errorf("reviews: RecordProblemAttempt: %w", ErrInvalidRating)
+	}
+	if err := s.RateByProblemID(ctx, userID, problemID, outcome, attemptedAt); err != nil {
+		return response.ProblemAttemptData{}, err
+	}
+	return response.ProblemAttemptData{ProblemID: problemID, Outcome: outcome, Status: "reviewing"}, nil
 }
 
 func (s *reviewService) GetQueue(ctx context.Context, userID int64, status string, cursor entity.ReviewQueueCursor, limit int32) (response.QueueResponse, error) {

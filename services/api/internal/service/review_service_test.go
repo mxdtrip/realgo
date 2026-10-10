@@ -173,6 +173,38 @@ func TestReviewService_RateReview_Success(t *testing.T) {
 	}
 }
 
+func TestReviewService_RecordProblemAttempt_NotSolvedDoesNotRateFSRS(t *testing.T) {
+	mockRepo := &mockReviewRepository{attemptStatus: "in_progress"}
+	svc := service.NewReviewService(mockRepo, scheduler.NewFSRSAdapter(), nil)
+
+	result, err := svc.RecordProblemAttempt(context.Background(), 4, 9, "not_solved", time.Now().UTC())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != "in_progress" || result.Outcome != "not_solved" {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+	if mockRepo.markAttemptCalls != 1 || mockRepo.saveCalls != 0 {
+		t.Fatalf("mark calls=%d save calls=%d, want 1/0", mockRepo.markAttemptCalls, mockRepo.saveCalls)
+	}
+}
+
+func TestReviewService_RecordProblemAttempt_RatingUsesFSRS(t *testing.T) {
+	problemID := int64(9)
+	mockRepo := &mockReviewRepository{schedule: entity.ReviewSchedule{
+		ID: 1, UserID: 4, ProblemID: &problemID, NextReviewAt: time.Now().UTC(),
+	}}
+	svc := service.NewReviewService(mockRepo, scheduler.NewFSRSAdapter(), nil)
+
+	result, err := svc.RecordProblemAttempt(context.Background(), 4, problemID, "normal", time.Now().UTC())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != "reviewing" || mockRepo.saveCalls != 1 {
+		t.Fatalf("result=%+v save calls=%d, want reviewing/1", result, mockRepo.saveCalls)
+	}
+}
+
 func TestReviewService_RateReview_RetriesConcurrentUpdate(t *testing.T) {
 	problemID := int64(1)
 	mockRepo := &mockReviewRepository{
@@ -243,6 +275,8 @@ type mockReviewRepository struct {
 	called               bool
 	gotCursor            entity.ReviewQueueCursor
 	gotLimit             int32
+	attemptStatus        string
+	markAttemptCalls     int
 }
 
 func (m *mockReviewRepository) QueueReviews(ctx context.Context, userID int64, status string, cursor entity.ReviewQueueCursor, limit int32) ([]entity.ReviewItem, error) {
@@ -296,6 +330,18 @@ func (m *mockReviewRepository) UpdateProgressConfidence(ctx context.Context, use
 func (m *mockReviewRepository) EnsureScheduleForProblem(ctx context.Context, userID, problemID int64) (int64, error) {
 	m.called = true
 	return 1, m.err
+}
+
+func (m *mockReviewRepository) MarkProblemAttempted(ctx context.Context, userID, problemID int64, attemptedAt time.Time) (string, error) {
+	m.called = true
+	m.markAttemptCalls++
+	if m.err != nil {
+		return "", m.err
+	}
+	if m.attemptStatus == "" {
+		return "in_progress", nil
+	}
+	return m.attemptStatus, nil
 }
 
 // Убеждаемся, что mock реализует интерфейс
