@@ -4,11 +4,7 @@ import { useCallback, useState } from "react";
 
 import { isYandexAuthConfigured, startYandexAuth } from "./yandexOAuth";
 
-/**
- * "Войти через Яндекс ID" — renders nothing when NEXT_PUBLIC_YANDEX_CLIENT_ID
- * isn't configured for this build, so an unconfigured deployment doesn't show
- * a dead-end button.
- */
+/** "Войти через Яндекс ID" with an honest disabled fallback for unconfigured builds. */
 export function YandexAuthButton({ disabled }: { disabled?: boolean }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -25,18 +21,31 @@ export function YandexAuthButton({ disabled }: { disabled?: boolean }) {
     }
   }, []);
 
-  if (!isYandexAuthConfigured()) return null;
+  if (!isYandexAuthConfigured()) {
+    return (
+      <button
+        className="auth-provider auth-provider--yandex"
+        disabled
+        title="Яндекс ID подключается"
+        type="button"
+      >
+        <YandexMark />
+        <span>Яндекс ID</span>
+        <small>скоро</small>
+      </button>
+    );
+  }
 
   return (
     <>
       <button
         type="button"
-        className="auth-oauth-button auth-oauth-button--yandex"
+        className="auth-provider auth-provider--yandex"
         onClick={handleClick}
         disabled={disabled || pending}
       >
         <YandexMark />
-        {pending ? "Переходим в Яндекс…" : "Войти через Яндекс ID"}
+        <span>{pending ? "Переходим в Яндекс…" : "Яндекс ID"}</span>
       </button>
       {error ? (
         <p className="auth-form__error" role="alert">

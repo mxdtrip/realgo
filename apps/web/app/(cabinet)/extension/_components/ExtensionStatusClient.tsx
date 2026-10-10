@@ -8,6 +8,7 @@ import {
 } from "../../../_api/extension";
 import { ApiError } from "../../../_api/types";
 import { CabinetPanel, StatusPill } from "../../_components";
+import { CabinetIcon } from "../../_icons";
 
 type Tone = "default" | "accent" | "success" | "warning" | "danger";
 type LoadState = "loading" | "loaded" | "error";
@@ -16,6 +17,7 @@ type ExtensionCopy = Readonly<{
   eyebrow: string;
   title: string;
   description: string;
+  storeAction: string;
   statusEyebrow: string;
   statusTitle: string;
   platformsUnit: string;
@@ -39,6 +41,25 @@ type ExtensionCopy = Readonly<{
   retry: string;
   eventTypes: readonly (readonly [string, string, string])[];
 }>;
+
+const CHROME_WEB_STORE_URL =
+  "https://chromewebstore.google.com/detail/jkddgdkghndclniojojbpgjeblkoejop?utm_source=item-share-cb";
+
+type NavigatorWithUserAgentData = Navigator & {
+  userAgentData?: { brands?: readonly { brand: string }[] };
+};
+
+/** Chrome Web Store также доступен в Edge, Opera, Brave и других Chromium-браузерах. */
+function isChromiumBrowser(): boolean {
+  const navigatorWithBrands = navigator as NavigatorWithUserAgentData;
+  const brands = navigatorWithBrands.userAgentData?.brands;
+  if (brands && brands.length > 0) {
+    return brands.some(({ brand }) =>
+      /chromium|google chrome|microsoft edge|opera/i.test(brand),
+    );
+  }
+  return /(?:Chrome|Chromium|CriOS|Edg|OPR)\//.test(navigator.userAgent);
+}
 
 /** Платформа активна, если расширение синхронизировалось за последние сутки. */
 const LIVE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -93,6 +114,11 @@ export function ExtensionStatusClient({ copy }: Readonly<{ copy: ExtensionCopy }
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [error, setError] = useState("");
   const [reloadVersion, setReloadVersion] = useState(0);
+  const [showChromeStore, setShowChromeStore] = useState(false);
+
+  useEffect(() => {
+    setShowChromeStore(isChromiumBrowser());
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -132,6 +158,19 @@ export function ExtensionStatusClient({ copy }: Readonly<{ copy: ExtensionCopy }
           <h1>{copy.title}</h1>
           <p>{copy.description}</p>
         </div>
+        {showChromeStore ? (
+          <div className="cabinet-page-head__actions extension-store-action">
+            <a
+              className="cabinet-cta"
+              href={CHROME_WEB_STORE_URL}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {copy.storeAction}
+              <CabinetIcon name="arrow" />
+            </a>
+          </div>
+        ) : null}
       </section>
 
       {loadState === "loading" ? (

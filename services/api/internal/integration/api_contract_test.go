@@ -9,10 +9,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/mxdtrip/realgo/services/api/internal/mail"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -34,12 +37,16 @@ const contractJWTSecret = "integration-secret-with-more-than-32-bytes"
 
 var remoteAddrCounter atomic.Uint32
 
+func init() { remoteAddrCounter.Store(uint32(time.Now().UnixNano()) % 50000) }
+
 type contractHarness struct {
 	ctx     context.Context
 	handler http.Handler
 	pg      *postgres.Storage
 	rdb     *redis.Storage
 	remote  string
+	auth    *auth.Service
+	mailer  *captureMailer
 }
 
 type contractResponse struct {
@@ -509,10 +516,10 @@ func newContractHarness(t *testing.T) *contractHarness {
 	ctx := context.Background()
 	pg, err := postgres.New(ctx, &config.Database{
 		Host:            "localhost",
-		Port:            5432,
+		Port:            integrationDBPort(),
 		User:            "postgres",
 		Password:        "postgres",
-		DBName:          "freeburger",
+		DBName:          integrationDBName(),
 		SSLMode:         "disable",
 		MaxConns:        2,
 		MaxConnLifetime: time.Hour,
@@ -520,7 +527,7 @@ func newContractHarness(t *testing.T) *contractHarness {
 	})
 	require.NoError(t, err)
 
-	rdb, err := redis.New(ctx, &config.Redis{Host: "localhost", Port: "6379"})
+	rdb, err := redis.New(ctx, &config.Redis{Host: "localhost", Port: integrationRedisPort()})
 	require.NoError(t, err)
 
 	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, auth.Config{
@@ -529,11 +536,14 @@ func newContractHarness(t *testing.T) *contractHarness {
 		RefreshTTL: time.Hour,
 		Issuer:     "freeburger",
 	})
+	mailer := &captureMailer{}
 	handler := server.New(server.Deps{
-		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
-		Postgres: pg,
-		Redis:    rdb,
-		Auth:     authSvc,
+		Mailer:      mailer,
+		MailBaseURL: "https://test.realgo.dev",
+		Logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Postgres:    pg,
+		Redis:       rdb,
+		Auth:        authSvc,
 	})
 
 	h := &contractHarness{
@@ -542,6 +552,7 @@ func newContractHarness(t *testing.T) *contractHarness {
 		pg:      pg,
 		rdb:     rdb,
 		remote:  nextRemoteAddr(),
+		auth:    authSvc, mailer: mailer,
 	}
 	t.Cleanup(func() {
 		_ = rdb.Close()
@@ -557,7 +568,15 @@ func (h *contractHarness) register(t *testing.T, email, password string) contrac
 		"email":    email,
 		"password": password,
 	})
-	data := requireSuccessEnvelope(t, resp, http.StatusCreated)
+	pending := requireSuccessEnvelope(t, resp, http.StatusAccepted)
+	require.NotContains(t, pending, "tokens")
+	var count int
+	require.NoError(t, h.pg.Pool.QueryRow(h.ctx, "SELECT count(*) FROM users WHERE email=$1", email).Scan(&count))
+	require.Zero(t, count)
+	h.drainMail(t)
+	code := regexp.MustCompile(`код: (\d{6})`).FindStringSubmatch(h.mailer.messages[len(h.mailer.messages)-1].Text)[1]
+	confirmed := h.request(t, http.MethodPost, "/api/v1/auth/email-verification/confirm", "", map[string]any{"email": email, "code": code, "challenge": pending["challenge"]})
+	data := requireSuccessEnvelope(t, confirmed, http.StatusCreated)
 	tokens := tokensFromData(t, data)
 	tokens.userID = int64Field(t, objectField(t, data, "user"), "id")
 	return tokens
@@ -642,7 +661,7 @@ func (h *contractHarness) deleteRefreshTokens(tokens ...string) {
 			continue
 		}
 		sum := sha256.Sum256([]byte(token))
-		_, _ = h.rdb.Client.Del(h.ctx, "auth:refresh:"+hex.EncodeToString(sum[:])).Result()
+		_, _ = h.pg.Pool.Exec(h.ctx, "DELETE FROM auth_sessions WHERE refresh_hash=$1", hex.EncodeToString(sum[:]))
 	}
 }
 
@@ -801,4 +820,47 @@ func uniqueSuffix(prefix string) string {
 func nextRemoteAddr() string {
 	n := remoteAddrCounter.Add(1)
 	return fmt.Sprintf("198.51.%d.%d:12345", 100+(n/200)%50, 1+n%200)
+}
+
+type captureMailer struct {
+	messages []mail.Message
+	fail     bool
+}
+
+func (m *captureMailer) Send(_ context.Context, message mail.Message) error {
+	m.messages = append(m.messages, message)
+	if m.fail {
+		return fmt.Errorf("SENSITIVE SMTP MARKER")
+	}
+	return nil
+}
+func (h *contractHarness) drainMail(t *testing.T) {
+	t.Helper()
+	for range 100 {
+		worked, err := h.auth.ProcessNextMail(h.ctx, h.mailer, "https://test.realgo.dev")
+		require.NoError(t, err)
+		if !worked {
+			return
+		}
+	}
+	t.Fatal("mail queue did not drain")
+}
+func integrationDBPort() int {
+	if value := os.Getenv("INTEGRATION_DB_PORT"); value != "" {
+		port, _ := strconv.Atoi(value)
+		return port
+	}
+	return 5432
+}
+func integrationDBName() string {
+	if value := os.Getenv("INTEGRATION_DB_NAME"); value != "" {
+		return value
+	}
+	return "freeburger"
+}
+func integrationRedisPort() string {
+	if value := os.Getenv("INTEGRATION_REDIS_PORT"); value != "" {
+		return value
+	}
+	return "6379"
 }

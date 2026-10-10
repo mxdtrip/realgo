@@ -23,6 +23,21 @@ type AiRequestLog struct {
 	PromptVersion pgtype.Text
 }
 
+type AuthMailJob struct {
+	ID          int64
+	Payload     []byte
+	Attempts    int32
+	AvailableAt pgtype.Timestamptz
+	ExpiresAt   pgtype.Timestamptz
+}
+
+type AuthSession struct {
+	ID          string
+	UserID      int64
+	RefreshHash string
+	ExpiresAt   pgtype.Timestamptz
+}
+
 type Card struct {
 	ID              int64
 	UserID          pgtype.Int8
@@ -50,6 +65,16 @@ type CompanyProblem struct {
 	EvidenceCount int32
 	LastSeenAt    pgtype.Date
 	SourceType    string
+	AdminID       int64
+}
+
+type EmailVerificationCode struct {
+	ID        int64
+	UserID    int64
+	CodeHash  string
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
 }
 
 type ExtensionEvent struct {
@@ -179,6 +204,15 @@ type OauthAccount struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+type PasswordResetToken struct {
+	ID        int64
+	UserID    int64
+	TokenHash string
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
 type Pattern struct {
 	ID                  int64
 	Code                string
@@ -200,6 +234,7 @@ type PatternFamilySubpattern struct {
 	FamilyID     int64
 	SubpatternID int64
 	Position     int32
+	AdminID      int64
 }
 
 type PatternLearningMaterial struct {
@@ -215,6 +250,18 @@ type PatternLearningMaterial struct {
 	DontConfuseWith []byte
 	UpdatedAt       pgtype.Timestamptz
 	MiniExample     string
+}
+
+type PendingRegistration struct {
+	ID            int64
+	Email         string
+	PasswordHash  string
+	Nickname      pgtype.Text
+	CodeHash      string
+	ExpiresAt     pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	ChallengeHash string
 }
 
 type Platform struct {
@@ -262,6 +309,7 @@ type ProblemSubpattern struct {
 	SubpatternID int64
 	Tier         pgtype.Text
 	Position     pgtype.Int4
+	AdminID      int64
 }
 
 type QuizAnswer struct {
@@ -337,6 +385,7 @@ type RoadmapItem struct {
 	PatternID   int64
 	ProblemID   int64
 	Position    int32
+	AdminID     int64
 }
 
 type SubpatternCompany struct {
@@ -347,11 +396,13 @@ type SubpatternCompany struct {
 	EvidenceCount int32
 	LastSeenAt    pgtype.Date
 	SourceType    string
+	AdminID       int64
 }
 
 type SubpatternPrerequisite struct {
 	SubpatternID int64
 	ToolID       int64
+	AdminID      int64
 }
 
 type TaxonomyVersion struct {
@@ -381,6 +432,17 @@ type User struct {
 	Platform              pgtype.Text
 	IsDemo                bool
 	NotifyStreakReminder  bool
+	Nickname              pgtype.Text
+	EmailVerifiedAt       pgtype.Timestamptz
+}
+
+// Durable first-pass learning progress for subpatterns; spaced repetitions remain in review_schedules.
+type UserPatternLearningProgress struct {
+	UserID            int64
+	SubpatternID      int64
+	TheoryCompletedAt pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
 }
 
 type UserPracticePattern struct {
@@ -412,6 +474,10 @@ type UserRoadmapConfig struct {
 	Source           string
 	GeneratedAt      pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
+	PlanKey          string
+	CompanyName      string
+	InterviewDate    pgtype.Timestamptz
+	IsActive         bool
 }
 
 type UserRoadmapPlanItem struct {
@@ -420,4 +486,15 @@ type UserRoadmapPlanItem struct {
 	WeekIndex    int32
 	Position     int32
 	Selected     bool
+	PlanKey      string
+}
+
+type UserRoadmapTaskAccessOverride struct {
+	UserID               int64
+	PlanKey              string
+	ProblemID            int64
+	ReplacementProblemID pgtype.Int8
+	Status               string
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
 }

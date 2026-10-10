@@ -4,18 +4,23 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import {
+  activateRoadmap,
   deleteRoadmap,
   getRoadmap,
+  getRoadmaps,
   previewRoadmap,
   saveRoadmap,
   type RoadmapPriorityMode,
   type RoadmapResponse,
+  type RoadmapSummary,
+  type RoadmapTask,
   type RoadmapWeek,
 } from "../../../_api/roadmap";
 import { ApiError } from "../../../_api/types";
 import { clearRoadmap, readRoadmap } from "../../../_profile/roadmapGenerator";
 import { CabinetPanel, ProgressBar } from "../../_components";
 import { CabinetIcon } from "../../_icons";
+import { RoadmapTaskDialog, type RoadmapTaskDialogCopy } from "./RoadmapTaskDialog";
 
 type LoadState = "loading" | "loaded" | "error";
 
@@ -35,13 +40,64 @@ type RoadmapCopy = Readonly<{
   practiceAction: string;
   lockedEyebrow: string;
   lockedTitle: string;
+  aheadEyebrow: string;
+  aheadTitle: string;
+  aheadDescription: string;
+  aheadAction: string;
+  currentPlanEyebrow: string;
+  currentPlanTitle: string;
+  aheadPlanTitle: string;
+  currentPlanDescription: string;
+  paceAhead: string;
+  paceOnTrack: string;
+  paceBehind: string;
+  weekDoneTitle: string;
+  learnAction: string;
+  tasksTitle: string;
+  taskOpenAction: string;
+  taskReopenAction: string;
+  taskAssignedHint: string;
+  taskInProgressHint: string;
+  taskUnavailableHint: string;
+  taskUnavailableAction: string;
+  unavailableLabel: string;
+  cardsTitle: string;
+  solveAction: string;
+  reviewCardsAction: string;
+  completedLabel: string;
+  remainingLabel: string;
+  masteryLabel: string;
+  scheduledLabel: string;
+  nextStepLabel: string;
+  stagesLabel: string;
+  stageTheory: string;
+  stageTasks: string;
+  stageCards: string;
+  stageCurrent: string;
+  stageQueued: string;
+  stageDone: string;
+  currentPattern: string;
+  queuedPattern: string;
+  theoryDescription: string;
+  tasksDescription: string;
+  cardsDescription: string;
+  reinforcementTitle: string;
+  reinforcementDue: string;
+  reinforcementScheduled: string;
+  reinforcementNone: string;
+  nextReviewPrefix: string;
+  rateTasksAction: string;
+  patternComplete: string;
+  plansLabel: string;
+  switchingPlan: string;
+  taskDialog: RoadmapTaskDialogCopy;
+  difficultyLabels: Readonly<Record<string, string>>;
   reviewEyebrow?: string;
   reviewTitle?: string;
   empty: string;
   loading: string;
   errorTitle: string;
   retry: string;
-  personalizedTitle?: string;
   personalizedDescription?: string;
   personalizedPanelTitle?: string;
   personalizedHintCompany?: string;
@@ -102,6 +158,50 @@ function configFrom(data: RoadmapResponse, mode: RoadmapPriorityMode, preservePr
   };
 }
 
+function taskIsComplete(status: string) {
+  return status === "solved" || status === "reviewing";
+}
+
+function taskIsUnavailable(task: RoadmapTask) {
+  return task.accessStatus === "unavailable" || task.status === "unavailable";
+}
+
+function planProgress(item: RoadmapWeek["items"][number]) {
+  return Number.isFinite(item.planProgress) ? item.planProgress : item.masteryPercent;
+}
+
+const roadmapDateFormatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" });
+
+function formatRoadmapDate(value: string | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : roadmapDateFormatter.format(date);
+}
+
+function withRoadmapContext(href: string): string {
+  if (!href.startsWith("/patterns/") || href.includes("from=")) return href;
+  return `${href}${href.includes("?") ? "&" : "?"}from=roadmap`;
+}
+
+function weekDateRange(generatedAt: string | undefined, weekIndex: number) {
+  if (!generatedAt) return null;
+  const start = new Date(generatedAt);
+  if (Number.isNaN(start.getTime())) return null;
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() + weekIndex * 7);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  return `${roadmapDateFormatter.format(start)} — ${roadmapDateFormatter.format(end)}`;
+}
+
+function scheduledWeekIndex(generatedAt: string | undefined, weekCount: number) {
+  if (!generatedAt || weekCount === 0) return 0;
+  const generated = new Date(generatedAt);
+  if (Number.isNaN(generated.getTime())) return 0;
+  const elapsed = Math.max(0, Date.now() - generated.getTime());
+  return Math.min(weekCount - 1, Math.floor(elapsed / (7 * 86_400_000)));
+}
+
 export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
   const [data, setData] = useState<RoadmapResponse | null>(null);
   const [draft, setDraft] = useState<RoadmapResponse | null>(null);
@@ -110,6 +210,9 @@ export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
   const [reloadVersion, setReloadVersion] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const [modePending, setModePending] = useState(false);
+  const [plans, setPlans] = useState<RoadmapSummary[]>([]);
+  const [switchingPlan, setSwitchingPlan] = useState(false);
+  const [activeTask, setActiveTask] = useState<{ task: RoadmapTask; patternCode: string } | null>(null);
   const migrationAttempted = useRef(false);
 
   useEffect(() => {
@@ -144,6 +247,11 @@ export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
         setData(response);
         setDraft(null);
         setLoadState("loaded");
+        void getRoadmaps(controller.signal).then((items) => {
+          if (!controller.signal.aborted) setPlans(items);
+        }).catch(() => {
+          if (!controller.signal.aborted) setPlans([]);
+        });
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
@@ -205,6 +313,47 @@ export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
     }
   };
 
+  const handlePlanSwitch = async (planKey: string) => {
+    if (switchingPlan || planKey === shown?.planKey) return;
+    setSwitchingPlan(true);
+    setError("");
+    try {
+      const response = await activateRoadmap(planKey);
+      setData(response);
+      setDraft(null);
+      setPlans(await getRoadmaps());
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason.message : copy.errorTitle);
+    } finally {
+      setSwitchingPlan(false);
+    }
+  };
+
+  const refreshAfterAttempt = async () => {
+    try {
+      const response = await getRoadmap();
+      setData(response);
+      setDraft(null);
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason.message : copy.errorTitle);
+    }
+  };
+
+  const refreshTask = async (problemId: number): Promise<RoadmapTask | null> => {
+    try {
+      const response = await getRoadmap();
+      setData(response);
+      setDraft(null);
+      return response.weeks
+        .flatMap((week) => week.items)
+        .flatMap((item) => item.tasks)
+        .find((task) => task.id === problemId) ?? null;
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason.message : copy.errorTitle);
+      return null;
+    }
+  };
+
   const shown = draft ?? data;
   const modes = copy.modes ?? fallbackModes;
   const statuses: Record<string, string> = {
@@ -218,19 +367,45 @@ export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
   const firstActive = weeks.findIndex(
     (week, index) => week.status === "active" && !isWeekLocked(index),
   );
+  const currentWeekIndex = firstActive >= 0 ? firstActive : Math.max(0, weeks.length - 1);
+  const currentWeek = weeks[currentWeekIndex];
+  const expectedWeekIndex = scheduledWeekIndex(shown?.generatedAt, weeks.length);
+  const paceState =
+    currentWeekIndex > expectedWeekIndex
+      ? "ahead"
+      : currentWeekIndex < expectedWeekIndex
+        ? "behind"
+        : "track";
+  const pace = paceState === "ahead"
+    ? copy.paceAhead
+    : paceState === "behind"
+      ? copy.paceBehind
+      : copy.paceOnTrack;
+  const planTitle = paceState === "ahead" ? copy.aheadPlanTitle : copy.currentPlanTitle;
+  const currentRange = weekDateRange(shown?.generatedAt, currentWeekIndex);
+  const nextAction = shown?.nextAction;
+  const nextTask = nextAction?.stage === "tasks"
+    ? currentWeek?.items
+      .flatMap((item) => item.tasks.map((task) => ({ task, patternCode: item.code })))
+      .find(({ task }) => task.url === nextAction.href || task.title === nextAction.title)
+    : undefined;
   const countdown = interviewCountdown(shown?.target.interviewDate ?? null);
 
-  const renderWeek = (week: RoadmapWeek, index: number) => {
+  const renderScheduleWeek = (week: RoadmapWeek, index: number) => {
     const stateName = week.status in statuses ? week.status : "todo";
     const locked = isWeekLocked(index);
     const visibleProgress = locked ? 0 : week.progress;
-    const practiceCode = week.topics[0];
+    const isCurrent = index === currentWeekIndex;
     return (
-      <li className={`roadmap-step roadmap-step--${stateName}`} key={week.id}>
+      <li
+        className={`roadmap-step roadmap-step--${stateName}${isCurrent ? " roadmap-step--current" : ""}`}
+        id={week.id}
+        key={week.id}
+      >
         <div className="roadmap-step__rail">
           <span className="roadmap-step__node">{String(index + 1).padStart(2, "0")}</span>
         </div>
-        <div className="roadmap-step__body">
+        <div className={`roadmap-step__body${isCurrent ? " roadmap-step__body--current" : ""}`}>
           <div className="roadmap-step__main">
             <div className="roadmap-step__head">
               <span className="roadmap-step__week">{week.label}</span>
@@ -239,33 +414,17 @@ export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
                 <span className="roadmap-step__now">{copy.nowLabel}</span>
               ) : null}
             </div>
-            <h2>{week.title}</h2>
-            <p>{week.focus}</p>
+            <h3>{week.title}</h3>
             <div className="roadmap-step__progress">
               <ProgressBar value={visibleProgress} label={`${week.title} progress`} />
               <strong>{visibleProgress}%</strong>
             </div>
           </div>
-          {locked ? (
-            <div className="roadmap-step__practice-card roadmap-step__practice-card--locked">
-              <span className="roadmap-step__practice-eyebrow">{copy.lockedEyebrow}</span>
-              <strong>{copy.lockedTitle}</strong>
-            </div>
-          ) : !practiceCode ? (
-            <div className="roadmap-step__practice-card roadmap-step__practice-card--locked">
-              <span className="roadmap-step__practice-eyebrow">{copy.reviewEyebrow ?? "review week"}</span>
-              <strong>{copy.reviewTitle ?? "Повторение и mock interview"}</strong>
-            </div>
-          ) : (
-            <Link className="roadmap-step__practice-card" href={`/patterns/${practiceCode}/session`}>
-              <span className="roadmap-step__practice-eyebrow">{copy.practiceEyebrow}</span>
-              <strong>{copy.practiceCta}</strong>
-              <em>
-                {copy.practiceAction}
-                <CabinetIcon name="arrow" />
-              </em>
-            </Link>
-          )}
+          {!isCurrent ? (
+            <span className={`roadmap-step__summary${locked ? " is-locked" : ""}`}>
+              {locked ? copy.lockedTitle : stateName === "done" ? copy.weekDoneTitle : statuses[stateName]}
+            </span>
+          ) : null}
         </div>
       </li>
     );
@@ -276,7 +435,7 @@ export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
       <section className="cabinet-page-head">
         <div>
           <span className="cabinet-eyebrow">{copy.eyebrow}</span>
-          <h1>{shown?.configured ? copy.personalizedTitle ?? copy.title : copy.title}</h1>
+          <h1>{copy.title}</h1>
           <p>{shown?.configured ? copy.personalizedDescription ?? copy.description : copy.description}</p>
         </div>
         {shown?.configured ? (
@@ -332,9 +491,219 @@ export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
 
       {loadState === "loaded" && shown?.configured ? (
         <>
-          <section className="roadmap-priority-panel" aria-label={copy.priorityTitle ?? "Приоритет тем"}>
+          <div className="roadmap-flow">
+            {plans.length > 1 ? (
+              <nav className="roadmap-plan-switcher" aria-label={copy.plansLabel}>
+                <span>{copy.plansLabel}</span>
+                <div>
+                  {plans.map((plan) => (
+                    <button
+                      className={plan.active ? "is-active" : ""}
+                      disabled={switchingPlan}
+                      key={plan.planKey}
+                      type="button"
+                      onClick={() => void handlePlanSwitch(plan.planKey)}
+                    >
+                      {plan.company?.name || "Core"}
+                    </button>
+                  ))}
+                </div>
+                {switchingPlan ? <small>{copy.switchingPlan}</small> : null}
+              </nav>
+            ) : null}
+
+            <CabinetPanel
+              eyebrow={copy.panelEyebrow}
+              title={copy.personalizedPanelTitle ?? copy.panelTitle}
+              meta={<span className="cabinet-panel__meta">{shown.overallProgress}% {copy.overallLabel}</span>}
+            >
+              <ol className="roadmap-track">{weeks.map(renderScheduleWeek)}</ol>
+            </CabinetPanel>
+
+            {currentWeek && !draft ? (
+            <section className="roadmap-current-plan" id="current-plan" aria-labelledby="current-plan-title">
+              <header className="roadmap-current-plan__head">
+                <div>
+                  <span className="cabinet-eyebrow">{copy.currentPlanEyebrow} · {currentWeek.label}</span>
+                  <h2 id="current-plan-title">{planTitle}</h2>
+                  <p>{copy.currentPlanDescription}</p>
+                </div>
+                <div className={`roadmap-pace roadmap-pace--${paceState}`}>
+                  <strong>{pace}</strong>
+                  {currentRange ? <span>{copy.scheduledLabel} · {currentRange}</span> : null}
+                </div>
+              </header>
+
+              <div className="roadmap-current-plan__next">
+                <div>
+                  <span>{copy.nextStepLabel}</span>
+                  <strong>{nextAction?.title ?? copy.weekDoneTitle}</strong>
+                  <small>{nextAction?.description ?? copy.aheadDescription}</small>
+                </div>
+                {nextAction ? (
+                  nextAction.href.startsWith("http") ? (
+                    <button
+                      className="cabinet-cta"
+                      type="button"
+                      disabled={!nextTask}
+                      onClick={() => nextTask && setActiveTask(nextTask)}
+                    >
+                      {copy.solveAction}
+                      <CabinetIcon name="arrow" />
+                    </button>
+                  ) : (
+                    <Link className="cabinet-cta" href={withRoadmapContext(nextAction.href)}>
+                      {nextAction.stage === "theory"
+                        ? copy.learnAction
+                        : nextAction.stage === "cards"
+                          ? copy.reviewCardsAction
+                          : copy.solveAction}
+                      <CabinetIcon name="arrow" />
+                    </Link>
+                  )
+                ) : null}
+              </div>
+
+              <div className="roadmap-current-plan__items">
+                {currentWeek.items.map((item, itemIndex) => {
+                  const isCurrentPattern = item.code === nextAction?.patternCode;
+                  const tasks = item.tasks ?? [];
+                  const completedTasks = tasks.filter((task) => taskIsComplete(task.status)).length;
+                  const unavailableTasks = tasks.filter(taskIsUnavailable).length;
+                  const settledTasks = completedTasks + unavailableTasks;
+                  const cards = item.cardProgress ?? { total: 0, reviewed: 0, due: 0 };
+                  const stages = [
+                    { key: "theory", label: copy.stageTheory, done: item.theory?.completed ?? false },
+                    { key: "tasks", label: copy.stageTasks, done: tasks.length === 0 || settledTasks >= tasks.length },
+                    { key: "cards", label: copy.stageCards, done: cards.total === 0 || cards.reviewed >= cards.total },
+                  ];
+                  const nextReview = formatRoadmapDate(item.reinforcement?.nextReviewAt);
+                  return (
+                    <article
+                      className={`roadmap-plan-item roadmap-plan-item--${item.stage}${isCurrentPattern ? " is-current" : ""}`}
+                      key={item.code}
+                    >
+                      <div className="roadmap-plan-item__head">
+                        <span>{String(itemIndex + 1).padStart(2, "0")}</span>
+                        <div>
+                          <h3>{item.name}</h3>
+                          <p>{copy.masteryLabel} · {item.masteryPercent}%</p>
+                        </div>
+                        <div className="roadmap-plan-item__status">
+                          <strong>{planProgress(item)}%</strong>
+                          {item.stage !== "complete" ? (
+                            <small>{isCurrentPattern ? copy.currentPattern : copy.queuedPattern}</small>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="roadmap-stage-track" aria-label={`${copy.stagesLabel}: ${item.name}`}>
+                        {stages.map((stage, stageIndex) => {
+                          const currentStage = item.stage === stage.key;
+                          const active = isCurrentPattern && currentStage;
+                          return (
+                            <div className={stage.done ? "is-done" : active ? "is-active" : currentStage ? "is-queued" : ""} key={stage.key}>
+                              <span>{stage.done ? "✓" : stageIndex + 1}</span>
+                              <strong>{stage.label}</strong>
+                              <small>{stage.done ? copy.stageDone : active ? copy.stageCurrent : currentStage ? copy.stageQueued : ""}</small>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {item.stage === "theory" && isCurrentPattern ? (
+                        <div className="roadmap-plan-item__stage-action">
+                          <p>{copy.theoryDescription}</p>
+                          <Link className="cabinet-cta" href={`/patterns/${encodeURIComponent(item.code)}?from=roadmap`}>
+                            {copy.learnAction}
+                            <CabinetIcon name="arrow" />
+                          </Link>
+                        </div>
+                      ) : null}
+                      <div className="roadmap-plan-item__group">
+                        <div className="roadmap-plan-item__group-head">
+                          <strong>{copy.tasksTitle}</strong>
+                          <span>{completedTasks}/{tasks.length} {copy.completedLabel}{unavailableTasks > 0 ? ` · ${unavailableTasks} ${copy.unavailableLabel}` : ""}</span>
+                        </div>
+                        {tasks.length > 0 ? (
+                          <ul>
+                            {tasks.map((task) => {
+                              const complete = taskIsComplete(task.status);
+                              const unavailable = taskIsUnavailable(task);
+                              const taskReview = formatRoadmapDate(task.nextReviewAt);
+                              return (
+                                <li className={complete ? "is-complete" : unavailable ? "is-unavailable" : ""} key={task.id}>
+                                  <button
+                                    className="roadmap-task-card"
+                                    type="button"
+                                    onClick={() => setActiveTask({ task, patternCode: item.code })}
+                                  >
+                                    <span className="roadmap-task-card__state" aria-hidden="true">{complete ? "✓" : unavailable ? "—" : "○"}</span>
+                                    <span className="roadmap-task-card__copy">
+                                      <strong>{task.title}</strong>
+                                      <small>
+                                        {unavailable
+                                          ? copy.taskUnavailableHint
+                                          : complete && taskReview
+                                          ? `${copy.nextReviewPrefix} ${taskReview}`
+                                          : complete && !task.lastRating
+                                            ? copy.rateTasksAction
+                                          : complete
+                                              ? copy.taskReopenAction
+                                              : task.status === "in_progress"
+                                                ? copy.taskInProgressHint
+                                                : copy.taskAssignedHint}
+                                      </small>
+                                    </span>
+                                    <em>{copy.difficultyLabels?.[task.difficulty] ?? task.difficulty}</em>
+                                    <span className="roadmap-task-card__action">
+                                      {unavailable ? copy.taskUnavailableAction : complete ? copy.taskReopenAction : copy.taskOpenAction}
+                                      <CabinetIcon name="arrow" />
+                                    </span>
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : (
+                          <p>{copy.remainingLabel}</p>
+                        )}
+                        {item.stage === "tasks" ? <p>{copy.tasksDescription}</p> : null}
+                      </div>
+                      <div className="roadmap-plan-item__cards">
+                        <div>
+                          <strong>{copy.cardsTitle}</strong>
+                          <span>{cards.reviewed}/{cards.total} {copy.completedLabel}{cards.due > 0 ? ` · ${cards.due} ${copy.remainingLabel}` : ""}</span>
+                        </div>
+                        {item.stage === "cards" && cards.total > 0 && cards.reviewed < cards.total ? (
+                          <Link href={`/patterns/${encodeURIComponent(item.code)}/session?from=roadmap`}>
+                            {copy.reviewCardsAction}
+                          </Link>
+                        ) : null}
+                      </div>
+                      {item.stage === "cards" ? <p className="roadmap-plan-item__stage-note">{copy.cardsDescription}</p> : null}
+                      {item.stage === "complete" ? (
+                        <div className="roadmap-pattern-complete">
+                          <strong>{copy.patternComplete}</strong>
+                          <small>{copy.reinforcementTitle}</small>
+                          <span>
+                            {item.reinforcement?.due > 0
+                              ? `${item.reinforcement.due} ${copy.reinforcementDue}`
+                              : nextReview
+                                ? `${copy.reinforcementScheduled} ${nextReview}`
+                                : copy.reinforcementNone}
+                          </span>
+                          {item.reinforcement?.due > 0 ? <Link href="/queue">{copy.reviewCardsAction}</Link> : null}
+                        </div>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+            ) : null}
+
+            <section className="roadmap-priority-panel" aria-label={copy.priorityTitle ?? "Настройка плана"}>
             <div className="roadmap-priority-panel__copy">
-              <strong>{copy.priorityTitle ?? "Порядок тем"}</strong>
+              <strong>{copy.priorityTitle ?? "Настройка плана"}</strong>
               <span>{copy.priorityChangeLater ?? "Можно перестроить будущие недели"}</span>
             </div>
             <div className="roadmap-priority-panel__modes">
@@ -356,27 +725,32 @@ export function RoadmapClient({ copy }: Readonly<{ copy: RoadmapCopy }>) {
               <span><em>{shown.selectedCount}</em> {copy.selectedLabel ?? "тем в плане"}</span>
               {shown.reserveCount > 0 ? <span><em>{shown.reserveCount}</em> {copy.reserveLabel ?? "в резерве"}</span> : null}
             </div>
-          </section>
+            </section>
 
-          {draft ? (
-            <div className="roadmap-rebuild-banner" role="status">
-              <span>{copy.priorityPreview ?? "Предпросмотр: завершённые и текущая недели сохранятся."}</span>
-              <div>
-                <button type="button" disabled={modePending} onClick={() => setDraft(null)}>{copy.priorityCancel ?? "отмена"}</button>
-                <button type="button" disabled={modePending} onClick={() => void applyDraft()}>
-                  {modePending ? copy.priorityPending ?? "сохраняем…" : copy.priorityApply ?? "перестроить будущие недели"}
-                </button>
+            {draft ? (
+              <div className="roadmap-rebuild-banner" role="status">
+                <span>{copy.priorityPreview ?? "Предпросмотр: завершённые и текущая недели сохранятся."}</span>
+                <div>
+                  <button type="button" disabled={modePending} onClick={() => setDraft(null)}>{copy.priorityCancel ?? "отмена"}</button>
+                  <button type="button" disabled={modePending} onClick={() => void applyDraft()}>
+                    {modePending ? copy.priorityPending ?? "сохраняем…" : copy.priorityApply ?? "перестроить будущие недели"}
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : null}
+          </div>
+          {activeTask ? (
+            <RoadmapTaskDialog
+              key={`${activeTask.patternCode}-${activeTask.task.id}`}
+              task={activeTask.task}
+              patternCode={activeTask.patternCode}
+              difficultyLabel={copy.difficultyLabels?.[activeTask.task.difficulty] ?? activeTask.task.difficulty}
+              copy={copy.taskDialog}
+              onClose={() => setActiveTask(null)}
+              onRecorded={refreshAfterAttempt}
+              onRefreshTask={refreshTask}
+            />
           ) : null}
-
-          <CabinetPanel
-            eyebrow={copy.panelEyebrow}
-            title={copy.personalizedPanelTitle ?? copy.panelTitle}
-            meta={<span className="cabinet-panel__meta">{shown.overallProgress}% {copy.overallLabel}</span>}
-          >
-            <ol className="roadmap-track">{weeks.map(renderWeek)}</ol>
-          </CabinetPanel>
         </>
       ) : null}
     </main>

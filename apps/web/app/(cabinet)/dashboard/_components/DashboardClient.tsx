@@ -17,6 +17,7 @@ import {
   ProgressBar,
   type MetricTone,
 } from "../../_components";
+import { CabinetIcon } from "../../_icons";
 import type { HeatmapTooltipCopy } from "../../_components";
 import { PracticeLauncher, type PracticeLauncherCopy } from "./PracticeLauncher";
 
@@ -33,12 +34,20 @@ type DashboardCopy = Readonly<{
   loading: string;
   errorTitle: string;
   retry: string;
+  nextActionEyebrow: string;
+  nextActionOpen: string;
+  nextActionPlan: string;
+  nextActionQueue: string;
+  nextReviewScheduled: string;
   viewAll: string;
   dayToday: string;
   dayTomorrow: string;
   dayOverdue: string;
   dayUnits: readonly [string, string, string];
+  difficultyLabels: Readonly<Record<string, string>>;
+  statLabels: Readonly<Record<string, string>>;
   statTooltips: Readonly<Record<string, string>>;
+  statActions: Readonly<Record<string, string>>;
   launcher: PracticeLauncherCopy;
   heatmap: Readonly<{
     title: string;
@@ -95,6 +104,7 @@ const statIcons: Record<string, string> = {
   solved_total: "problems",
   streak: "streak",
   readiness: "readiness",
+  roadmap_progress: "roadmap",
 };
 
 function metricTone(stat: DashboardStat): MetricTone {
@@ -117,6 +127,12 @@ const dueTimeFormatter = new Intl.DateTimeFormat("ru-RU", {
   minute: "2-digit",
 });
 const dueDateFormatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" });
+const scheduledDateFormatter = new Intl.DateTimeFormat("ru-RU", {
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 function formatDue(value: string, copy: DashboardCopy): { day: string; time: string } {
   const due = new Date(value);
@@ -141,6 +157,10 @@ function pluralRu(value: number, forms: readonly [string, string, string]): stri
   if (mod10 === 1 && mod100 !== 11) return forms[0];
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return forms[1];
   return forms[2];
+}
+
+function localizeMeta(value: string, labels: Readonly<Record<string, string>>): string {
+  return value.replace(/\b(easy|medium|hard)\b/gi, (match) => labels[match.toLowerCase()] ?? match);
 }
 
 function confidenceTone(value: number) {
@@ -178,6 +198,7 @@ export function DashboardClient({ copy }: Readonly<{ copy: DashboardCopy }>) {
   }, [copy.errorTitle, reloadVersion]);
 
   const streak = data?.stats.find((stat) => stat.key === "streak");
+  const dueToday = data?.stats.find((stat) => stat.key === "today_queue")?.value ?? 0;
   const heatmap = data ? buildHeatmap(data.activity.days) : null;
   const typeTones = new Map(copy.reviewTypes.map(([key, , tone]) => [key, tone]));
 
@@ -214,6 +235,37 @@ export function DashboardClient({ copy }: Readonly<{ copy: DashboardCopy }>) {
 
       {loadState === "loaded" && data && heatmap ? (
         <>
+          <section className="dashboard-next-action" data-tour="next-action">
+            <div className="dashboard-next-action__copy">
+              <span>{copy.nextActionEyebrow}</span>
+              <h2>{data.nextAction.title}</h2>
+              <p>
+                {localizeMeta(data.nextAction.description, copy.difficultyLabels)}
+                {dueToday === 0 && data.nextAction.dueAt
+                  ? ` · ${copy.nextReviewScheduled} ${scheduledDateFormatter.format(new Date(data.nextAction.dueAt))}`
+                  : ""}
+              </p>
+            </div>
+            <div className="dashboard-next-action__actions">
+              {data.nextAction.href.startsWith("http") ? (
+                <a className="cabinet-cta" href={data.nextAction.href} target="_blank" rel="noreferrer">
+                  {dueToday === 0 ? copy.nextActionPlan : copy.nextActionOpen}
+                  <CabinetIcon name="arrow" />
+                </a>
+              ) : (
+                <Link className="cabinet-cta" href={data.nextAction.href}>
+                  {dueToday === 0 ? copy.nextActionPlan : copy.nextActionOpen}
+                  <CabinetIcon name="arrow" />
+                </Link>
+              )}
+              {dueToday > 0 && data.nextAction.href !== "/queue" ? (
+                <Link className="cabinet-ghost-link" href="/queue">
+                  {copy.nextActionQueue}
+                </Link>
+              ) : null}
+            </div>
+          </section>
+
           <CabinetPanel title={copy.heatmap.title}>
             <div className="heatmap-layout">
               <div>
@@ -249,12 +301,14 @@ export function DashboardClient({ copy }: Readonly<{ copy: DashboardCopy }>) {
             {data.stats.map((stat) => (
               <MetricCard
                 key={stat.key}
-                label={stat.label}
+                label={copy.statLabels[stat.key] ?? stat.label}
                 value={stat.displayValue}
                 hint={stat.hint}
                 tone={metricTone(stat)}
                 icon={statIcons[stat.key]}
                 tooltip={copy.statTooltips[stat.key]}
+                href={stat.href}
+                actionLabel={copy.statActions[stat.key]}
               />
             ))}
           </section>
@@ -263,7 +317,7 @@ export function DashboardClient({ copy }: Readonly<{ copy: DashboardCopy }>) {
             <CabinetPanel
               title={copy.queueTitle}
               meta={
-                <Link className="cabinet-panel__meta" href="/reviews">
+                <Link className="cabinet-panel__meta" href="/queue">
                   {copy.viewAll}
                 </Link>
               }
@@ -279,7 +333,7 @@ export function DashboardClient({ copy }: Readonly<{ copy: DashboardCopy }>) {
                           <span className={`review-type review-type--${tone}`} aria-hidden="true" />
                           <strong>{item.title}</strong>
                         </div>
-                        <p>{item.meta}</p>
+                        <p>{localizeMeta(item.meta, copy.difficultyLabels)}</p>
                       </div>
                       <div className="review-list__side">
                         <span className="review-when">

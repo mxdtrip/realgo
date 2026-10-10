@@ -141,7 +141,7 @@ func exchangeYandexCode(ctx context.Context, cfg YandexConfig, code, redirectURI
 	if err != nil {
 		return "", fmt.Errorf("%w: token request: %v", ErrOAuthProviderFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var body struct {
 		AccessToken string `json:"access_token"`
@@ -178,7 +178,7 @@ func fetchYandexProfile(ctx context.Context, cfg YandexConfig, accessToken strin
 	if err != nil {
 		return yandexProfile{}, fmt.Errorf("%w: user info request: %v", ErrOAuthProviderFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return yandexProfile{}, fmt.Errorf("%w: user info status %d", ErrOAuthProviderFailed, resp.StatusCode)

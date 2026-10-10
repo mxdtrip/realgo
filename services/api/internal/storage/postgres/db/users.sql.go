@@ -14,7 +14,7 @@ import (
 const createOAuthUser = `-- name: CreateOAuthUser :one
 INSERT INTO users (email, password_hash)
 VALUES ($1, NULL)
-RETURNING id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder
+RETURNING id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder, nickname, email_verified_at
 `
 
 // An OAuth-only signup (e.g. Yandex ID): no local password is set.
@@ -42,23 +42,26 @@ func (q *Queries) CreateOAuthUser(ctx context.Context, email string) (User, erro
 		&i.Platform,
 		&i.IsDemo,
 		&i.NotifyStreakReminder,
+		&i.Nickname,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (email, password_hash)
-VALUES ($1, $2)
-RETURNING id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder
+INSERT INTO users (email, password_hash, nickname)
+VALUES ($1, $2, $3)
+RETURNING id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder, nickname, email_verified_at
 `
 
 type CreateUserParams struct {
 	Email        string
 	PasswordHash pgtype.Text
+	Nickname     pgtype.Text
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.PasswordHash)
+	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.PasswordHash, arg.Nickname)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -81,6 +84,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Platform,
 		&i.IsDemo,
 		&i.NotifyStreakReminder,
+		&i.Nickname,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
@@ -113,7 +118,7 @@ func (q *Queries) DeleteUserByID(ctx context.Context, id int64) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder FROM users
+SELECT id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder, nickname, email_verified_at FROM users
 WHERE email = $1
 `
 
@@ -141,12 +146,14 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Platform,
 		&i.IsDemo,
 		&i.NotifyStreakReminder,
+		&i.Nickname,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder FROM users
+SELECT id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder, nickname, email_verified_at FROM users
 WHERE id = $1
 `
 
@@ -174,6 +181,8 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.Platform,
 		&i.IsDemo,
 		&i.NotifyStreakReminder,
+		&i.Nickname,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
@@ -191,6 +200,17 @@ func (q *Queries) LockUserForDeletion(ctx context.Context, id int64) (int64, err
 	return id, err
 }
 
+const markUserEmailVerified = `-- name: MarkUserEmailVerified :exec
+UPDATE users
+SET email_verified_at = NOW(), updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) MarkUserEmailVerified(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, markUserEmailVerified, id)
+	return err
+}
+
 const updateNotificationSettings = `-- name: UpdateNotificationSettings :one
 UPDATE users
 SET
@@ -200,7 +220,7 @@ SET
   notify_email_enabled   = COALESCE($4, notify_email_enabled),
   updated_at             = NOW()
 WHERE id = $5
-RETURNING id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder
+RETURNING id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder, nickname, email_verified_at
 `
 
 type UpdateNotificationSettingsParams struct {
@@ -242,6 +262,8 @@ func (q *Queries) UpdateNotificationSettings(ctx context.Context, arg UpdateNoti
 		&i.Platform,
 		&i.IsDemo,
 		&i.NotifyStreakReminder,
+		&i.Nickname,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
@@ -285,7 +307,7 @@ SET
   END,
   updated_at              = NOW()
 WHERE id = $11
-RETURNING id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder
+RETURNING id, email, password_hash, timezone, plan, interview_date, created_at, updated_at, prep_goal, grade, target_company, target_position, onboarding_completed_at, notify_review_reminder, notify_weekly_digest, notify_email_enabled, target_topics, platform, is_demo, notify_streak_reminder, nickname, email_verified_at
 `
 
 type UpdateUserProfileParams struct {
@@ -341,6 +363,8 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.Platform,
 		&i.IsDemo,
 		&i.NotifyStreakReminder,
+		&i.Nickname,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }

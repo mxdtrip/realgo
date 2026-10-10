@@ -33,7 +33,13 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Post("/events", h.PostEvent)
 }
 
-// PostEvent: POST /api/v1/extension/events
+// PostEvent обрабатывает входящее событие решения задачи от браузерного расширения: POST /api/v1/extension/events.
+// Контракт маппинга ошибок:
+//   - 401 Unauthorized: пользователь не аутентифицирован (отсутствует userID в контексте);
+//   - 400 Bad Request: ошибка валидации тела запроса или ErrValidation (код VALIDATION_ERROR);
+//   - 409 Conflict: конфликт версий повторения ErrReviewConflict при исчерпании ретраев (код REVIEW_CONFLICT, уровень Warn);
+//   - 422 Unprocessable Entity: неизвестная платформа ErrUnknownPlatform (код UNKNOWN_PLATFORM);
+//   - 500 Internal Server Error: непредвиденная ошибка (код INTERNAL_ERROR, уровень Error).
 func (h *Handler) PostEvent(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -56,6 +62,9 @@ func (h *Handler) PostEvent(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrUnknownPlatform):
 			slog.Warn("extension: PostEvent failed", slog.Any("err", err), slog.Int64("user_id", userID))
 			response.Fail(w, http.StatusUnprocessableEntity, "UNKNOWN_PLATFORM", err.Error())
+		case errors.Is(err, ErrReviewConflict):
+			slog.Warn("extension: PostEvent conflict", slog.Any("err", err), slog.Int64("user_id", userID))
+			response.Fail(w, http.StatusConflict, "REVIEW_CONFLICT", err.Error())
 		default:
 			slog.Error("extension: PostEvent failed", slog.Any("err", err), slog.Int64("user_id", userID))
 			response.Fail(w, http.StatusInternalServerError, "INTERNAL_ERROR", "could not save extension event")

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Экспорт в Anki",
+  description:
+    "Экспорт карточек ReAlgo в колоду Anki (.apkg) с сохранением группировки по паттернам и расписания повторений. Статус фичи и что уже работает.",
+  alternates: { canonical: "/anki-export" },
 };
 
 export default function AnkiExportPage() {

@@ -15,10 +15,13 @@ export async function generateMetadata({
 
 export default async function PatternSessionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { code } = await params;
+  const { from } = await searchParams;
   const dictionary = getDictionary();
 
   return (
@@ -28,6 +31,7 @@ export default async function PatternSessionPage({
       copy={dictionary.cabinet.pages.cards.session}
       emptyMessage={dictionary.cabinet.pages.patternDetail.sessionEmpty}
       errorFallback={dictionary.cabinet.pages.patternDetail.sessionError}
+      fromRoadmap={from === "roadmap"}
     />
   );
 }

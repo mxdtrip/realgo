@@ -360,6 +360,36 @@ func (q *Queries) ListReviewQueue(ctx context.Context, arg ListReviewQueueParams
 	return items, nil
 }
 
+const markProblemAttempted = `-- name: MarkProblemAttempted :one
+INSERT INTO user_problem_progress (user_id, problem_id, status, first_seen_at)
+SELECT $1::bigint, p.id, 'in_progress', $2::timestamptz
+FROM problems p
+WHERE p.id = $3::bigint
+ON CONFLICT (user_id, problem_id) DO UPDATE
+SET status = CASE
+        WHEN user_problem_progress.status IN ('solved', 'reviewing')
+            THEN user_problem_progress.status
+        ELSE 'in_progress'
+    END,
+    first_seen_at = COALESCE(user_problem_progress.first_seen_at, EXCLUDED.first_seen_at)
+RETURNING status
+`
+
+type MarkProblemAttemptedParams struct {
+	UserID      int64
+	AttemptedAt pgtype.Timestamptz
+	ProblemID   int64
+}
+
+// A manual "not solved" result is progress, but it is not an FSRS rating.
+// Keep already solved/reviewing problems intact when an older task is retried.
+func (q *Queries) MarkProblemAttempted(ctx context.Context, arg MarkProblemAttemptedParams) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, markProblemAttempted, arg.UserID, arg.AttemptedAt, arg.ProblemID)
+	var status pgtype.Text
+	err := row.Scan(&status)
+	return status, err
+}
+
 const updateProgressConfidence = `-- name: UpdateProgressConfidence :exec
 UPDATE user_problem_progress
 SET confidence = LEAST(100, GREATEST(0, COALESCE(confidence, 50) + $3::int))

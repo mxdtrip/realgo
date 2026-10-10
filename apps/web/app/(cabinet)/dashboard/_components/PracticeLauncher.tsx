@@ -14,6 +14,8 @@ export type PracticeLauncherCopy = Readonly<{
   emptyTitle: string;
   emptyMeta: string;
   start: string;
+  restart: string;
+  completed: string;
 }>;
 
 /** Дашборд-версия лаунчера практики: те же цифры, которые увидит
@@ -22,6 +24,7 @@ export function PracticeLauncher({ copy }: Readonly<{ copy: PracticeLauncherCopy
   const [practice, setPractice] = useState<{
     subpatterns: number;
     cards: number;
+    remaining: number;
     minutes: number;
   } | null>(null);
 
@@ -35,6 +38,7 @@ export function PracticeLauncher({ copy }: Readonly<{ copy: PracticeLauncherCopy
         setPractice({
           subpatterns: practiceSet.subpatterns.length,
           cards: session.cards.length,
+          remaining: session.cards.filter((card) => card.reviewState.attempts === 0).length,
           minutes: session.estimatedMinutes,
         });
       })
@@ -45,6 +49,7 @@ export function PracticeLauncher({ copy }: Readonly<{ copy: PracticeLauncherCopy
   }, []);
 
   const hasPractice = practice !== null && practice.subpatterns > 0;
+  const isCompleted = hasPractice && practice !== null && practice.cards > 0 && practice.remaining === 0;
 
   return (
     <aside className="next-up">
@@ -53,14 +58,19 @@ export function PracticeLauncher({ copy }: Readonly<{ copy: PracticeLauncherCopy
         <strong className="next-up__title">{hasPractice ? copy.title : copy.emptyTitle}</strong>
         <span className="next-up__meta">
           {hasPractice && practice
-            ? `${practice.subpatterns} ${copy.metaUnits.subpatterns} · ${practice.cards} ${copy.metaUnits.cards} · ~${practice.minutes} ${copy.metaUnits.minutes}`
+            ? isCompleted
+              ? `${copy.completed} · ${practice.cards} ${copy.metaUnits.cards}`
+              : `${practice.subpatterns} ${copy.metaUnits.subpatterns} · ${practice.remaining} ${copy.metaUnits.cards} · ~${practice.minutes} ${copy.metaUnits.minutes}`
             : copy.emptyMeta}
         </span>
       </div>
       <div className="next-up__actions">
         {hasPractice ? (
-          <Link className="cabinet-cta" href="/cards/session?scope=practice">
-            {copy.start}
+          <Link
+            className="cabinet-cta"
+            href={isCompleted ? "/cards/session?scope=practice&restart=1" : "/cards/session?scope=practice"}
+          >
+            {isCompleted ? copy.restart : copy.start}
             <CabinetIcon name="arrow" />
           </Link>
         ) : null}

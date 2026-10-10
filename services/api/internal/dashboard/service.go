@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mxdtrip/realgo/services/api/internal/patterns"
+	"github.com/mxdtrip/realgo/services/api/internal/roadmap"
 )
 
 const (
@@ -27,13 +28,22 @@ type weakPatternRepository interface {
 	ListWeak(ctx context.Context, userID int64, limit int32) ([]patterns.WeakPattern, error)
 }
 
+type roadmapSource interface {
+	Get(ctx context.Context, userID int64) (roadmap.Response, error)
+}
+
 type Service struct {
 	repo     repository
 	weakRepo weakPatternRepository
+	roadmap  roadmapSource
 }
 
-func NewService(repo repository, weakRepo weakPatternRepository) *Service {
-	return &Service{repo: repo, weakRepo: weakRepo}
+func NewService(repo repository, weakRepo weakPatternRepository, roadmapSources ...roadmapSource) *Service {
+	var source roadmapSource
+	if len(roadmapSources) > 0 {
+		source = roadmapSources[0]
+	}
+	return &Service{repo: repo, weakRepo: weakRepo, roadmap: source}
 }
 
 func (s *Service) Get(ctx context.Context, userID int64) (Response, error) {
@@ -65,10 +75,23 @@ func (s *Service) Get(ctx context.Context, userID int64) (Response, error) {
 		}
 	}
 
+	var activePlan *roadmap.Response
+	if s.roadmap != nil {
+		plan, roadmapErr := s.roadmap.Get(ctx, userID)
+		if roadmapErr == nil {
+			activePlan = &plan
+		}
+	}
+
+	var planAction *roadmap.NextAction
+	if metrics.DueCount == 0 && activePlan != nil {
+		planAction = activePlan.NextAction
+	}
+
 	reviewPreview := mapReviewPreview(reviews)
 	return Response{
-		NextAction:    buildNextAction(metrics, reviewPreview, mapOptionalReview(nextReview)),
-		Stats:         buildStats(metrics),
+		NextAction:    buildNextAction(metrics, reviewPreview, mapOptionalReview(nextReview), planAction),
+		Stats:         buildStats(metrics, activePlan),
 		ReviewPreview: reviewPreview,
 		WeakPatterns:  mapWeakPatterns(weakPatterns),
 		Activity:      buildActivity(activityDays),
@@ -90,9 +113,9 @@ func buildActivity(days []ActivityDay) Activity {
 	}
 }
 
-func buildStats(metrics Metrics) []Stat {
+func buildStats(metrics Metrics, activePlan *roadmap.Response) []Stat {
 	readiness := clamp(metrics.Readiness, 0, 100)
-	return []Stat{
+	stats := []Stat{
 		{
 			Key:          "today_queue",
 			Label:        "today queue",
@@ -126,18 +149,56 @@ func buildStats(metrics Metrics) []Stat {
 			Tone:         readinessTone(readiness, metrics.ProgressCount),
 		},
 	}
+
+	if activePlan != nil && activePlan.Configured {
+		progress := clamp(activePlan.OverallProgress, 0, 100)
+		hint := "общий прогресс активного плана"
+		if activePlan.Target.Company != nil && activePlan.Target.Company.Name != "" {
+			hint = fmt.Sprintf("план подготовки · %s", activePlan.Target.Company.Name)
+		}
+		stats = append(stats, Stat{
+			Key:          "roadmap_progress",
+			Label:        "roadmap progress",
+			Value:        progress,
+			DisplayValue: fmt.Sprintf("%d%%", progress),
+			Hint:         hint,
+			Tone:         roadmapProgressTone(progress),
+			Href:         "/roadmap",
+		})
+	}
+
+	return stats
 }
 
-func buildNextAction(metrics Metrics, dueItems []ReviewPreviewItem, nextReview *ReviewPreviewItem) NextAction {
+func roadmapProgressTone(progress int) string {
+	switch {
+	case progress >= 100:
+		return statToneSuccess
+	case progress > 0:
+		return statToneAccent
+	default:
+		return statToneDefault
+	}
+}
+
+func buildNextAction(metrics Metrics, dueItems []ReviewPreviewItem, nextReview *ReviewPreviewItem, planAction *roadmap.NextAction) NextAction {
 	if metrics.DueCount > 0 && len(dueItems) > 0 {
 		first := dueItems[0]
 		dueAt := first.DueAt
 		return NextAction{
 			Type:        actionType(first.Type),
-			Title:       fmt.Sprintf("%d повторений на сегодня", metrics.DueCount),
+			Title:       fmt.Sprintf("%d %s на сегодня", metrics.DueCount, pluralReview(metrics.DueCount)),
 			Description: nonEmpty(first.Meta, first.Title),
 			Href:        actionHref(first.Type),
 			DueAt:       &dueAt,
+		}
+	}
+	if planAction != nil {
+		return NextAction{
+			Type:        nextActionTypeRoadmapStep,
+			Title:       planAction.Title,
+			Description: planAction.Description,
+			Href:        planAction.Href,
 		}
 	}
 	if nextReview == nil {
@@ -150,12 +211,24 @@ func buildNextAction(metrics Metrics, dueItems []ReviewPreviewItem, nextReview *
 	}
 	dueAt := nextReview.DueAt
 	return NextAction{
-		Type:        actionType(nextReview.Type),
-		Title:       "Следующее повторение",
-		Description: nonEmpty(nextReview.Meta, nextReview.Title),
-		Href:        actionHref(nextReview.Type),
+		Type:        nextActionTypeRoadmapStep,
+		Title:       "На сегодня всё готово",
+		Description: "Следующее повторение: " + nonEmpty(nextReview.Meta, nextReview.Title),
+		Href:        "/roadmap",
 		DueAt:       &dueAt,
 	}
+}
+
+func pluralReview(value int) string {
+	mod10 := value % 10
+	mod100 := value % 100
+	if mod10 == 1 && mod100 != 11 {
+		return "повторение"
+	}
+	if mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) {
+		return "повторения"
+	}
+	return "повторений"
 }
 
 func mapReviewPreview(items []ReviewPreview) []ReviewPreviewItem {
@@ -224,7 +297,7 @@ func actionHref(reviewType string) string {
 	if reviewType == reviewPreviewTypeCard {
 		return "/cards/session"
 	}
-	return "/reviews"
+	return "/queue"
 }
 
 func reviewMeta(patternName, difficulty string) string {

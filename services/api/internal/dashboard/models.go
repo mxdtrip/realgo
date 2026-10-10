@@ -56,6 +56,7 @@ type Stat struct {
 	DisplayValue string `json:"displayValue"`
 	Hint         string `json:"hint"`
 	Tone         string `json:"tone"`
+	Href         string `json:"href,omitempty"`
 }
 
 type ReviewPreviewItem struct {

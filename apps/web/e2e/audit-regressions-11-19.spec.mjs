@@ -1,21 +1,23 @@
 import { expect, test } from "@playwright/test";
 
 const AKEY = "realgo:auth:access:v1";
-const RKEY = "realgo:auth:refresh:v1";
+const RKEY = "realgo:auth:session:v2";
 const TOUR_KEY = "realgo.cabinet.tour";
 
 async function enterCabinet(page, path = "/settings") {
   await page.goto(path);
   await page.evaluate(
     ([accessKey, refreshKey, tourKey]) => {
-      localStorage.setItem(accessKey, "LIVE.access");
-      localStorage.setItem(refreshKey, "LIVE.refresh");
+      localStorage.removeItem(accessKey);
+      localStorage.setItem(refreshKey, String("LIVE.refresh").split(".")[0]+".session");
+      document.cookie = "realgo-refresh-"+String("LIVE.refresh").split(".")[0]+".session="+String("LIVE.refresh").split(".")[0]+".refresh; Path=/; SameSite=Strict";
       localStorage.setItem(tourKey, "done");
     },
     [AKEY, RKEY, TOUR_KEY],
   );
   await page.goto(path);
   await expect(page.locator(".cabinet-content")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: /e2e/i }).first()).toBeVisible();
 }
 
 test.describe("audit regressions 11-19", () => {
@@ -50,8 +52,9 @@ test.describe("audit regressions 11-19", () => {
     });
 
     await enterCabinet(page);
-    await page.getByRole("button", { name: "enable" }).click();
-    const sendTest = page.getByRole("button", { name: "send test" });
+    await page.getByRole("tab", { name: "Уведомления" }).click();
+    await page.getByRole("button", { name: "Включить" }).click();
+    const sendTest = page.getByRole("button", { name: "Отправить тестовое" });
     await expect(sendTest).toBeEnabled();
     await sendTest.click();
 
@@ -61,7 +64,7 @@ test.describe("audit regressions 11-19", () => {
       })
       .toBe(1);
     await expect(
-      page.locator(".notification-settings-panel > small", { hasText: "test notification sent" }),
+      page.locator(".notification-settings-panel > small", { hasText: "Тестовое уведомление отправлено" }),
     ).toBeVisible();
   });
 
@@ -78,15 +81,16 @@ test.describe("audit regressions 11-19", () => {
     });
 
     await enterCabinet(page);
-    const interviewDate = page.getByLabel("interview date");
+    const interviewDate = page.getByLabel("дата собеседования");
     await expect(interviewDate).toHaveValue("2026-07-20");
     await interviewDate.fill("");
-    await page.getByRole("button", { name: "save changes" }).click();
+    await page.getByRole("button", { name: "Сохранить изменения" }).click();
 
     await expect
       .poll(() => bodies.find((entry) => entry.pathname.endsWith("/me/profile"))?.body)
       .toMatchObject({ interview_date: null });
 
+    await page.getByRole("tab", { name: "Уведомления" }).click();
     await page.getByLabel("Защита серии (streak)").check();
     await expect
       .poll(

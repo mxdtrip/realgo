@@ -21,7 +21,7 @@ export function CabinetDueChip({ label }: Readonly<{ label: string }>) {
   }, []);
 
   return (
-    <Link className="cabinet-due-chip" data-tour="due" href="/reviews">
+    <Link className="cabinet-due-chip" data-tour="due" href="/queue">
       {count !== null ? `${count} ${label}` : label}
     </Link>
   );

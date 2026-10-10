@@ -14,6 +14,7 @@ import (
 	v1 "github.com/mxdtrip/realgo/services/api/internal/controller/v1"
 	"github.com/mxdtrip/realgo/services/api/internal/dashboard"
 	"github.com/mxdtrip/realgo/services/api/internal/extension"
+	"github.com/mxdtrip/realgo/services/api/internal/mail"
 	"github.com/mxdtrip/realgo/services/api/internal/patterns"
 	"github.com/mxdtrip/realgo/services/api/internal/practice"
 	"github.com/mxdtrip/realgo/services/api/internal/problemcards"
@@ -36,10 +37,15 @@ const requestTimeout = 60 * time.Second
 
 // Deps are the dependencies required to build the HTTP handler.
 type Deps struct {
-	Logger   *slog.Logger
-	Postgres *postgres.Storage
-	Redis    *redis.Storage
-	Auth     *auth.Service
+	Logger      *slog.Logger
+	Postgres    *postgres.Storage
+	Redis       *redis.Storage
+	Auth        *auth.Service
+	Mailer      mail.Sender
+	MailBaseURL string
+	// SkipEmailVerification is an explicit non-production escape hatch. The
+	// zero value keeps registration secure for tests and any future callers.
+	SkipEmailVerification bool
 	// Scheduler is the single FSRS scheduler shared by every code path that
 	// plans a review (extension ingest, manual review-rate, card-rate,
 	// quiz-rate). Created once in app.Run from config.FSRS so that one set of
@@ -94,13 +100,14 @@ func New(deps Deps) *chi.Mux {
 	reviewHandler := v1.NewReviewHandler(reviewService)
 
 	patternsHandler := patterns.NewHandler(patterns.NewRepository(deps.Postgres.Pool))
-	roadmapHandler := roadmap.NewHandler(roadmap.NewRepository(deps.Postgres.Pool))
+	roadmapRepo := roadmap.NewRepository(deps.Postgres.Pool)
+	roadmapHandler := roadmap.NewHandler(roadmapRepo)
 	problemsHandler := problems.NewHandler(problems.NewRepository(deps.Postgres.Pool))
 	cardsSvc := cards.NewService(cards.NewRepository(deps.Postgres.Pool), reviewService)
 	problemCardsHandler := problemcards.NewHandler(problemcards.NewService(problemcards.NewRepository(deps.Postgres.Pool), cardsSvc, deps.Redis))
 	roadmapsHandler := roadmaps.NewHandler(roadmaps.NewRepository(deps.Postgres.Pool))
 	companiesHandler := companies.NewHandler(companies.NewRepository(deps.Postgres.Pool))
-	dashboardHandler := dashboard.NewHandler(dashboard.NewService(dashboard.NewRepository(deps.Postgres.Pool), patterns.NewRepository(deps.Postgres.Pool)))
+	dashboardHandler := dashboard.NewHandler(dashboard.NewService(dashboard.NewRepository(deps.Postgres.Pool), patterns.NewRepository(deps.Postgres.Pool), roadmapRepo))
 	cardsHandler := cards.NewHandler(cardsSvc)
 	practiceHandler := practice.NewHandler(practice.NewRepository(deps.Postgres.Pool))
 	quizRepo := quiz.NewRepository(deps.Postgres.Pool)
@@ -129,11 +136,16 @@ func New(deps Deps) *chi.Mux {
 	extensionStatusHandler := extension.NewStatusHandler(extension.NewStatusService(extension.NewStatusRepository(deps.Postgres.Pool)))
 
 	r.Route("/api/v1", func(r chi.Router) {
-		ah := &authHandler{svc: deps.Auth}
+		ah := &authHandler{svc: deps.Auth, mailer: deps.Mailer, mailBaseURL: deps.MailBaseURL, skipEmailVerification: deps.SkipEmailVerification}
 		authRateLimit := rateLimit(deps.Redis, "auth", 20, time.Minute)
 		r.Route("/auth", func(r chi.Router) {
-			r.With(authRateLimit).Post("/register", ah.register)
+			r.Use(ah.browserSessionGuard)
+			r.With(rateLimit(deps.Redis, "registration", 5, time.Hour)).Post("/register", ah.register)
 			r.With(authRateLimit).Post("/login", ah.login)
+			r.With(rateLimit(deps.Redis, "password-reset-request", 5, time.Hour)).Post("/password-reset/request", ah.requestPasswordReset)
+			r.With(rateLimit(deps.Redis, "password-reset-confirm", 10, time.Hour)).Post("/password-reset/confirm", ah.confirmPasswordReset)
+			r.With(rateLimit(deps.Redis, "email-verification-request", 5, time.Hour)).Post("/email-verification/request", ah.requestEmailVerification)
+			r.With(rateLimit(deps.Redis, "email-verification-confirm", 10, time.Hour)).Post("/email-verification/confirm", ah.confirmEmailVerification)
 			r.With(authRateLimit).Post("/yandex", ah.yandexLogin)
 			r.With(authRateLimit).Post("/github", ah.githubLogin)
 			r.With(authRateLimit).Post("/refresh", ah.refresh)
@@ -180,10 +192,15 @@ func New(deps Deps) *chi.Mux {
 
 		// S4: personalized roadmap progress and authenticated company suggestions.
 		r.With(requireAuth(deps.Auth)).Get("/me/roadmap", roadmapHandler.Get)
+		r.With(requireAuth(deps.Auth)).Get("/me/roadmaps", roadmapHandler.List)
+		r.With(requireAuth(deps.Auth)).Put("/me/roadmaps/{planKey}/activate", roadmapHandler.Activate)
 		r.With(requireAuth(deps.Auth)).Post("/me/roadmap/preview", roadmapHandler.Preview)
 		r.With(requireAuth(deps.Auth)).Put("/me/roadmap", roadmapHandler.Put)
+		r.With(requireAuth(deps.Auth)).Put("/me/roadmap/patterns/{code}/theory", roadmapHandler.CompleteTheory)
+		r.With(requireAuth(deps.Auth)).Post("/me/roadmap/tasks/{problemID}/access", roadmapHandler.ResolveTaskAccess)
 		r.With(requireAuth(deps.Auth)).Delete("/me/roadmap", roadmapHandler.Delete)
 		r.With(requireAuth(deps.Auth)).Get("/companies/search", companiesHandler.Search)
+		r.With(requireAuth(deps.Auth)).Get("/companies", companiesHandler.List)
 
 		r.Route("/extension", func(r chi.Router) {
 			extensionRateLimit := rateLimit(deps.Redis, "extension", 120, time.Minute)

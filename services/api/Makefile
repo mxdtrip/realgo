@@ -1,10 +1,11 @@
 GO ?= go
 COMPOSE ?= docker compose -f ../../docker-compose.yml
+STAGING_COMPOSE ?= docker compose --env-file ../../.env.staging -f ../../docker-compose.yml -f ../../docker-compose.staging.yml --profile prod-demo
 # Server stack = base + prod overlay (vpngw, api netns, prod Caddyfile) + the
 # prod-demo profile for frpc. See docker-compose.prod.yml.
 PROD_COMPOSE ?= docker compose -f ../../docker-compose.yml -f ../../docker-compose.prod.yml --profile prod-demo
 
-.PHONY: help build run test test-integration vet fmt tidy sqlc up up-api prod-demo-up down migrate seed-roadmap seed-cards seed-users reset-demo logs
+.PHONY: help build run test test-integration vet fmt tidy sqlc up up-api staging-up staging-down prod-demo-up down migrate seed-roadmap seed-cards seed-users reset-demo logs
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -41,6 +42,12 @@ up: ## Build and start the full stack in the background
 # api. `web` stays out on purpose — that is the point of this target.
 up-api: ## Build and start only API, Postgres, Redis, migrations, and Caddy
 	$(COMPOSE) up -d --build postgres redis migrate api caddy
+
+staging-up: ## Build and start the isolated staging stack using .env.staging
+	$(STAGING_COMPOSE) up -d --build --remove-orphans --wait
+
+staging-down: ## Stop the staging stack without deleting its volumes
+	$(STAGING_COMPOSE) down
 
 prod-demo-up: ## Build and start the stack with the VPS reverse tunnel
 	$(PROD_COMPOSE) up -d --build

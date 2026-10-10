@@ -3,7 +3,7 @@ version: "3"
 vars:
   GO: '{{.GO | default "go"}}'
   COMPOSE: '{{.COMPOSE | default "docker compose --env-file ../../.env -f ../../docker-compose.yml"}}'
-  STAGING_COMPOSE: '{{.STAGING_COMPOSE | default "docker compose --env-file ../../.env -f ../../docker-compose.yml -f ../../docker-compose.staging.yml"}}'
+  STAGING_COMPOSE: '{{.STAGING_COMPOSE | default "docker compose --env-file ../../.env.staging -f ../../docker-compose.yml -f ../../docker-compose.staging.yml --profile prod-demo"}}'
   # Server stack = base + prod overlay (vpngw, api netns, prod Caddyfile) +
   # the prod-demo profile for frpc. See docker-compose.prod.yml.
   PROD_COMPOSE: '{{.PROD_COMPOSE | default "docker compose --env-file ../../.env -f ../../docker-compose.yml -f ../../docker-compose.prod.yml --profile prod-demo"}}'
@@ -68,15 +68,15 @@ tasks:
       - "{{.COMPOSE}} up -d --build postgres redis migrate api caddy"
 
   staging-up:
-    desc: Build and start the local staging stack
+    desc: Build and start the isolated staging stack
     cmds:
-      - "{{.STAGING_COMPOSE}} up -d --build"
+      - "{{.STAGING_COMPOSE}} up -d --build --remove-orphans --wait"
 
   staging-seed:
-    desc: Load fixture content and reset demo users in local staging
+    desc: Load fixture content into an empty staging database
     cmds:
-      - "{{.STAGING_COMPOSE}} --profile seeds up -d seed-cards seed-pattern-cards seed-atlas seed-subpattern-cards seed-users"
-      - "{{.STAGING_COMPOSE}} --profile seeds wait seed-cards seed-pattern-cards seed-atlas seed-subpattern-cards seed-users"
+      - "{{.STAGING_COMPOSE}} --profile seeds up -d seed-roadmap seed-cards seed-pattern-content seed-pattern-cards seed-atlas seed-subpattern-cards"
+      - "{{.STAGING_COMPOSE}} --profile seeds wait seed-roadmap seed-cards seed-pattern-content seed-pattern-cards seed-atlas seed-subpattern-cards"
 
   staging-down:
     desc: Stop the local staging stack

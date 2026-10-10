@@ -26,10 +26,18 @@ type TargetRect = Readonly<{ top: number; left: number; width: number; height: n
 
 function measureTarget(target: string): TargetRect | null {
   if (!target) return null;
-  const el = document.querySelector(`[data-tour="${target}"]`);
-  const rect = el?.getBoundingClientRect();
-  if (!rect || rect.width === 0 || rect.height === 0) return null;
-  return { top: rect.top, left: rect.left, width: rect.width, height: rect.height };
+  const candidates = Array.from(
+    document.querySelectorAll<HTMLElement>(
+      target === "nav" ? '[data-tour="nav"], [data-tour="nav-mobile"]' : `[data-tour="${target}"]`,
+    ),
+  );
+  for (const el of candidates) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      return { top: rect.top, left: rect.left, width: rect.width, height: rect.height };
+    }
+  }
+  return null;
 }
 
 function cardPosition(rect: TargetRect): React.CSSProperties {

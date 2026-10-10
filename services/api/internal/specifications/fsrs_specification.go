@@ -3,6 +3,7 @@ package specifications
 import (
 	"math"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -64,6 +65,11 @@ type FSRSUser interface {
 	// RateCardAt оценивает карточку с явной меткой времени reviewedAt
 	// (POST /me/cards/{id}/rate). Используется спекой reviewed_at_clamped.
 	RateCardAt(t *testing.T, cardID int64, rating string, reviewedAt time.Time) time.Time
+
+	// TrySubmitExtensionSolved отправляет событие «задача решена» через расширение
+	// (POST /extension/events) и возвращает nextReviewAt либо ошибку, не вызывая t.Fatalf.
+	// Метод предназначен для безопасного выполнения внутри параллельных горутин в тестах конкурентности.
+	TrySubmitExtensionSolved(title, url, slug, rating string) (time.Time, error)
 }
 
 // FSRSState — snapshot FSRS-полей одной строки review_schedules. test-only
@@ -80,6 +86,15 @@ type FSRSState struct {
 	NextReviewAt time.Time
 }
 
+// FSRSAttemptState — снимок зафиксированной попытки повторения задачи/карточки из таблицы review_attempts.
+// Используется в test-only проверках сквозных спецификаций для подтверждения записи факта решения.
+type FSRSAttemptState struct {
+	Rating      string
+	ReviewType  string
+	DurationSec *int
+	CreatedAt   time.Time
+}
+
 // FSRSStateProbe — test-only read-helper для FSRS-состояния расписания.
 // Спецификации используют его, чтобы проверить, что записи в БД консистентны
 // с FSRS-инвариантами (B1: unrated → New-state; B3: rate растит review_count).
@@ -88,6 +103,14 @@ type FSRSStateProbe interface {
 	// Второе возвращаемое значение — false, если расписания нет (unrated
 	// карточка без истории). Это валидное состояние: «no row = no history».
 	CardScheduleState(t *testing.T, userID, cardID int64) (FSRSState, bool)
+
+	// ProblemScheduleState возвращает FSRS-состояние расписания задачи по её external_slug.
+	// Второе возвращаемое значение — false, если расписание в БД отсутствует.
+	ProblemScheduleState(t *testing.T, userID int64, slug string) (FSRSState, bool)
+
+	// ProblemReviewAttempts возвращает список зафиксированных попыток повторения задачи по её external_slug.
+	// Если попыток в БД нет, возвращает пустой срез.
+	ProblemReviewAttempts(t *testing.T, userID int64, slug string) []FSRSAttemptState
 }
 
 // FSRSProvider — контракт драйвера для FSRS-спецификаций. Расширяет Register
@@ -393,5 +416,168 @@ func FSRSReviewedAtClamped(t *testing.T, provider FSRSProvider) {
 
 	if nextA2.Before(nextA) {
 		t.Fatalf("reviewedAt before last_review_at must clamp, not rewind: before=%v, after=%v", nextA, nextA2)
+	}
+}
+
+// FSRSConcurrentExtensionIngests проверяет устойчивость к lost update при повторных
+// решениях задачи: параллельные события «задача решена» от расширения с разными eventId
+// для одной и той же задачи не должны затирать расписание и FSRS-состояние.
+//
+// Для обеспечения строгой детерминированности (по паттерну главы Sync из learn-go-with-tests)
+// все конкурентные горутины отправляют одинаковую оценку ("hard"). В FSRS v3 повторные оценки
+// "hard" строго монотонно уменьшают стабильность (c0: 3.17 -> c1: 2.66 -> c2: 2.24 -> c3: 1.88).
+// Любая перестановка порядка горутин даёт математически идентичный результат.
+//
+// Если произойдёт lost update (горутина посчитает решение от устаревшего c0 и перезапишет базу):
+//   - review_count окажется меньше 4, либо
+//   - stability окажется 2.66 (вместо 1.88), что вызовет гарантированное падение теста.
+func FSRSConcurrentExtensionIngests(t *testing.T, provider FSRSProvider, probe FSRSStateProbe) {
+	t.Helper()
+
+	base := uniqueEmail(t)
+	user := provider.Register(t, withTag(base, ".base"), "AcceptanceTest-2026!")
+
+	fu := provider.FSRSUser(user)
+	uid := user.UserID(t)
+	slug := uniqueSlug(t)
+
+	const goroutines = 3
+
+	// --- 1. Эталонный последовательный прогон (Sequential baseline) ---
+	seqSlug := slug + "-seq"
+	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", seqSlug, "normal")
+	for i := 0; i < goroutines; i++ {
+		fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", seqSlug, "hard")
+	}
+
+	seqState, ok := probe.ProblemScheduleState(t, uid, seqSlug)
+	if !ok {
+		t.Fatalf("concurrent ingests: expected sequential schedule to exist for %q", seqSlug)
+	}
+
+	// --- 2. Конкурентный прогон (Concurrent test) ---
+	slug = uniqueSlug(t)
+	concSlug := slug + "-conc"
+
+	start := make(chan struct{})
+
+	// Первичное решение создаёт расписание (review_count=1).
+	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "normal")
+
+	errChan := make(chan error, goroutines)
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			<-start
+			_, err := fu.TrySubmitExtensionSolved("Two Sum", "https://leetcode.com/problems/two-sum/", concSlug, "hard")
+			if err != nil {
+				errChan <- err
+			}
+		}()
+	}
+
+	close(start)
+	wg.Wait()
+	close(errChan)
+	for err := range errChan {
+		t.Fatalf("concurrent ingests: goroutine failed: %v", err)
+	}
+	concState, ok := probe.ProblemScheduleState(t, uid, concSlug)
+	if !ok {
+		t.Fatalf("concurrent ingests: expected review_schedules row to exist for problem slug %q, but none found", concSlug)
+	}
+
+	// 1. Проверка счётчика: все параллельные решения сохранены.
+	if seqState.ReviewCount != concState.ReviewCount {
+		t.Fatalf("concurrent ingests: expected review_count=%d, got %d", seqState.ReviewCount, concState.ReviewCount)
+	}
+
+	// 2. Проверка FSRS: цепочка состояний вычислена корректно без перезаписи.
+	if math.Abs(seqState.Stability-concState.Stability) > 0.05 {
+		t.Fatalf("concurrent ingests: lost update detected! concurrent stability=%.2f differs from sequential stability=%.2f", concState.Stability, seqState.Stability)
+	}
+}
+
+// FSRSConcurrentExtensionInitialIngests проверяет гонку двух параллельных «первых решений»
+// одной и той же новой задачи: ни один из запросов не должен завершиться ошибкой, а
+// расписание должно создаться ровно один раз и сразу продвинуться вторым решением.
+//
+// Без защиты ON CONFLICT DO NOTHING + retry второй параллельный INSERT либо падал с ошибкой
+// уникальности, либо перезаписывал расписание решением без prior-state (review_count оставался 1).
+// При корректной работе review_count обязан стать равным 2.
+func FSRSConcurrentExtensionInitialIngests(t *testing.T, provider FSRSProvider, probe FSRSStateProbe) {
+	t.Helper()
+
+	base := uniqueEmail(t)
+	user := provider.Register(t, withTag(base, ".base"), "AcceptanceTest-2026!")
+
+	fu := provider.FSRSUser(user)
+	uid := user.UserID(t)
+	slug := uniqueSlug(t) + "-init-conc"
+
+	const goroutines = 2
+	start := make(chan struct{})
+
+	errChan := make(chan error, goroutines)
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			<-start
+			_, err := fu.TrySubmitExtensionSolved("Two Sum", "https://leetcode.com/problems/two-sum/", slug, "normal")
+			if err != nil {
+				errChan <- err
+			}
+		}()
+	}
+
+	close(start)
+	wg.Wait()
+	close(errChan)
+	for err := range errChan {
+		t.Fatalf("concurrent initial ingests: goroutine failed: %v", err)
+	}
+
+	state, ok := probe.ProblemScheduleState(t, uid, slug)
+	if !ok {
+		t.Fatalf("concurrent initial ingests: expected review_schedules row to exist for %q, but none found", slug)
+	}
+
+	if state.ReviewCount != 2 {
+		t.Fatalf("concurrent initial ingests: expected review_count=2, got %d (lost update on initial solve)", state.ReviewCount)
+	}
+}
+
+// FSRSExtensionIngestRecordsAttempt проверяет, что при успешном решении задачи
+// через расширение (POST /api/v1/extension/events) создаётся соответствующая запись
+// в таблице review_attempts с типом "problem", переданным рейтингом и без признака was_correct (NULL).
+func FSRSExtensionIngestRecordsAttempt(t *testing.T, p FSRSProvider, probe FSRSStateProbe) {
+	t.Helper()
+	user := p.Register(t, uniqueEmail(t), "AcceptanceTest-2026!")
+	fu := p.FSRSUser(user)
+	uid := user.UserID(t)
+	slug := uniqueSlug(t)
+
+	fu.SubmitExtensionSolved(t, "Two Sum", "https://leetcode.com/problems/two-sum/", slug, "normal")
+	attempts := probe.ProblemReviewAttempts(t, uid, slug)
+	if len(attempts) != 1 {
+		t.Fatalf("expected 1 review attempt, got %d", len(attempts))
+	}
+	if attempts[0].ReviewType != "problem" {
+		t.Errorf("expected review_type %q, got %q", "problem", attempts[0].ReviewType)
+	}
+	if attempts[0].Rating != "normal" {
+		t.Errorf("expected rating %q, got %q", "normal", attempts[0].Rating)
+	}
+	if attempts[0].DurationSec != nil {
+		t.Errorf("expected duration_sec to be nil, got %v", *attempts[0].DurationSec)
+	}
+	if attempts[0].CreatedAt.IsZero() {
+		t.Error("expected non-zero created_at")
 	}
 }

@@ -4,11 +4,7 @@ import { useCallback, useState } from "react";
 
 import { isGithubAuthConfigured, startGithubAuth } from "./githubOAuth";
 
-/**
- * "Войти через GitHub" — renders nothing when NEXT_PUBLIC_GITHUB_CLIENT_ID
- * isn't configured for this build, so an unconfigured deployment doesn't show
- * a dead-end button.
- */
+/** "Войти через GitHub" with an honest disabled fallback for unconfigured builds. */
 export function GithubAuthButton({ disabled }: { disabled?: boolean }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -25,18 +21,31 @@ export function GithubAuthButton({ disabled }: { disabled?: boolean }) {
     }
   }, []);
 
-  if (!isGithubAuthConfigured()) return null;
+  if (!isGithubAuthConfigured()) {
+    return (
+      <button
+        className="auth-provider auth-provider--github"
+        disabled
+        title="GitHub подключается"
+        type="button"
+      >
+        <GithubMark />
+        <span>GitHub</span>
+        <small>скоро</small>
+      </button>
+    );
+  }
 
   return (
     <>
       <button
         type="button"
-        className="auth-oauth-button auth-oauth-button--github"
+        className="auth-provider auth-provider--github"
         onClick={handleClick}
         disabled={disabled || pending}
       >
         <GithubMark />
-        {pending ? "Переходим в GitHub…" : "Войти через GitHub"}
+        <span>{pending ? "Переходим в GitHub…" : "GitHub"}</span>
       </button>
       {error ? (
         <p className="auth-form__error" role="alert">

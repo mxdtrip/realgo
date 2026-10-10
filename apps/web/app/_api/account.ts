@@ -70,6 +70,7 @@ export async function changePassword(
       new_password: newPassword,
     },
   });
+  clearTokens();
 }
 
 /**
@@ -85,6 +86,7 @@ export async function revokeAllSessions(): Promise<boolean> {
     await apiFetch<{ status: string }>("/me/sessions/revoke", {
       method: "POST",
     });
+    clearTokens();
     return true;
   } catch (e) {
     if (e instanceof ApiError && (e.status === 404 || e.status === 405)) {

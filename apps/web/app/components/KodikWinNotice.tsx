@@ -6,6 +6,7 @@ import { getDictionary } from "../_content/i18n";
 
 /** Delay before the notice slides in, so it never covers the hero on first paint. */
 const APPEAR_DELAY_MS = 1500;
+const DISMISSED_STORAGE_KEY = "realgo:kodik-win-notice:v1";
 
 /**
  * Dismissible "we won Kodik Launchpad" notice, pinned bottom-right on the
@@ -19,12 +20,8 @@ const APPEAR_DELAY_MS = 1500;
  * the dismiss button sits above it in the stacking order — one link, one
  * button, both independently focusable.
  *
- * Dismissal deliberately lasts only for the current page view: it is not
- * written to storage, so the notice comes back on the next visit to the
- * landing page. To make it stick instead, persist a flag in localStorage under
- * a versioned key (e.g. `realgo:kodik-win-notice:v1`) in `dismiss()` and read
- * it in the mount effect below — bumping the version is then how the notice is
- * brought back for everyone.
+ * Dismissal is stored under a versioned localStorage key. Bumping the version
+ * is the explicit way to show a future announcement to everyone again.
  */
 export function KodikWinNotice() {
   const copy = getDictionary().marketing.hackathonNotice;
@@ -32,9 +29,27 @@ export function KodikWinNotice() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
+    try {
+      if (window.localStorage.getItem(DISMISSED_STORAGE_KEY) === "1") {
+        setDismissed(true);
+        return;
+      }
+    } catch {
+      // Storage can be unavailable in restricted browser contexts. In that
+      // case the notice still works for the current page view.
+    }
     const timer = window.setTimeout(() => setVisible(true), APPEAR_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, []);
+
+  function dismiss() {
+    try {
+      window.localStorage.setItem(DISMISSED_STORAGE_KEY, "1");
+    } catch {
+      // Closing must remain available even when persistence is blocked.
+    }
+    setDismissed(true);
+  }
 
   if (dismissed) return null;
 
@@ -81,7 +96,7 @@ export function KodikWinNotice() {
       <button
         aria-label={copy.dismiss}
         className="kodik-notice__dismiss"
-        onClick={() => setDismissed(true)}
+        onClick={dismiss}
         type="button"
       >
         <svg aria-hidden="true" height="12" viewBox="0 0 16 16" width="12">

@@ -497,8 +497,8 @@ export function SortingMemoryHero() {
       setAuthError("");
       try {
         if (authMode === "signup") {
-          const authUser = await auth.register(authEmail.trim(), authPassword);
-          router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
+          router.push("/register");
+          return;
         } else {
           const authUser = await auth.login(authEmail.trim(), authPassword);
           router.push(authUser.onboarding_completed ? "/dashboard" : "/onboarding/profile");
@@ -629,8 +629,8 @@ export function SortingMemoryHero() {
         </a>
         <nav className="site-nav" aria-label={copy.navAria}>
           {copy.nav.map((item) => (
-            <a href={`#${item.toLowerCase()}`} key={item}>
-              {item}
+            <a href={`#${item.id}`} key={item.id}>
+              {item.label}
             </a>
           ))}
         </nav>
@@ -661,8 +661,7 @@ export function SortingMemoryHero() {
               <button
                 type="button"
                 onClick={() => {
-                  setAuthMode("signup");
-                  setAuthOpen(true);
+                  router.push("/register");
                 }}
               >
                 {copy.auth.signup}
@@ -671,6 +670,7 @@ export function SortingMemoryHero() {
           )}
         </div>
       </header>
+
 
       <div className={codeError ? "code-editor has-error" : "code-editor"}>
         <pre className="code-lines" aria-hidden="true" ref={codeLinesRef}>
@@ -790,8 +790,7 @@ export function SortingMemoryHero() {
                 className={authMode === "signup" ? "active" : ""}
                 type="button"
                 onClick={() => {
-                  setAuthMode("signup");
-                  setAuthError("");
+                  router.push("/register");
                 }}
               >
                 {copy.auth.signup}

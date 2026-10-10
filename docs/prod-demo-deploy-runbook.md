@@ -1,15 +1,16 @@
-# Prod-demo deploy runbook
+# Production deploy runbook
 
-Runbook для демо-окружения realgo: backend API, web, Caddy, Postgres, Redis и
-reverse tunnel через `deploy/vps`.
+Runbook для production ReAlgo из ветки `main`: backend API, web, Caddy,
+Postgres, Redis и reverse tunnel через `deploy/vps`. Общая последовательность
+local → staging → production описана в [deployment.md](deployment.md).
 
 ## Схема
 
-- Dev stack: корневой `docker-compose.yml` поднимает `api` (собственная
+- Local stack: корневой `docker-compose.yml` поднимает `api` (собственная
   сеть), `web`, `presentation`, `caddy`, `postgres`, `redis`, миграции и seed
   jobs — без VPS tunnel и без vpngw. Обычный `docker compose up` этого файла
   достаточно.
-- Prod-demo: base + overlay `docker-compose.prod.yml` (vpngw; api переезжает
+- Production: base + overlay `docker-compose.prod.yml` (vpngw; api переезжает
   в его network namespace; caddy монтирует `Caddyfile.internal.prod`) +
   профиль `prod-demo` для `frpc`.
 - VPS edge: `deploy/vps/docker-compose.yml` поднимает `frps` и публичный Caddy.
@@ -26,12 +27,44 @@ reverse tunnel через `deploy/vps`.
   доступным только из внутреннего home stack; для работы с ним используйте SSH
   port-forward до home/appbox host.
 
-## Локальный dev запуск
+Профиль Compose по историческим причинам называется `prod-demo`, но текущий
+workflow использует его для штатного production-деплоя.
+
+## Рекомендуемый автоматический деплой
+
+Production не собирается из feature-ветки или напрямую из `dev`:
+
+1. Commit должен пройти CI и пользовательскую проверку на staging.
+2. Открывается pull request из `dev` в `main`.
+3. После merge workflow `.github/workflows/deploy-prod.yml` повторно запускает
+   CI и собирает точный commit из `main` на self-hosted runner `appbox`.
+4. Workflow пересоздаёт Caddy и проверяет маршрутизацию презентации и AI.
+
+Workflow напрямую читает следующие GitHub repository secrets:
+
+| Переменная | Назначение |
+| --- | --- |
+| `AUTH_JWT_SECRET` | Подпись сессий; изменение завершит все активные сессии. |
+| `FRP_VPS_HOST`, `FRP_TOKEN` | Туннель между appbox и VPS edge. |
+| `VPN_SUB_URL` | Исходящий tunnel API для AI-провайдера. |
+| `SMTP2GO_SMTP_USERNAME`, `SMTP2GO_SMTP_PASSWORD` | Транзакционная почта. |
+
+`GEMINI_API_KEY` и `SEED_USERS_PASSWORD` опциональны. `DB_PASSWORD` и
+`REDIS_PASSWORD` текущий workflow получает из постоянного environment процесса
+self-hosted runner; для существующего PostgreSQL volume пароль должен совпадать
+с реальным паролем роли. OAuth и GoAdmin также настраиваются в окружении runner,
+если соответствующие возможности включены. Секреты production не должны
+совпадать со staging.
+
+`APP_ENV=production` и `MAIL_BASE_URL=https://realgo.dev` задаются production
+overlay/workflow. Не меняйте их на staging-значения.
+
+## Локальный запуск для проверки production-ветки
 
 ```sh
 cp .env.example .env
 # заменить AUTH_JWT_SECRET на случайную строку 32+ символа
-docker compose up -d --build
+docker compose up -d --build --wait
 docker compose logs ready
 ```
 
@@ -47,7 +80,7 @@ seed-джобов), дожидается ответов от `/healthz`, `/ready
 `docker compose up -d --wait` держит команду до появления баннера, что удобно
 в скриптах: код возврата тогда отражает готовность всего стека.
 
-`FRP_VPS_HOST`, `FRP_TOKEN` и `VPN_SUB_URL` для dev-запуска не нужны.
+`FRP_VPS_HOST`, `FRP_TOKEN` и `VPN_SUB_URL` для локального запуска не нужны.
 
 Из backend-директории можно использовать Makefile или go-task:
 
@@ -60,35 +93,39 @@ task up
 task health
 ```
 
-## Prod-demo env и secrets
+## Production env и secrets для ручного запуска
 
-Создать `.env` из `.env.example` на home stack:
+Создать отдельный `.env.production` из production-шаблона на home stack:
 
 ```sh
-cp .env.example .env
+cp .env.production.example .env.production
+chmod 600 .env.production
 ```
 
-Обязательные значения для prod-demo:
+Обязательные значения для production:
 
 | Key | Где | Требование |
 | --- | --- | --- |
-| `AUTH_JWT_SECRET` | home `.env` | Случайная строка минимум 32 символа; не placeholder. |
-| `FRP_VPS_HOST` | home `.env` | Публичный IP или hostname VPS. |
-| `FRP_TOKEN` | home `.env`, VPS `.env` | Один и тот же случайный shared token. |
-| `VPN_SUB_URL` | home `.env` / secret | VLESS-подписка для vpngw; без неё overlay не отрезолвится и vpngw/api не стартуют. |
+| `AUTH_JWT_SECRET` | home `.env.production` | Случайная строка минимум 32 символа; не placeholder. |
+| `DB_PASSWORD` | home `.env.production` | Сильный пароль; для существующего volume — текущий пароль роли. |
+| `REDIS_PASSWORD` | home `.env.production` | Случайный непустой пароль. |
+| `FRP_VPS_HOST` | home `.env.production` | Публичный IP или hostname VPS. |
+| `FRP_TOKEN` | home `.env.production`, VPS `.env` | Один и тот же случайный shared token. |
+| `VPN_SUB_URL` | home `.env.production` / secret | VLESS-подписка для vpngw; без неё overlay не отрезолвится и vpngw/api не стартуют. |
+| `SMTP2GO_SMTP_USERNAME`, `SMTP2GO_SMTP_PASSWORD` | home `.env.production` | Учётные данные почтового relay. |
 
-Прод-демо значения, которые обычно оставляем явно:
+Production-значения, которые оставляем явно:
 
 | Key | Где | Значение |
 | --- | --- | --- |
-| `REALGO_SITE_ADDRESS` | home/VPS `.env` | Домен демо, по умолчанию `realgo.dev`. |
-| `REALGO_EXTENSION_ORIGIN` | home `.env` | Chrome extension origin из packaged extension. |
-| `NEXT_PUBLIC_API_BASE_URL` | home `.env` | Пусто для same-origin `/api/*`. |
-| `TRUSTED_PROXY_CIDRS` | home `.env` | CIDR trusted proxy, если включаем X-Forwarded-For trust. |
-| `DB_PASSWORD` | home `.env` | Не оставлять dev default на публичном/общем демо. |
-| `REDIS_PASSWORD` | home `.env` | Задать случайный пароль; compose применит его к Redis, API и healthcheck. |
+| `REALGO_SITE_ADDRESS` | home/VPS env | `realgo.dev`. |
+| `MAIL_BASE_URL` | home `.env.production` | Ровно `https://realgo.dev`. |
+| `REALGO_EXTENSION_ORIGIN` | home `.env.production` | Chrome extension origin из packaged extension. |
+| `NEXT_PUBLIC_API_BASE_URL` | home `.env.production` | Пусто для same-origin `/api/*`. |
+| `TRUSTED_PROXY_CIDRS` | home `.env.production` | CIDR trusted proxy, если включаем X-Forwarded-For trust. |
 
-Не коммитить `.env`, токены, приватные ключи расширения и server secrets.
+Не коммитить `.env.production`, токены, приватные ключи расширения и server
+secrets.
 
 ## Deploy
 
@@ -96,27 +133,26 @@ VPS edge:
 
 ```sh
 cd deploy/vps
-printf 'FRP_TOKEN=<same-token-as-home>\n' > .env
+cp .env.example .env
+# заменить FRP_TOKEN
 docker compose up -d
 docker compose ps
 ```
 
-Home stack:
+Home stack — ручной fallback, штатный deploy выполняет GitHub Actions:
 
 ```sh
-cp .env.example .env
-# отредактировать AUTH_JWT_SECRET, FRP_VPS_HOST, FRP_TOKEN, DB_PASSWORD
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --build
-docker compose ps
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.prod.yml \
+  --profile prod-demo config --quiet
+
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.prod.yml \
+  --profile prod-demo up -d --build --remove-orphans --wait
 ```
 
-Go Task альтернатива из backend-директории:
-
-```sh
-cd services/api
-task prod-demo-up
-task ps
-```
+Не выполняйте `down -v`: команда удалит production volumes. Перед deploy с
+новыми миграциями сделайте и проверьте backup PostgreSQL.
 
 ## Healthcheck
 
@@ -159,8 +195,16 @@ curl -fsS -o /dev/null -w '%{http_code}\n' \
 Если публичный healthcheck не проходит:
 
 ```sh
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo logs -f caddy frpc api
-cd deploy/vps && docker compose logs -f caddy frps
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.prod.yml \
+  --profile prod-demo logs -f caddy frpc api
+```
+
+На VPS edge:
+
+```sh
+cd deploy/vps
+docker compose logs -f caddy frps
 ```
 
 Проверить по порядку: DNS `REALGO_SITE_ADDRESS` указывает на VPS, `FRP_TOKEN`
@@ -188,18 +232,15 @@ ssh -N -L 18080:127.0.0.1:8080 <user>@<home-or-appbox-host>
 http://localhost:18080/admin
 ```
 
-Для входа задайте `GOADMIN_USERNAME` и `GOADMIN_PASSWORD` в `.env` home stack.
-Пароль должен быть случайным и не короче 12 байт; не храните его в Git.
+Для входа задайте `GOADMIN_USERNAME` и `GOADMIN_PASSWORD` в
+`.env.production`. Пароль должен быть случайным и не короче 12 байт; не
+храните его в Git.
 
 ## Smoke после деплоя
 
-```sh
-cd services/api
-task migrate
-task seed-roadmap
-task seed-cards
-task health
-```
+Миграции и штатные контентные seed jobs уже входят в Compose dependency graph;
+не запускайте локальные Taskfile-команды поверх production вручную. Проверьте
+`/healthz`, `/readyz`, вход, dashboard, roadmap, открытие задачи и карточки.
 
 `seed-users` не входит в production smoke: prod overlay помещает его в
 отдельный профиль `prod-demo-users`, потому что job сбрасывает данные demo
@@ -208,6 +249,7 @@ email. Запускать его только для одноразового/д
 
 ```sh
 SEED_USERS_PASSWORD='<strong-demo-password>' docker compose \
+  --env-file .env.production \
   -f docker-compose.yml -f docker-compose.prod.yml \
   --profile prod-demo-users run --rm seed-users
 ```
@@ -223,7 +265,10 @@ Rollback приложения выполняется на заранее зап�
 ```sh
 git fetch --all --tags
 git switch --detach "$RELEASE_SHA"
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --build
+# Обновить COMMIT_SHA в .env.production на RELEASE_SHA.
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.prod.yml \
+  --profile prod-demo up -d --build --remove-orphans --wait
 curl -fsS http://localhost:${API_PORT:-8080}/readyz
 ```
 

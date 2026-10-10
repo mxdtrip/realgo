@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
 
 import { AuthForm } from "../_auth/AuthForm";
-import { AuthPageHeader } from "../_auth/AuthPageHeader";
+import { AuthPageShell } from "../_auth/AuthPageShell";
 
-export const metadata: Metadata = { title: "Регистрация" };
+export const metadata: Metadata = { title: "Регистрация", robots: { index: false, follow: true } };
 
 export default function RegisterPage() {
   return (
-    <>
-      <AuthPageHeader />
+    <AuthPageShell>
       <div className="auth-layer auth-layer--page">
         <AuthForm mode="register" />
       </div>
-    </>
+    </AuthPageShell>
   );
 }

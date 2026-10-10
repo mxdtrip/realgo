@@ -61,13 +61,13 @@ func newYandexTestServer(t *testing.T, yandex auth.YandexConfig) (http.Handler, 
 	t.Helper()
 	ctx := context.Background()
 	pg, err := postgres.New(ctx, &config.Database{
-		Host: "localhost", Port: 5432, User: "postgres", Password: "postgres",
-		DBName: "freeburger", SSLMode: "disable", MaxConns: 2,
+		Host: "localhost", Port: integrationDBPort(), User: "postgres", Password: "postgres",
+		DBName: integrationDBName(), SSLMode: "disable", MaxConns: 2,
 		MaxConnLifetime: time.Hour, MaxConnIdleTime: time.Minute,
 	})
 	require.NoError(t, err)
 
-	rdb, err := redis.New(ctx, &config.Redis{Host: "localhost", Port: "6379"})
+	rdb, err := redis.New(ctx, &config.Redis{Host: "localhost", Port: integrationRedisPort()})
 	require.NoError(t, err)
 
 	authSvc := auth.NewService(db.New(pg.Pool), rdb.Client, auth.Config{
@@ -109,8 +109,8 @@ func cleanupUserByEmail(t *testing.T, email string) {
 	t.Helper()
 	ctx := context.Background()
 	pg, err := postgres.New(ctx, &config.Database{
-		Host: "localhost", Port: 5432, User: "postgres", Password: "postgres",
-		DBName: "freeburger", SSLMode: "disable", MaxConns: 1,
+		Host: "localhost", Port: integrationDBPort(), User: "postgres", Password: "postgres",
+		DBName: integrationDBName(), SSLMode: "disable", MaxConns: 1,
 		MaxConnLifetime: time.Hour, MaxConnIdleTime: time.Minute,
 	})
 	if err != nil {
@@ -164,8 +164,8 @@ func TestYandexLoginLinksExistingPasswordAccountByEmail(t *testing.T) {
 	defer cleanup()
 	defer cleanupUserByEmail(t, email)
 
-	registered := postJSON(t, h, "/api/v1/auth/register", "", map[string]any{"email": email, "password": "Password123!"})
-	registeredID := registered["data"].(map[string]any)["user"].(map[string]any)["id"]
+	registered := newContractHarness(t).register(t, email, "Password123!")
+	registeredID := float64(registered.userID)
 
 	status, linked := postYandexLogin(t, h, map[string]any{
 		"code": "auth-code", "redirect_uri": "https://app.example.test/auth/yandex/callback",

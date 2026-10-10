@@ -95,7 +95,7 @@ func exchangeGitHubCode(ctx context.Context, cfg GitHubConfig, code, redirectURI
 	if err != nil {
 		return "", fmt.Errorf("%w: token request: %v", ErrOAuthProviderFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var body struct {
 		AccessToken      string `json:"access_token"`
@@ -176,7 +176,7 @@ func githubAPIGet(ctx context.Context, apiURL, accessToken string, out any) erro
 	if err != nil {
 		return fmt.Errorf("%w: request: %v", ErrOAuthProviderFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("%w: %s status %d", ErrOAuthProviderFailed, apiURL, resp.StatusCode)
