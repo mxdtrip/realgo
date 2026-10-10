@@ -30,6 +30,20 @@ func NewStatusHandler(svc extensionStatusService) *StatusHandler {
 }
 
 // GetStatus: GET /api/v1/me/extension/status
+// swagger:operation GET /api/v1/me/extension/status Extension get_api_v1_me_extension_status
+//
+// ---
+// summary: "Получить состояние синхронизации расширения"
+// description: "Получить состояние синхронизации расширения."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/extensionStatus"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *StatusHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

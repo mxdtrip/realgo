@@ -40,6 +40,26 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 //   - 409 Conflict: конфликт версий повторения ErrReviewConflict при исчерпании ретраев (код REVIEW_CONFLICT, уровень Warn);
 //   - 422 Unprocessable Entity: неизвестная платформа ErrUnknownPlatform (код UNKNOWN_PLATFORM);
 //   - 500 Internal Server Error: непредвиденная ошибка (код INTERNAL_ERROR, уровень Error).
+// swagger:operation POST /api/v1/extension/events Extension post_api_v1_extension_events
+//
+// ---
+// summary: "Принять событие браузерного расширения"
+// description: "Принимает два совместимых payload. accepted submit превращается в problem_solved и требует rating/userDifficulty. Идемпотентность основана на eventId; для submit payload он вычисляется сервером. Неизвестная платформа в БД: 422 UNKNOWN_PLATFORM. Лимит: 120 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis."
+// security:
+// - BearerAuth: []
+// x-rate-limit: {"identity": "ID пользователя из контекста после requireAuth.", "requests": 120, "separatePerMethodAndPath": true, "windowSeconds": 60}
+// responses:
+//   "200": {$ref: "#/responses/extensionEvent"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "409": {$ref: "#/responses/reviewConflict"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "422": {$ref: "#/responses/unknownPlatform"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authRateLimitUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) PostEvent(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

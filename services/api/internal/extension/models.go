@@ -22,45 +22,115 @@ const (
 )
 
 // EventRequest is the POST /api/v1/extension/events payload.
+// EventRequest documents the ExtensionEventRequest JSON shape.
+//
+// Поддерживаются исходный event/problem payload и submit payload. source имеет приоритет над platform; problem.* над task*. Для известных платформ нужен HTTPS URL на домене выбранной платформы. occurredAt/submittedAt по умолчанию равен серверному времени. Для problem_solved нужна оценка hard/normal/easy. Для submit payload eventId вычисляется автоматически.
+//
+// Example: {"platform":"leetcode","taskTitle":"Two Sum","taskUrl":"https://leetcode.com/problems/two-sum/","platformTaskSlug":"two-sum","submitResult":"accepted","submittedAt":"2026-10-05T16:00:00Z","userDifficulty":"normal","canSolveAgain":"probably"}
+//
+// swagger:model ExtensionEventRequest
+// swagger:additionalProperties false
 type EventRequest struct {
-	EventID          string       `json:"eventId"`
-	Source           string       `json:"source"` // platform code, e.g. "leetcode"
-	Event            string       `json:"event"`  // see Event* constants
-	OccurredAt       string       `json:"occurredAt"`
-	Rating           string       `json:"rating"` // hard | normal | easy (problem_solved)
-	ExtensionVersion string       `json:"extensionVersion"`
-	Problem          EventProblem `json:"problem"`
+	// Required: false
+	EventID string `json:"eventId"`
+	// Код платформы; unknown нормализуется в generic. Если платформа отсутствует в БД, возвращается 422 UNKNOWN_PLATFORM.
+	//
+	// Required: false
+	Source string `json:"source"` // platform code, e.g. "leetcode"
+	// see Event* constants
+	//
+	// Required: false
+	// Enum: ["", "problem_solved", "problem_submitted", "problem_viewed", "rating_changed", "sync_disabled"]
+	Event string `json:"event"` // see Event* constants
+	// RFC3339; отсутствие или пустая строка запускает fallback к другому полю либо серверному времени.
+	//
+	// Required: false
+	OccurredAt string `json:"occurredAt"`
+	// hard | normal | easy (problem_solved)
+	//
+	// Required: false
+	// Enum: ["", "hard", "normal", "easy"]
+	Rating string `json:"rating"` // hard | normal | easy (problem_solved)
+	// Required: false
+	ExtensionVersion string `json:"extensionVersion"`
+	// Required: false
+	Problem EventProblem `json:"problem"`
 
 	// Current extension payload. Kept alongside the original event/problem
 	// shape so older clients do not break while the browser extension sends the
 	// lighter submit-focused contract.
-	Platform         string `json:"platform"`
-	TaskTitle        string `json:"taskTitle"`
-	TaskURL          string `json:"taskUrl"`
+	// Fallback для source. Обычные значения: leetcode, hackerrank, geeksforgeeks, codeforces.
+	//
+	// Required: false
+	Platform string `json:"platform"`
+	// Required: false
+	TaskTitle string `json:"taskTitle"`
+	// Required: false
+	TaskURL string `json:"taskUrl"`
+	// Required: false
 	PlatformTaskSlug string `json:"platformTaskSlug"`
-	SubmitResult     string `json:"submitResult"`
-	SubmittedAt      string `json:"submittedAt"`
-	UserDifficulty   string `json:"userDifficulty"`
-	CanSolveAgain    string `json:"canSolveAgain"`
+	// accepted без явного event преобразуется в problem_solved; остальные значения — в problem_submitted.
+	//
+	// Required: false
+	SubmitResult string `json:"submitResult"`
+	// RFC3339; отсутствие или пустая строка запускает fallback к другому полю либо серверному времени.
+	//
+	// Required: false
+	SubmittedAt string `json:"submittedAt"`
+	// Required: false
+	// Enum: ["", "hard", "normal", "easy"]
+	UserDifficulty string `json:"userDifficulty"`
+	// Принимается для совместимости; участвует в автоматически вычисляемом ключе события.
+	//
+	// Required: false
+	CanSolveAgain string `json:"canSolveAgain"`
 }
 
 // EventProblem is the task the event refers to.
+// EventProblem documents the ExtensionEventProblem JSON shape.
+//
+// swagger:model ExtensionEventProblem
+// swagger:additionalProperties false
 type EventProblem struct {
-	ExternalID  string `json:"externalId"`
-	Title       string `json:"title"`
-	URL         string `json:"url"`
-	Difficulty  string `json:"difficulty"`  // optional: easy | medium | hard
+	// Required: false
+	ExternalID string `json:"externalId"`
+	// Required: false
+	Title string `json:"title"`
+	// Required: false
+	URL string `json:"url"`
+	// easy, medium или hard. Неизвестное значение очищается, запрос не отклоняется.
+	//
+	// Required: false
+	Difficulty string `json:"difficulty"` // optional: easy | medium | hard
+	// optional, unused in MVP
+	//
+	// Required: false
 	PatternName string `json:"patternName"` // optional, unused in MVP
 }
 
 // EventResult is the response payload (problem_id, status, next_review_at per
 // the issue's acceptance criteria, plus idempotency signal).
+// EventResult documents the ExtensionEventResult JSON shape.
+//
+// swagger:model ExtensionEventResult
 type EventResult struct {
-	Accepted     bool       `json:"accepted"`
-	Duplicate    bool       `json:"duplicate"`
-	ProblemID    int64      `json:"problemId"`
-	ReviewID     int64      `json:"reviewId,omitempty"`
-	Status       string     `json:"status"`
+	// Required: true
+	Accepted bool `json:"accepted"`
+	// Required: true
+	Duplicate bool `json:"duplicate"`
+	// Required: true
+	ProblemID int64 `json:"problemId"`
+	// Required: false
+	ReviewID int64 `json:"reviewId,omitempty"`
+	// Required: true
+	Status string `json:"status"`
+	// swagger:name nextReviewAt
+	// Required: true
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	// swagger:strfmt date-time
 	NextReviewAt *time.Time `json:"nextReviewAt"`
 }
 

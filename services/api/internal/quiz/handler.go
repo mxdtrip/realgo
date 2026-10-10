@@ -40,6 +40,20 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 }
 
 // GET /me/quiz/session
+// swagger:operation GET /api/v1/me/quiz/session Quiz get_api_v1_me_quiz_session
+//
+// ---
+// summary: "Получить вопросы сессии квиза"
+// description: "Получить вопросы сессии квиза."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/quizSession"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) session(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -67,6 +81,24 @@ func (h *Handler) session(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /me/quiz/{questionId}/answer
+// swagger:operation POST /api/v1/me/quiz/{questionId}/answer Quiz post_api_v1_me_quiz_questionId_answer
+//
+// ---
+// summary: "Ответить на вопрос квиза"
+// description: "option — индекс в options с нуля. Повторный ответ на этот вопрос возвращает 409 CONFLICT. Запрос {} трактуется как option=0."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/quizAnswered"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "409": {$ref: "#/responses/cardReviewConflict"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) answer(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

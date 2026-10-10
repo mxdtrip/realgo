@@ -35,6 +35,20 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Delete("/subpatterns/{code}", h.Remove)
 }
 
+// swagger:operation GET /api/v1/me/practice Practice get_api_v1_me_practice
+//
+// ---
+// summary: "Получить субпаттерны практики"
+// description: "Получить субпаттерны практики."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/practiceList"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -51,9 +65,36 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, map[string]any{"subpatterns": items})
 }
 
+// addRequest documents the PracticeAddRequest JSON shape.
+//
+// Example: {"code":"two_pointers"}
+//
+// swagger:model PracticeAddRequest
+// swagger:additionalProperties false
 type addRequest struct {
+	// Код существующего субпаттерна, например two_pointers.
+	//
+	// Required: true
+	// Min Length: 1
 	Code string `json:"code"`
 }
+
+// swagger:operation POST /api/v1/me/practice/subpatterns Practice post_api_v1_me_practice_subpatterns
+//
+// ---
+// summary: "Добавить субпаттерн в практику"
+// description: "Добавить субпаттерн в практику."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/practiceAdded"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Add(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -84,6 +125,21 @@ func (h *Handler) Add(w http.ResponseWriter, r *http.Request) {
 	}
 	response.JSON(w, http.StatusOK, map[string]any{"code": code, "active": true})
 }
+
+// swagger:operation DELETE /api/v1/me/practice/subpatterns/{code} Practice delete_api_v1_me_practice_subpatterns_code
+//
+// ---
+// summary: "Удалить субпаттерн из практики"
+// description: "Успех: 204 без тела."
+// security:
+// - BearerAuth: []
+// responses:
+//   "204": {$ref: "#/responses/noContent"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Remove(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())

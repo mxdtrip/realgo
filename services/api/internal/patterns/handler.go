@@ -48,6 +48,20 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Get("/{code}", h.GetDetail)
 }
 
+// swagger:operation GET /api/v1/me/patterns Patterns get_api_v1_me_patterns
+//
+// ---
+// summary: "Получить паттерны со статистикой"
+// description: "Ответ: data.patterns, а не data-массив. Параметр sort не обрабатывается этим handler."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/patternList"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -66,6 +80,20 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, map[string][]Pattern{"patterns": items})
 }
 
+// swagger:operation GET /api/v1/me/patterns/weak Patterns get_api_v1_me_patterns_weak
+//
+// ---
+// summary: "Получить слабые паттерны"
+// description: "Получить слабые паттерны."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/weakPatterns"}
+//   "401": {$ref: "#/responses/authUnauthorized"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) ListWeak(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -83,6 +111,21 @@ func (h *Handler) ListWeak(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusOK, items)
 }
+
+// swagger:operation GET /api/v1/me/patterns/{code} Patterns get_api_v1_me_patterns_code
+//
+// ---
+// summary: "Получить материал по паттерну"
+// description: "Получить материал по паттерну."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/patternDetail"}
+//   "401": {$ref: "#/responses/authUnauthorized"}
+//   "404": {$ref: "#/responses/authNotFound"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) GetDetail(w http.ResponseWriter, r *http.Request) {
 	if _, ok := auth.UserIDFromContext(r.Context()); !ok {

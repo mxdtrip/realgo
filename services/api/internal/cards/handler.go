@@ -64,6 +64,21 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Post("/{cardId}/rate", h.Rate)
 }
 
+// swagger:operation GET /api/v1/me/cards Cards get_api_v1_me_cards
+//
+// ---
+// summary: "Получить карточки с пагинацией"
+// description: "Следующий cursor возвращается только если есть следующая страница; meta.nextCursor при nil опускается. Формат ID — int64."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/cardList"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -88,6 +103,21 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	response.JSONWithMeta(w, http.StatusOK, items, response.Meta{NextCursor: nextCursor})
 }
+
+// swagger:operation GET /api/v1/me/cards/session Cards get_api_v1_me_cards_session
+//
+// ---
+// summary: "Получить сессию повторения карточек"
+// description: "Получить сессию повторения карточек. GET только выбирает карточки. scope=practice сам по себе не отключает изменения расписания у POST /me/cards/{cardId}/rate. Для свободной тренировки без изменения FSRS клиент должен хранить локальный результат и не отправлять этот POST."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/cardSession"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Session(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -114,6 +144,20 @@ func (h *Handler) Session(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, session)
 }
 
+// swagger:operation GET /api/v1/me/cards/due-summary Cards get_api_v1_me_cards_due_summary
+//
+// ---
+// summary: "Получить сводку просроченных карточек"
+// description: "Получить сводку просроченных карточек."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/cardDueSummary"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) DueSummary(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -131,6 +175,23 @@ func (h *Handler) DueSummary(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusOK, summary)
 }
+
+// swagger:operation POST /api/v1/me/cards/{cardId}/rate Cards post_api_v1_me_cards_cardId_rate
+//
+// ---
+// summary: "Оценить повторение карточки"
+// description: "Оценка hard возвращает repeatInCurrentSession=true. reviewedAt обязателен в RFC3339; расписание рассчитывается FSRS. Текущий сервис всегда создаёт/обновляет расписание FSRS; scope из sessionId не проверяется. sessionId применяется только к sessionProgress. Сервер возвращает repeatInCurrentSession=true на каждую hard-оценку; ограничение числа перепоказов из ТЗ реализуется клиентом."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/cardRated"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Rate(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -173,6 +234,22 @@ func (h *Handler) Rate(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusOK, result)
 }
+
+// swagger:operation POST /api/v1/me/cards Cards post_api_v1_me_cards
+//
+// ---
+// summary: "Создать пользовательскую карточку"
+// description: "Создать пользовательскую карточку."
+// security:
+// - BearerAuth: []
+// responses:
+//   "201": {$ref: "#/responses/cardDetail"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -221,6 +298,22 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusCreated, card)
 }
 
+// swagger:operation GET /api/v1/me/cards/{cardId} Cards get_api_v1_me_cards_cardId
+//
+// ---
+// summary: "Получить карточку по ID"
+// description: "Получить карточку по ID."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/cardDetail"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -250,6 +343,23 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusOK, card)
 }
+
+// swagger:operation PATCH /api/v1/me/cards/{cardId} Cards patch_api_v1_me_cards_cardId
+//
+// ---
+// summary: "Изменить пользовательскую карточку"
+// description: "Редактируются карточки пользователя; недоступная карточка возвращает 404. Null трактуется так же, как отсутствие поля."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/cardDetail"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -309,6 +419,22 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusOK, card)
 }
+
+// swagger:operation DELETE /api/v1/me/cards/{cardId} Cards delete_api_v1_me_cards_cardId
+//
+// ---
+// summary: "Удалить пользовательскую карточку"
+// description: "Успех: 204 без JSON-тела."
+// security:
+// - BearerAuth: []
+// responses:
+//   "204": {$ref: "#/responses/noContent"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())

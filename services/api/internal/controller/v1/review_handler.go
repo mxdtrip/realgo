@@ -40,6 +40,23 @@ func RegisterReviewRoutes(r chi.Router, h *ReviewHandler) {
 }
 
 // RecordProblemAttempt: POST /me/reviews/problems/{problemId}/attempt
+// swagger:operation POST /api/v1/me/reviews/problems/{problemId}/attempt Reviews post_api_v1_me_reviews_problems_problemId_attempt
+//
+// ---
+// summary: "Записать попытку решения задачи"
+// description: "Записать попытку решения задачи."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/problemAttempt"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *ReviewHandler) RecordProblemAttempt(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {
@@ -87,6 +104,21 @@ func (h *ReviewHandler) RecordProblemAttempt(w http.ResponseWriter, r *http.Requ
 }
 
 // GetQueue: GET /me/reviews/queue
+// swagger:operation GET /api/v1/me/reviews/queue Reviews get_api_v1_me_reviews_queue
+//
+// ---
+// summary: "Получить очередь повторений"
+// description: "Получить очередь повторений. Следующий курсор находится в meta.nextCursor как непрозрачная строка; это не объект nextCursor в корне ответа."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/reviewQueue"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *ReviewHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {
@@ -128,6 +160,23 @@ func (h *ReviewHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 }
 
 // RateReview: POST /me/reviews/{reviewId}/rate
+// swagger:operation POST /api/v1/me/reviews/{reviewId}/rate Reviews post_api_v1_me_reviews_reviewId_rate
+//
+// ---
+// summary: "Оценить повторение по review ID"
+// description: "Оценить повторение по review ID. Handler/service не требуют, чтобы повторение уже было due: тот же маршрут применяется к upcoming. reviewedAt принимается в RFC3339."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/reviewRated"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *ReviewHandler) RateReview(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {
@@ -178,6 +227,20 @@ func (h *ReviewHandler) RateReview(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetStats: GET /me/reviews/stats
+// swagger:operation GET /api/v1/me/reviews/stats Reviews get_api_v1_me_reviews_stats
+//
+// ---
+// summary: "Получить статистику повторений"
+// description: "Получить статистику повторений."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/reviewStats"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *ReviewHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	userID, err := getUserID(r)
 	if err != nil {

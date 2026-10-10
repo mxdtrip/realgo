@@ -17,12 +17,31 @@ type healthHandler struct {
 
 // live reports that the process is up. It does not touch dependencies, so it
 // stays green during a transient Postgres or Redis outage.
+// swagger:operation GET /healthz Health get_healthz
+//
+// ---
+// summary: "Проверить, что API запущен"
+// description: "Проверить, что API запущен."
+// responses:
+//   "200": {$ref: "#/responses/live"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *healthHandler) live(w http.ResponseWriter, _ *http.Request) {
 	response.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // ready reports whether the service can serve traffic: both Postgres and Redis
 // must answer a ping.
+// swagger:operation GET /readyz Health get_readyz
+//
+// ---
+// summary: "Проверить доступность PostgreSQL и Redis"
+// description: "Проверить доступность PostgreSQL и Redis."
+// responses:
+//   "200": {$ref: "#/responses/ready"}
+//   "503": {$ref: "#/responses/dependenciesUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *healthHandler) ready(w http.ResponseWriter, r *http.Request) {
 	if h.pg == nil {
 		slog.Error("server: health ready failed", slog.String("reason", "postgres not configured"))

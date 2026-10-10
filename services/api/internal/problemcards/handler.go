@@ -49,6 +49,22 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 //
 // Clients should poll every 2-3s until status is ready|none, capping at ~60s
 // and treating a still-generating result past the cap as none.
+// swagger:operation GET /api/v1/me/problems/{problemId}/cards Problems get_api_v1_me_problems_problemId_cards
+//
+// ---
+// summary: "Получить карточки и статус их генерации по задаче"
+// description: "data.status: ready (карточки доступны), generating (генерация идёт), none (карточек и активной генерации нет). Возвращает доступные пользователю глобальные и собственные карточки. Для глобальных AI-карточек требуется прогресс пользователя по задаче со статусом solved или reviewing. Собственные и глобальные не-AI карточки проверяются отдельно. Если карточки существуют, но не видны пользователю, ready не гарантируется."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/problemCards"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

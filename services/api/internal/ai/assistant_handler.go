@@ -56,6 +56,26 @@ func RegisterAssistantRoutes(r chi.Router, h *AssistantHandler) {
 }
 
 // Hint handles POST /api/v1/assistant/hint.
+// swagger:operation POST /api/v1/assistant/hint AI post_api_v1_assistant_hint
+//
+// ---
+// summary: "Получить подсказку AI-ассистента"
+// description: "Без stream=1 возвращается JSON в data. stream=1 возвращает SSE: delta с {text}, затем done с AssistantHintResponse либо error с {code,message}. После начала SSE HTTP остаётся 200 даже при событии error; SSE payload не обёрнут в data. Лимит: 30 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis."
+// security:
+// - BearerAuth: []
+// produces: ["application/json", "text/event-stream"]
+// x-rate-limit: {"identity": "ID пользователя из контекста после requireAuth.", "requests": 30, "separatePerMethodAndPath": true, "windowSeconds": 60}
+// responses:
+//   "200": {$ref: "#/responses/assistantHint"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "429": {$ref: "#/responses/aiQuotaExceeded"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "502": {$ref: "#/responses/aiProviderError"}
+//   "503": {$ref: "#/responses/aiAssistantUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *AssistantHandler) Hint(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

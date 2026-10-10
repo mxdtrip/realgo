@@ -14,12 +14,30 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// TokenPair documents the AuthTokenPair JSON shape.
+//
+// Example: {"session_id":"sssssssssssssssssssssssssssssssssssssssssss","access_token":"<access_token>","refresh_token":"<refresh_token>","token_type":"Bearer","expires_in":900}
+//
+// swagger:model AuthTokenPair
 type TokenPair struct {
-	SessionID    string `json:"session_id"`
-	AccessToken  string `json:"access_token"`
+	// Идентификатор refresh-сессии; браузер передаёт его в X-Realgo-Session. Непрозрачная строка из 43 символов base64url; не является refresh token.
+	//
+	// Required: true
+	SessionID string `json:"session_id"`
+	// JWT для заголовка Authorization: Bearer <access_token>.
+	//
+	// Required: true
+	AccessToken string `json:"access_token"`
+	// В обычном API-режиме возвращается в JSON. При X-Realgo-Client: web поле опускается из-за json omitempty; секрет передаётся в HttpOnly cookie.
+	//
+	// Required: false
 	RefreshToken string `json:"refresh_token,omitempty"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
+	// Required: true
+	TokenType string `json:"token_type"`
+	// Время жизни access token в секундах.
+	//
+	// Required: true
+	ExpiresIn int `json:"expires_in"`
 }
 
 func (s *Service) tokenPair(access, refresh string) TokenPair {

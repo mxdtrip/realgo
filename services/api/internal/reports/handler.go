@@ -27,6 +27,26 @@ type Handler struct{ repo repository }
 
 func NewHandler(repo repository) *Handler { return &Handler{repo: repo} }
 
+// swagger:operation POST /api/v1/me/problem-reports Reports post_api_v1_me_problem_reports
+//
+// ---
+// summary: "Отправить отчёт о проблеме с диагностикой"
+// description: "Можно отправить JSON до 2 MiB либо multipart/form-data: report — JSON-текст ReportsRequest, attachment — максимум один файл. Фото и UTF-8 текст до 5 MiB; видео до 15 MiB. Общий multipart лимит 17.5 MiB. Неизвестные JSON-поля отклоняются. Лимит: 5 запросов за 600 секунд на метод/путь и identity; зависит от наличия Redis.\n\nSwagger UI показывает multipart/form-data: report — JSON-текст, attachment — необязательный файл. API также принимает application/json с телом ReportsRequest."
+// security:
+// - BearerAuth: []
+// consumes: ["multipart/form-data"]
+// x-json-request-body: {"schema": {"$ref": "#/definitions/ReportsRequest"}}
+// x-rate-limit: {"identity": "ID пользователя из контекста после requireAuth.", "requests": 5, "separatePerMethodAndPath": true, "windowSeconds": 600}
+// responses:
+//   "201": {$ref: "#/responses/reportCreated"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authRateLimitUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

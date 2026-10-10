@@ -24,27 +24,84 @@ type questionDetail struct {
 	ProblemID *int64
 }
 
+// questionItem documents the QuizQuestionItem JSON shape.
+//
+// swagger:model QuizQuestionItem
 type questionItem struct {
-	ID           int64    `json:"id"`
-	Question     string   `json:"question"`
-	Options      []string `json:"options"`
-	Difficulty   *string  `json:"difficulty"`
-	CreatedByAI  bool     `json:"created_by_ai"`
-	CreatedAt    string   `json:"created_at"`
-	ProblemID    *int64   `json:"problem_id"`
-	ProblemTitle *string  `json:"problem_title"`
-	PatternID    *int64   `json:"pattern_id"`
-	PatternName  *string  `json:"pattern_name"`
+	// Required: true
+	ID int64 `json:"id"`
+	// Required: true
+	Question string `json:"question"`
+	// Required: true
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	Options []string `json:"options"`
+	// Required: true
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	Difficulty *string `json:"difficulty"`
+	// Required: true
+	CreatedByAI bool `json:"created_by_ai"`
+	// Required: true
+	CreatedAt string `json:"created_at"`
+	// Required: true
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	ProblemID *int64 `json:"problem_id"`
+	// Required: true
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	ProblemTitle *string `json:"problem_title"`
+	// Required: true
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	PatternID *int64 `json:"pattern_id"`
+	// Required: true
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	PatternName *string `json:"pattern_name"`
 }
 
+// answerRequest documents the QuizAnswerRequest JSON shape.
+//
+// Example: {"option":0}
+//
+// swagger:model QuizAnswerRequest
+// swagger:additionalProperties false
 type answerRequest struct {
+	// Индекс варианта ответа с нуля, меньше количества options. Отсутствующее поле читается как 0; повторный ответ возвращает 409.
+	//
+	// Required: false
+	// Minimum: 0
 	Option int `json:"option"`
 }
 
+// answerResult documents the QuizAnswerResult JSON shape.
+//
+// swagger:model QuizAnswerResult
 type answerResult struct {
-	Correct       bool    `json:"correct"`
-	CorrectOption int     `json:"correct_option"`
-	Explanation   *string `json:"explanation"`
+	// Required: true
+	Correct bool `json:"correct"`
+	// Required: true
+	CorrectOption int `json:"correct_option"`
+	// Required: true
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	Explanation *string `json:"explanation"`
 }
 
 func questionItemFromSessionQuestion(q sessionQuestion) questionItem {

@@ -48,6 +48,21 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Post("/{problemId}/save", h.Save)
 }
 
+// swagger:operation GET /api/v1/me/problems Problems get_api_v1_me_problems
+//
+// ---
+// summary: "Получить задачи пользователя с пагинацией"
+// description: "Возвращает задачи пользователя. POST /me/problems в текущем router не зарегистрирован: для сохранения существующей задачи используйте /{problemId}/save. Это задачи в пользовательской области видимости: есть user_problem_progress, задача создана этим пользователем или есть его расписание повторения. Полный глобальный каталог не возвращается. Сортировка: createdAt DESC, id DESC. status=solved не поддерживается и возвращает 400 VALIDATION_ERROR; разрешены saved/reviewing/mastered/archived. Статус solved из БД здесь отображается как mastered."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/problemList"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -75,6 +90,22 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /me/problems/{problemId}
+// swagger:operation GET /api/v1/me/problems/{problemId} Problems get_api_v1_me_problems_problemId
+//
+// ---
+// summary: "Получить задачу пользователя по ID"
+// description: "Получить задачу пользователя по ID."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/problemDetail"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -106,6 +137,22 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /me/problems/{problemId}/save
+// swagger:operation POST /api/v1/me/problems/{problemId}/save Problems post_api_v1_me_problems_problemId_save
+//
+// ---
+// summary: "Сохранить задачу в профиль"
+// description: "Сохраняет существующую задачу в профиль; JSON-тело не требуется."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/problemSaved"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) Save(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

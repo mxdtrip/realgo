@@ -28,6 +28,17 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Get("/neetcode_150", h.GetNeetCode150)
 }
 
+// swagger:operation GET /api/v1/roadmaps/neetcode_150 get_api_v1_roadmaps_neetcode_150
+//
+// ---
+// tags: ["Roadmaps catalog"]
+// summary: "Получить публичный каталог NeetCode 150"
+// description: "Публичная ручка без Bearer. Административный HTML-интерфейс /admin не входит в JSON API."
+// responses:
+//   "200": {$ref: "#/responses/roadmapCatalog"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) GetNeetCode150(w http.ResponseWriter, r *http.Request) {
 	items, err := h.repo.List(r.Context(), neetcode150Code)
 	if err != nil {
