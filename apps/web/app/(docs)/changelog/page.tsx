@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Changelog",
+  title: "История обновлений",
+  description:
+    "Что изменилось в ReAlgo по релизам: Pattern Atlas, кабинет на живых данных, AI-подсказки, HackerRank и карточки повторения.",
+  alternates: { canonical: "/changelog" },
 };
 
 const entries = [

@@ -4,6 +4,8 @@ import { SupportForm } from "./SupportForm";
 
 export const metadata: Metadata = {
   title: "Поддержка",
+  description: "Есть вопрос по ReAlgo или что-то не работает? Напишите в поддержку — ответим напрямую с указанного адреса.",
+  alternates: { canonical: "/support" },
 };
 
 export default function SupportPage() {

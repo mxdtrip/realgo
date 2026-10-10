@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { AuthForm } from "../_auth/AuthForm";
 import { AuthPageShell } from "../_auth/AuthPageShell";
 
-export const metadata: Metadata = { title: "Регистрация" };
+export const metadata: Metadata = { title: "Регистрация", robots: { index: false, follow: true } };
 
 export default function RegisterPage() {
   return (

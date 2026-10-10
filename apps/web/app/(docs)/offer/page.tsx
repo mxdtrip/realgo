@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Публичная оферта",
+  description:
+    "Публичная оферта ReAlgo: предмет договора, цена и порядок оплаты тарифа Pro, отказ от договора и возврат средств, ответственность сторон.",
+  alternates: { canonical: "/offer" },
 };
 
 const sections = [
