@@ -44,13 +44,20 @@ def input_errors(mode, env):
     return errors
 
 
+def rendered_value(value):
+    # `compose config` escapes dollar signs for a re-usable serialized model.
+    # Containers receive the original value; compare that value, not JSON's
+    # escaped representation. This also preserves literal consecutive dollars.
+    return value.replace("$$", "$") if isinstance(value, str) else value
+
+
 def database_errors(configured, running):
     # A new POSTGRES_PASSWORD does not change the password in an existing
     # volume. Stop before recreating API/migrate with incompatible credentials.
     return [
         f"{key} differs from the running API; migrate existing database settings first"
         for key in ("DB_USER", "DB_NAME", "DB_PASSWORD")
-        if configured.get(key) != running.get(key)
+        if rendered_value(configured.get(key)) != running.get(key)
     ]
 
 
@@ -75,7 +82,7 @@ def check_running_database(mode, verify_secrets=False):
         inspected = command_json(["docker", "inspect", container])[0]
         running = dict(item.split("=", 1) for item in inspected["Config"]["Env"])
         errors.extend(database_errors(config["services"]["api"]["environment"], running))
-        if config["services"]["api"]["environment"].get("REDIS_PASSWORD", "") != running.get("REDIS_PASSWORD", ""):
+        if rendered_value(config["services"]["api"]["environment"].get("REDIS_PASSWORD", "")) != running.get("REDIS_PASSWORD", ""):
             errors.append("REDIS_PASSWORD differs from the running API; migrate Redis auth explicitly")
     if verify_secrets:
         fields = {
@@ -98,7 +105,7 @@ def check_running_database(mode, verify_secrets=False):
                 running = dict(item.split("=", 1) for item in inspected["Config"]["Env"])
                 configured = config["services"][service].get("environment", {})
                 for key in keys:
-                    if configured.get(key, "") != running.get(key, ""):
+                    if rendered_value(configured.get(key, "")) != running.get(key, ""):
                         errors.append(f"{service}/{key} differs from the running credential")
     return errors
 

@@ -78,6 +78,11 @@ class DeploymentEnvTests(unittest.TestCase):
         self.assertNotIn(configured["DB_PASSWORD"], errors[0])
         self.assertEqual(CHECK.database_errors(running, running), [])
 
+    def test_rendered_dollar_escaping_preserves_the_actual_password(self):
+        running = dict(DB_USER="postgres", DB_NAME="realgo", DB_PASSWORD="fixture$one$$two")
+        configured = dict(running, DB_PASSWORD="fixture$$one$$$$two")
+        self.assertEqual(CHECK.database_errors(configured, running), [])
+
     def test_running_container_mismatch_is_checked_before_deploy(self):
         config = {"name": "realgo-staging", "services": {"api": {"environment": {
             "DB_USER": "postgres", "DB_NAME": "realgo", "DB_PASSWORD": "new-fixture",
