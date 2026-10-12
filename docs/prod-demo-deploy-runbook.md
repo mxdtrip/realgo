@@ -40,24 +40,21 @@ Production не собирается из feature-ветки или напрям
    CI и собирает точный commit из `main` на self-hosted runner `appbox`.
 4. Workflow пересоздаёт Caddy и проверяет маршрутизацию презентации и AI.
 
-Workflow напрямую читает следующие GitHub repository secrets:
+Workflow использует GitHub Environment `production`. Полная матрица Secrets,
+Variables и порядок миграции: [github-deploy-settings.md](github-deploy-settings.md).
+`DB_PASSWORD` должен совпадать с текущим паролем PostgreSQL; изменение настройки
+не меняет пароль существующего volume. Preflight отклоняет несовпадение с
+работающим API до перезапуска контейнеров.
 
-| Переменная | Назначение |
-| --- | --- |
-| `AUTH_JWT_SECRET` | Подпись сессий; изменение завершит все активные сессии. |
-| `FRP_VPS_HOST`, `FRP_TOKEN` | Туннель между appbox и VPS edge. |
-| `VPN_SUB_URL` | Исходящий tunnel API для AI-провайдера. |
-| `SMTP2GO_SMTP_USERNAME`, `SMTP2GO_SMTP_PASSWORD` | Транзакционная почта. |
+Незаданные GitHub настройки временно сохраняют значения из environment процесса
+self-hosted runner, чтобы перенос не отключил действующий OAuth или GoAdmin.
+Compose не читает ignored `.env` из checkout. После проверенной миграции старые
+значения runner можно удалить. Используйте отдельные credentials окружений;
+общий `FRP_TOKEN` должен совпадать с VPS endpoint.
 
-`GEMINI_API_KEY` и `SEED_USERS_PASSWORD` опциональны. `DB_PASSWORD` и
-`REDIS_PASSWORD` текущий workflow получает из постоянного environment процесса
-self-hosted runner; для существующего PostgreSQL volume пароль должен совпадать
-с реальным паролем роли. OAuth и GoAdmin также настраиваются в окружении runner,
-если соответствующие возможности включены. Секреты production не должны
-совпадать со staging.
-
-`APP_ENV=production` и `MAIL_BASE_URL=https://realgo.dev` задаются production
-overlay/workflow. Не меняйте их на staging-значения.
+`APP_ENV=production` задаёт overlay; `MAIL_BASE_URL` — Variable окружения с
+дефолтом `https://realgo.dev`. Общий repository secret `MAIL_BASE_URL` здесь
+не используется.
 
 ## Локальный запуск для проверки production-ветки
 
