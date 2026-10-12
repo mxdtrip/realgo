@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "'deploy' (default) rebuilds and restarts; 'logs' tails the running api container; 'curl' probes Groq connectivity from the same docker network"
+        description: "'deploy' (default) rebuilds and restarts; 'verify-env' checks GitHub settings without changing containers; 'logs' tails the running api container; 'curl' probes Groq connectivity from the same docker network"
         required: false
         default: "deploy"
       grep:
@@ -31,6 +31,7 @@ jobs:
   deploy:
     needs: verify
     runs-on: [self-hosted, linux, appbox]
+    environment: production
     permissions:
       contents: read
       packages: read
@@ -39,34 +40,99 @@ jobs:
       - name: Build & start
         if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl')
         env:
+          # Версия сборки, видна в интерфейсе
+          DEPLOY_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'deploy' }}
           APP_VERSION: production-${{ github.run_number }}
+          # SHA коммита, из которого собрана версия
           COMMIT_SHA: ${{ github.sha }}
-          AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
-          FRP_VPS_HOST: ${{ secrets.FRP_VPS_HOST }}
-          FRP_TOKEN: ${{ secrets.FRP_TOKEN }}
-          # Password for the re-seeded demo accounts. Optional: when the secret
-          # is unset the seed falls back to its local default (see DEMO.md).
-          SEED_USERS_PASSWORD: ${{ secrets.SEED_USERS_PASSWORD }}
-          # Gemini key for AI card generation. Optional: when unset the api
-          # boots normally with generation disabled.
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # The API remains in vpngw for AI egress. It submits only to the
-          # private relay; the relay lives on the normal Docker network and
-          # forwards transactional mail to SMTP2GO over STARTTLS.
-          MAIL_ENABLED: ${{ secrets.SMTP2GO_SMTP_USERNAME != '' && secrets.SMTP2GO_SMTP_PASSWORD != '' }}
-          SMTP2GO_SMTP_HOST: mail.smtp2go.com
-          SMTP2GO_SMTP_PORT: "2525"
-          SMTP2GO_SMTP_TLS_MODE: starttls
-          SMTP2GO_SMTP_USERNAME: ${{ secrets.SMTP2GO_SMTP_USERNAME }}
-          SMTP2GO_SMTP_PASSWORD: ${{ secrets.SMTP2GO_SMTP_PASSWORD }}
-          MAIL_BASE_URL: https://realgo.dev
-          MAIL_SMTP_TIMEOUT: 10s
-          # VLESS subscription for the vpngw gateway (api shares its netns so
-          # Groq calls ride this tunnel instead of the ISP's flagged egress).
-          VPN_SUB_URL: ${{ secrets.VPN_SUB_URL }}
+          # Пользователь PostgreSQL (менять только вместе с существующим томом БД)
+          DEPLOY_DB_USER: ${{ vars.DB_USER }}
+          # Пароль PostgreSQL (применяется только при первой инициализации тома)
+          DEPLOY_DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          # Имя базы данных PostgreSQL
+          DEPLOY_DB_NAME: ${{ vars.DB_NAME }}
+          # Порт PostgreSQL на localhost хоста (по умолчанию 5432)
+          DEPLOY_DB_PORT: ${{ vars.DB_PORT }}
+          # Пароль Redis
+          DEPLOY_REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          # Preserve the existing Redis auth mode during credential migration.
+          DEPLOY_REDIS_AUTH_ENABLED: ${{ vars.REDIS_AUTH_ENABLED || 'true' }}
+          # Порт Redis на localhost хоста (по умолчанию 6379)
+          DEPLOY_REDIS_PORT: ${{ vars.REDIS_PORT }}
+          # Опубликованный порт caddy на хосте (по умолчанию 8080)
+          DEPLOY_API_PORT: ${{ vars.API_PORT }}
+          # Секрет подписи JWT, минимум 32 символа (смена разлогинит всех)
+          DEPLOY_AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
+          # Время жизни access-токена (по умолчанию 15m)
+          DEPLOY_AUTH_ACCESS_TTL: ${{ vars.AUTH_ACCESS_TTL }}
+          # Время жизни refresh-токена (по умолчанию 720h)
+          DEPLOY_AUTH_REFRESH_TTL: ${{ vars.AUTH_REFRESH_TTL }}
+          # Адрес VPS с frps для reverse-туннеля
+          DEPLOY_FRP_VPS_HOST: ${{ vars.FRP_VPS_HOST }}
+          # Общий токен авторизации frp, должен совпадать с VPS
+          DEPLOY_FRP_TOKEN: ${{ secrets.FRP_TOKEN }}
+          # Пароль демо-аккаунтов; обязателен при ручном запуске prod-demo-users
+          DEPLOY_SEED_USERS_PASSWORD: ${{ secrets.SEED_USERS_PASSWORD }}
+          # Ключ AI-провайдера (сейчас Groq); пусто — генерация карточек отключена
+          DEPLOY_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Модель для генерации карточек (по умолчанию llama-3.3-70b-versatile)
+          DEPLOY_AI_MODEL: ${{ vars.AI_MODEL }}
+          # Базовый URL OpenAI-совместимого AI API (по умолчанию https://api.groq.com/openai/v1)
+          DEPLOY_AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+          # Включает отправку писем; по умолчанию true, если заданы логин и пароль SMTP2GO
+          DEPLOY_MAIL_ENABLED: ${{ vars.MAIL_ENABLED || (secrets.SMTP2GO_SMTP_USERNAME != '' && secrets.SMTP2GO_SMTP_PASSWORD != '') }}
+          # Публичный URL сайта для ссылок в письмах, CSRF и cookie (по умолчанию https://realgo.dev)
+          DEPLOY_MAIL_BASE_URL: ${{ vars.MAIL_BASE_URL || 'https://realgo.dev' }}
+          # Таймаут SMTP-соединения (по умолчанию 10s)
+          DEPLOY_MAIL_SMTP_TIMEOUT: ${{ vars.MAIL_SMTP_TIMEOUT }}
+          # Хост SMTP2GO (по умолчанию mail.smtp2go.com)
+          DEPLOY_SMTP2GO_SMTP_HOST: ${{ vars.SMTP2GO_SMTP_HOST }}
+          # Порт SMTP2GO (по умолчанию 2525)
+          DEPLOY_SMTP2GO_SMTP_PORT: ${{ vars.SMTP2GO_SMTP_PORT }}
+          # Режим TLS relay -> SMTP2GO (по умолчанию starttls)
+          DEPLOY_SMTP2GO_SMTP_TLS_MODE: ${{ vars.SMTP2GO_SMTP_TLS_MODE }}
+          # Логин SMTP2GO (обязателен для mail-relay)
+          DEPLOY_SMTP2GO_SMTP_USERNAME: ${{ secrets.SMTP2GO_SMTP_USERNAME }}
+          # Пароль SMTP2GO (обязателен для mail-relay)
+          DEPLOY_SMTP2GO_SMTP_PASSWORD: ${{ secrets.SMTP2GO_SMTP_PASSWORD }}
+          # Client ID входа через Яндекс (публичный, попадает в сборку web); пусто — кнопка отключена
+          DEPLOY_YANDEX_CLIENT_ID: ${{ vars.YANDEX_CLIENT_ID }}
+          # Client Secret входа через Яндекс (только для API)
+          DEPLOY_YANDEX_CLIENT_SECRET: ${{ secrets.YANDEX_CLIENT_SECRET }}
+          # Client ID входа через GitHub (публичный, попадает в сборку web); имя настройки GitHub не может начинаться с GITHUB_
+          DEPLOY_GITHUB_CLIENT_ID: ${{ vars.GH_OAUTH_CLIENT_ID }}
+          # Client Secret входа через GitHub (только для API)
+          DEPLOY_GITHUB_CLIENT_SECRET: ${{ secrets.GH_OAUTH_CLIENT_SECRET }}
+          # Логин первого администратора GoAdmin (задаётся до первого старта API)
+          DEPLOY_GOADMIN_USERNAME: ${{ vars.GOADMIN_USERNAME }}
+          # Пароль первого администратора GoAdmin, 12-72 байта
+          DEPLOY_GOADMIN_PASSWORD: ${{ secrets.GOADMIN_PASSWORD }}
+          # VLESS-подписка для шлюза vpngw (через него API ходит к AI-провайдеру)
+          DEPLOY_VPN_SUB_URL: ${{ secrets.VPN_SUB_URL }}
+          # CIDR прокси, чьему X-Forwarded-For доверяет rate limiter (по умолчанию частные сети)
+          DEPLOY_TRUSTED_PROXY_CIDRS: ${{ vars.TRUSTED_PROXY_CIDRS }}
+          # Origin расширения Chrome, которому разрешён CORS
+          DEPLOY_REALGO_EXTENSION_ORIGIN: ${{ vars.REALGO_EXTENSION_ORIGIN }}
+          # Базовый URL API, вшиваемый в web; пусто — относительные URL (тот же origin)
+          DEPLOY_NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+          # FSRS: целевая вероятность вспомнить карточку (по умолчанию 0.9)
+          DEPLOY_FSRS_REQUEST_RETENTION: ${{ vars.FSRS_REQUEST_RETENTION }}
+          # FSRS: максимальный интервал между повторами в днях (по умолчанию 36500)
+          DEPLOY_FSRS_MAXIMUM_INTERVAL: ${{ vars.FSRS_MAXIMUM_INTERVAL }}
+          # FSRS: включает краткосрочное планирование (по умолчанию true)
+          DEPLOY_FSRS_ENABLE_SHORT_TERM: ${{ vars.FSRS_ENABLE_SHORT_TERM }}
+          # FSRS: включает случайный разброс интервалов (по умолчанию false)
+          DEPLOY_FSRS_ENABLE_FUZZ: ${{ vars.FSRS_ENABLE_FUZZ }}
+          # Сколько секунд ждать готовности стека в итоговом баннере (по умолчанию 180)
+          DEPLOY_READY_TIMEOUT: ${{ vars.READY_TIMEOUT }}
         run: |
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml pull --ignore-buildable || true
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --build --remove-orphans
+          if [ "$DEPLOY_MODE" = verify-env ]; then
+            source deploy/prepare-env.sh production verify-secrets
+            exit 0
+          fi
+          source deploy/prepare-env.sh production
+          docker compose --env-file /dev/null -f docker-compose.yml -f docker-compose.prod.yml pull --ignore-buildable || true
+          docker compose --env-file /dev/null -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --build --remove-orphans
 
           # Caddy parses its Caddyfile ONCE, at process start. The file is a
           # read-only bind mount, so editing it changes nothing for a container
@@ -80,10 +146,10 @@ jobs:
           # Recreating just the edge is cheap and removes the whole class of
           # "config on disk ≠ config in memory". --no-deps so this does not
           # churn the app containers behind it.
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --force-recreate --no-deps caddy
+          docker compose --env-file /dev/null -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo up -d --force-recreate --no-deps caddy
 
       - name: Verify presentation routing
-        if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl')
+        if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl' && inputs.mode != 'verify-env')
         run: |
           # The deck is a separate nginx container that Caddy exposes at
           # /presentation/ by stripping the prefix. Two things can silently
@@ -97,14 +163,13 @@ jobs:
           #     the prefix strip were misconfigured, because nginx's SPA
           #     fallback answers index.html for unknown paths.
           #
-          # The port is hardcoded rather than read from `docker compose port`
-          # for the same reason the next step uses plain `docker logs`: any
-          # compose subcommand re-parses the compose file, which fails in a
-          # step without the secrets env block above (AUTH_JWT_SECRET is
-          # declared `:?`, so it must resolve even to print a port number).
-          # 8080 is caddy's published port — `${API_PORT:-8080}` in
-          # docker-compose.yml, and the deploy environment does not set it.
-          base="http://127.0.0.1:8080"
+          # The port comes from the resolved API_PORT setting (same default as
+          # `${API_PORT:-8080}` in docker-compose.yml) rather than from
+          # `docker compose port`: any compose subcommand re-parses the compose
+          # file, which fails in a step without the secrets env block above
+          # (AUTH_JWT_SECRET is declared `:?`, so it must resolve even to print
+          # a port number).
+          base="http://127.0.0.1:${REALGO_DEPLOY_API_PORT}"
 
           # Retried, not probed once: the deck image carries a HEALTHCHECK with
           # a 5s start period, so a single shot right after `up` races the
@@ -132,7 +197,7 @@ jobs:
           probe "asset"     "$base/presentation/vendor/three/three.module.min.js" 200
 
       - name: Verify AI wiring
-        if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl')
+        if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl' && inputs.mode != 'verify-env')
         run: |
           sleep 3
           # Plain `docker logs` by container name — NOT `docker compose logs`,
@@ -197,5 +262,5 @@ jobs:
             cat /tmp/body
           ' 2>&1 || true
       - name: Prune old images
-        if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl')
+        if: github.event_name != 'workflow_dispatch' || (inputs.mode != 'logs' && inputs.mode != 'curl' && inputs.mode != 'verify-env')
         run: docker image prune -f

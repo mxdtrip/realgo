@@ -95,6 +95,25 @@ jobs:
           AUTH_JWT_SECRET: ci-secret-with-more-than-32-random-looking-characters
         run: docker compose config --quiet
 
+      - name: Check production Docker Compose config
+        working-directory: ${{ github.workspace }}
+        env:
+          AUTH_JWT_SECRET: ci-secret-with-more-than-32-random-looking-characters
+          DB_PASSWORD: ci-database-password
+          SMTP2GO_SMTP_USERNAME: ci-user
+          SMTP2GO_SMTP_PASSWORD: ci-password
+          FRP_VPS_HOST: 127.0.0.1
+          FRP_TOKEN: ci-frp-token
+          VPN_SUB_URL: https://example.invalid/subscription
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile prod-demo config --quiet
+
+      - name: Check environment-only deployment inputs
+        working-directory: ${{ github.workspace }}
+        run: |
+          bash -n deploy/prepare-env.sh
+          python3 -m unittest discover -s deploy -p 'test_*.py'
+
+
   web:
     name: Web
     runs-on: ubuntu-latest
