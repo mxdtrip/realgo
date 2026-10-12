@@ -14,14 +14,11 @@ appbox он занимает порты `127.0.0.1:5433`, `127.0.0.1:6380` и `8
 1. Установить на appbox Docker Engine, Compose plugin и Git. Пользователь
    self-hosted GitHub Actions runner должен иметь доступ к Docker без `sudo`.
 2. Подключить runner к репозиторию с labels `self-hosted`, `linux`, `appbox`.
-3. В GitHub создать Environment с именем `staging` и добавить secrets:
-
-   - `AUTH_JWT_SECRET`, `DB_PASSWORD`, `REDIS_PASSWORD`;
-   - `SMTP2GO_SMTP_USERNAME`, `SMTP2GO_SMTP_PASSWORD`;
-   - `FRP_VPS_HOST`, `FRP_TOKEN`;
-   - при необходимости `YANDEX_CLIENT_ID`, `YANDEX_CLIENT_SECRET`,
-     `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOADMIN_USERNAME` и
-     `GOADMIN_PASSWORD`.
+3. В GitHub создать Environment с именем `staging` и настроить Secrets и
+   Variables по [матрице настроек](github-deploy-settings.md). Пароли и ключи
+   хранятся в Secrets; публичные Client ID, адреса и параметры — в Variables.
+   Для GitHub OAuth имена настроек — `GH_OAUTH_CLIENT_ID` и
+   `GH_OAUTH_CLIENT_SECRET`, workflow передаёт их API как `GITHUB_CLIENT_*`.
 
    `AUTH_JWT_SECRET` должен быть отдельным от production и оставаться
    постоянным между сборками. Пустые обязательные secrets приводят к
@@ -33,8 +30,10 @@ appbox он занимает порты `127.0.0.1:5433`, `127.0.0.1:6380` и `8
    `.github/workflows/deploy.yml` запустит CI, соберёт изолированный проект
    `realgo-staging` и выполнит smoke-проверки на appbox port `8081`.
 
-Workflow намеренно получает secrets из GitHub Environment, а не из файла в
-checkout: `actions/checkout` может очищать ignored-файлы рабочего каталога.
+Workflow предпочитает настройки GitHub Environment и запускает Compose с
+`--env-file /dev/null`: `actions/checkout` может очищать ignored-файлы рабочего
+каталога. На время миграции незаданные настройки сохраняют значения из
+окружения процесса runner. Перед запуском контейнеров выполняется preflight.
 
 ## Ручной запуск
 
