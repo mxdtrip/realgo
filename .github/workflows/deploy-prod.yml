@@ -31,6 +31,7 @@ jobs:
   deploy:
     needs: verify
     runs-on: [self-hosted, linux, appbox]
+    environment: production
     permissions:
       contents: read
       packages: read
