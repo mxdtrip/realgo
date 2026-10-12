@@ -27,6 +27,20 @@ type repository interface {
 	Clear(ctx context.Context, userID int64) error
 }
 
+// swagger:operation GET /api/v1/me/roadmaps Roadmap get_api_v1_me_roadmaps
+//
+// ---
+// summary: "Получить сохранённые roadmap-планы"
+// description: "Получить сохранённые roadmap-планы."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/roadmapList"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -41,6 +55,22 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	response.JSON(w, http.StatusOK, data)
 }
+
+// swagger:operation PUT /api/v1/me/roadmaps/{planKey}/activate Roadmap put_api_v1_me_roadmaps_planKey_activate
+//
+// ---
+// summary: "Активировать сохранённый roadmap"
+// description: "Активировать сохранённый roadmap."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/roadmap"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Activate(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
@@ -68,6 +98,22 @@ func (h *Handler) Activate(w http.ResponseWriter, r *http.Request) {
 
 // CompleteTheory marks only the first-pass theory stage as complete. Problem
 // and card repetitions keep using review_schedules and the shared FSRS path.
+// swagger:operation PUT /api/v1/me/roadmap/patterns/{code}/theory Roadmap put_api_v1_me_roadmap_patterns_code_theory
+//
+// ---
+// summary: "Отметить теорию субпаттерна пройденной"
+// description: "Отметить теорию субпаттерна пройденной."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/theoryCompleted"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) CompleteTheory(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -94,6 +140,24 @@ func (h *Handler) CompleteTheory(w http.ResponseWriter, r *http.Request) {
 
 // ResolveTaskAccess prevents an inaccessible external problem from blocking a
 // roadmap. A user may skip that slot or replace it with a comparable task.
+// swagger:operation POST /api/v1/me/roadmap/tasks/{problemID}/access Roadmap post_api_v1_me_roadmap_tasks_problemID_access
+//
+// ---
+// summary: "Заменить или пропустить недоступную задачу"
+// description: "skip оставляет слот видимым, не считает задачу решённой и снимает блокировку следующего этапа. replace подбирает доступную задачу того же субпаттерна; без замены: 409 NO_REPLACEMENT. data содержит action, originalProblemId и необязательный replacementProblemId. Поля outcome/attemptedAt относятся к записи попытки решения и не являются ответом этого маршрута."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/roadmapTaskAccess"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "409": {$ref: "#/responses/noReplacement"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) ResolveTaskAccess(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -139,6 +203,21 @@ func NewHandler(repo repository) *Handler {
 	return &Handler{repo: repo}
 }
 
+// swagger:operation GET /api/v1/me/roadmap Roadmap get_api_v1_me_roadmap
+//
+// ---
+// summary: "Получить активный персональный roadmap"
+// description: "Получить активный персональный roadmap."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/roadmap"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -164,12 +243,46 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Preview calculates a roadmap without persisting it. It powers the live
 // onboarding preview and the "rebuild future weeks" confirmation on /roadmap.
+// swagger:operation POST /api/v1/me/roadmap/preview Roadmap post_api_v1_me_roadmap_preview
+//
+// ---
+// summary: "Рассчитать roadmap без сохранения"
+// description: "Рассчитывает план без изменения сохранённых данных. При отсутствии company evidence возвращается core-план. weeklyCapacity отсутствует в ConfigRequest этого коммита: передача поля отклоняется strict decoder с 400 VALIDATION_ERROR. Расчёт использует недельный темп по умолчанию 3. interviewDate проверяется на формат YYYY-MM-DD; ограничения строго позже сегодняшней даты в handler нет."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/roadmap"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) Preview(w http.ResponseWriter, r *http.Request) {
 	h.mutate(w, r, false)
 }
 
 // Put calculates and atomically persists the roadmap config, ordered
 // subpatterns and user target. Repeating the same request is deterministic.
+// swagger:operation PUT /api/v1/me/roadmap Roadmap put_api_v1_me_roadmap
+//
+// ---
+// summary: "Рассчитать и сохранить roadmap"
+// description: "Сохраняет рассчитанный план и цель пользователя. Схема запроса совпадает с preview. weeklyCapacity отсутствует в ConfigRequest этого коммита: передача поля отклоняется strict decoder с 400 VALIDATION_ERROR. Расчёт использует недельный темп по умолчанию 3. interviewDate проверяется на формат YYYY-MM-DD; ограничения строго позже сегодняшней даты в handler нет."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/roadmap"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) Put(w http.ResponseWriter, r *http.Request) {
 	h.mutate(w, r, true)
 }
@@ -232,6 +345,20 @@ func validateConfig(req ConfigRequest) (string, string) {
 // Delete handles DELETE /me/roadmap — clears the onboarding-set target so
 // the roadmap goes back to the empty "build your roadmap" state. Solve
 // history and progress are untouched; this only resets personalization.
+// swagger:operation DELETE /api/v1/me/roadmap Roadmap delete_api_v1_me_roadmap
+//
+// ---
+// summary: "Сбросить персонализацию roadmap"
+// description: "Сбрасывает персонализацию; история решений и повторений сохраняется. Успех: 204 без тела."
+// security:
+// - BearerAuth: []
+// responses:
+//   "204": {$ref: "#/responses/noContent"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

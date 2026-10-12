@@ -14,6 +14,20 @@ type searcher interface {
 	List(ctx context.Context) ([]Company, error)
 }
 
+// swagger:operation GET /api/v1/companies Companies get_api_v1_companies
+//
+// ---
+// summary: "Получить список компаний"
+// description: "Получить список компаний."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/companyList"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	results, err := h.repo.List(r.Context())
 	if err != nil {
@@ -31,6 +45,21 @@ type Handler struct {
 func NewHandler(repo searcher) *Handler {
 	return &Handler{repo: repo}
 }
+
+// swagger:operation GET /api/v1/companies/search Companies get_api_v1_companies_search
+//
+// ---
+// summary: "Найти компании по названию и алиасам"
+// description: "Найти компании по названию и алиасам."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/companyList"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/authInternalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
 
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	limit := defaultSearchLimit

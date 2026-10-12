@@ -15,9 +15,17 @@ import (
 var ErrSubpatternNotFound = errors.New("subpattern not found")
 
 // Subpattern — элемент практики пользователя.
+// Subpattern documents the PracticeSubpattern JSON shape.
+//
+// swagger:model PracticeSubpattern
 type Subpattern struct {
-	Code    string    `json:"code"`
-	Name    string    `json:"name"`
+	// Required: true
+	Code string `json:"code"`
+	// Required: true
+	Name string `json:"name"`
+	// swagger:name addedAt
+	// Required: true
+	// swagger:strfmt date-time
 	AddedAt time.Time `json:"addedAt"`
 }
 
