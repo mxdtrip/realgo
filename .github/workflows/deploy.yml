@@ -36,7 +36,7 @@ jobs:
           SMTP2GO_SMTP_PORT: "2525"
           SMTP2GO_SMTP_USERNAME: ${{ secrets.SMTP2GO_SMTP_USERNAME }}
           SMTP2GO_SMTP_PASSWORD: ${{ secrets.SMTP2GO_SMTP_PASSWORD }}
-          MAIL_BASE_URL: https://staging.realgo.dev
+          MAIL_BASE_URL: ${{ secrets.MAIL_BASE_URL }}
           MAIL_SMTP_TIMEOUT: 10s
           # OAuth public ids are passed to the web build; the matching secrets
           # are consumed only by the API container. Empty repository secrets
