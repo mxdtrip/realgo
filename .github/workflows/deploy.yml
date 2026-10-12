@@ -25,33 +25,74 @@ jobs:
 
       - name: Build & start staging stack
         env:
+          # Имя окружения API
           APP_ENV: staging
+          # Версия сборки, видна в интерфейсе
           APP_VERSION: staging-${{ github.run_number }}
+          # SHA коммита, из которого собрана версия
           COMMIT_SHA: ${{ github.sha }}
-          AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
+          # Пользователь PostgreSQL (менять только вместе с существующим томом БД)
+          DB_USER: ${{ secrets.DB_USER }}
+          # Пароль PostgreSQL (обязателен; применяется только при первой инициализации тома)
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          # Имя базы данных PostgreSQL
+          DB_NAME: ${{ secrets.DB_NAME }}
+          # Пароль Redis (обязателен)
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-          MAIL_ENABLED: ${{ secrets.SMTP2GO_SMTP_USERNAME != '' && secrets.SMTP2GO_SMTP_PASSWORD != '' }}
-          SMTP2GO_SMTP_HOST: mail.smtp2go.com
-          SMTP2GO_SMTP_PORT: "2525"
-          SMTP2GO_SMTP_USERNAME: ${{ secrets.SMTP2GO_SMTP_USERNAME }}
-          SMTP2GO_SMTP_PASSWORD: ${{ secrets.SMTP2GO_SMTP_PASSWORD }}
+          # Секрет подписи JWT, минимум 32 символа (смена разлогинит всех)
+          AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
+          # Время жизни access-токена (по умолчанию 15m)
+          AUTH_ACCESS_TTL: ${{ secrets.AUTH_ACCESS_TTL }}
+          # Время жизни refresh-токена (по умолчанию 720h)
+          AUTH_REFRESH_TTL: ${{ secrets.AUTH_REFRESH_TTL }}
+          # Включает отправку писем; по умолчанию true, если заданы логин и пароль SMTP2GO
+          MAIL_ENABLED: ${{ secrets.MAIL_ENABLED || (secrets.SMTP2GO_SMTP_USERNAME != '' && secrets.SMTP2GO_SMTP_PASSWORD != '') }}
+          # Публичный URL сайта для ссылок в письмах, CSRF и cookie (по умолчанию https://staging.realgo.dev)
           MAIL_BASE_URL: ${{ secrets.MAIL_BASE_URL }}
-          MAIL_SMTP_TIMEOUT: 10s
-          # OAuth public ids are passed to the web build; the matching secrets
-          # are consumed only by the API container. Empty repository secrets
-          # leave their respective buttons visibly disabled on staging.
+          # Таймаут SMTP-соединения (по умолчанию 10s)
+          MAIL_SMTP_TIMEOUT: ${{ secrets.MAIL_SMTP_TIMEOUT }}
+          # Хост SMTP2GO (по умолчанию mail.smtp2go.com)
+          SMTP2GO_SMTP_HOST: ${{ secrets.SMTP2GO_SMTP_HOST }}
+          # Порт SMTP2GO (по умолчанию 2525)
+          SMTP2GO_SMTP_PORT: ${{ secrets.SMTP2GO_SMTP_PORT }}
+          # Логин SMTP2GO (обязателен для mail-relay)
+          SMTP2GO_SMTP_USERNAME: ${{ secrets.SMTP2GO_SMTP_USERNAME }}
+          # Пароль SMTP2GO (обязателен для mail-relay)
+          SMTP2GO_SMTP_PASSWORD: ${{ secrets.SMTP2GO_SMTP_PASSWORD }}
+          # Client ID входа через Яндекс (публичный, попадает в сборку web); пусто — кнопка отключена
           YANDEX_CLIENT_ID: ${{ secrets.YANDEX_CLIENT_ID }}
+          # Client Secret входа через Яндекс (только для API)
           YANDEX_CLIENT_SECRET: ${{ secrets.YANDEX_CLIENT_SECRET }}
-          GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}
-          GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
+          # Client ID входа через GitHub (публичный, попадает в сборку web); секрет не может начинаться с GITHUB_
+          GITHUB_CLIENT_ID: ${{ secrets.GH_OAUTH_CLIENT_ID }}
+          # Client Secret входа через GitHub (только для API)
+          GITHUB_CLIENT_SECRET: ${{ secrets.GH_OAUTH_CLIENT_SECRET }}
+          # Логин первого администратора GoAdmin (задаётся до первого старта API)
           GOADMIN_USERNAME: ${{ secrets.GOADMIN_USERNAME }}
+          # Пароль первого администратора GoAdmin, 12-72 байта
           GOADMIN_PASSWORD: ${{ secrets.GOADMIN_PASSWORD }}
+          # Адрес VPS с frps для reverse-туннеля (обязателен)
           FRP_VPS_HOST: ${{ secrets.FRP_VPS_HOST }}
+          # Общий токен авторизации frp, должен совпадать с VPS (обязателен)
           FRP_TOKEN: ${{ secrets.FRP_TOKEN }}
-          # No SEED_USERS_PASSWORD here on purpose: staging runs on a restored
-          # prod snapshot and the seed jobs are parked behind an unused profile
-          # (see docker-compose.staging.yml), so nothing would consume it.
+          # CIDR прокси, чьему X-Forwarded-For доверяет rate limiter (по умолчанию частные сети)
+          TRUSTED_PROXY_CIDRS: ${{ secrets.TRUSTED_PROXY_CIDRS }}
+          # Origin расширения Chrome, которому разрешён CORS
+          REALGO_EXTENSION_ORIGIN: ${{ secrets.REALGO_EXTENSION_ORIGIN }}
+          # Базовый URL API, вшиваемый в web; пусто — относительные URL (тот же origin)
+          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+          # FSRS: целевая вероятность вспомнить карточку (по умолчанию 0.9)
+          FSRS_REQUEST_RETENTION: ${{ secrets.FSRS_REQUEST_RETENTION }}
+          # FSRS: максимальный интервал между повторами в днях (по умолчанию 36500)
+          FSRS_MAXIMUM_INTERVAL: ${{ secrets.FSRS_MAXIMUM_INTERVAL }}
+          # FSRS: включает краткосрочное планирование (по умолчанию true)
+          FSRS_ENABLE_SHORT_TERM: ${{ secrets.FSRS_ENABLE_SHORT_TERM }}
+          # FSRS: включает случайный разброс интервалов (по умолчанию false)
+          FSRS_ENABLE_FUZZ: ${{ secrets.FSRS_ENABLE_FUZZ }}
+          # Сколько секунд ждать готовности стека в итоговом баннере (по умолчанию 180)
+          READY_TIMEOUT: ${{ secrets.READY_TIMEOUT }}
+          # SEED_USERS_PASSWORD здесь нет намеренно: seed-задачи на staging отключены
+          # (см. docker-compose.staging.yml), пароль никто не прочитает.
         run: |
           docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo pull --ignore-buildable || true
           docker compose -f docker-compose.yml -f docker-compose.staging.yml --profile prod-demo up -d --build --remove-orphans
