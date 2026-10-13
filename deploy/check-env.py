@@ -9,12 +9,17 @@ from urllib.parse import urlsplit
 
 def input_errors(mode, env):
     required = [
-        "AUTH_JWT_SECRET", "DB_PASSWORD", "REDIS_PASSWORD", "FRP_VPS_HOST",
+        "AUTH_JWT_SECRET", "DB_PASSWORD", "FRP_VPS_HOST",
         "FRP_TOKEN", "SMTP2GO_SMTP_USERNAME", "SMTP2GO_SMTP_PASSWORD",
     ]
     if mode == "production":
         required.append("VPN_SUB_URL")
+    redis_auth = env.get("REDIS_AUTH_ENABLED", "true")
+    if redis_auth != "false":
+        required.append("REDIS_PASSWORD")
     errors = [f"{key} must be set" for key in required if not env.get(key)]
+    if redis_auth not in ("true", "false"):
+        errors.append("REDIS_AUTH_ENABLED must be true or false")
     if env.get("AUTH_JWT_SECRET") and len(env["AUTH_JWT_SECRET"].encode()) < 32:
         errors.append("AUTH_JWT_SECRET must contain at least 32 bytes")
     for first, second in [
@@ -39,13 +44,20 @@ def input_errors(mode, env):
     return errors
 
 
+def rendered_value(value):
+    # `compose config` escapes dollar signs for a re-usable serialized model.
+    # Containers receive the original value; compare that value, not JSON's
+    # escaped representation. This also preserves literal consecutive dollars.
+    return value.replace("$$", "$") if isinstance(value, str) else value
+
+
 def database_errors(configured, running):
     # A new POSTGRES_PASSWORD does not change the password in an existing
     # volume. Stop before recreating API/migrate with incompatible credentials.
     return [
         f"{key} differs from the running API; migrate existing database settings first"
         for key in ("DB_USER", "DB_NAME", "DB_PASSWORD")
-        if configured.get(key) != running.get(key)
+        if rendered_value(configured.get(key)) != running.get(key)
     ]
 
 
@@ -53,7 +65,7 @@ def command_json(args):
     return json.loads(subprocess.check_output(args, stderr=subprocess.DEVNULL))
 
 
-def check_running_database(mode):
+def check_running_database(mode, verify_secrets=False):
     overlay = "prod" if mode == "production" else "staging"
     config = command_json([
         "docker", "compose", "--env-file", "/dev/null", "-f", "docker-compose.yml",
@@ -70,18 +82,44 @@ def check_running_database(mode):
         inspected = command_json(["docker", "inspect", container])[0]
         running = dict(item.split("=", 1) for item in inspected["Config"]["Env"])
         errors.extend(database_errors(config["services"]["api"]["environment"], running))
+        if rendered_value(config["services"]["api"]["environment"].get("REDIS_PASSWORD", "")) != running.get("REDIS_PASSWORD", ""):
+            errors.append("REDIS_PASSWORD differs from the running API; migrate Redis auth explicitly")
+    if verify_secrets:
+        fields = {
+            "api": ["AUTH_JWT_SECRET", "DB_PASSWORD", "REDIS_PASSWORD", "GEMINI_API_KEY",
+                    "YANDEX_CLIENT_SECRET", "GITHUB_CLIENT_SECRET", "GOADMIN_PASSWORD"],
+            "mail-relay": ["RELAY_SMTP_USERNAME", "RELAY_SMTP_PASSWORD"],
+            "frpc": ["FRP_TOKEN"], "vpngw": ["VPN_SUB_URL"],
+        }
+        for service, keys in fields.items():
+            if service not in config["services"]:
+                continue
+            service_ids = subprocess.check_output([
+                "docker", "ps", "-q", "--filter", f"label=com.docker.compose.project={project}",
+                "--filter", f"label=com.docker.compose.service={service}",
+            ], stderr=subprocess.DEVNULL, text=True).split()
+            if not service_ids:
+                errors.append(f"No running {service} container to verify migrated credentials")
+            for container in service_ids:
+                inspected = command_json(["docker", "inspect", container])[0]
+                running = dict(item.split("=", 1) for item in inspected["Config"]["Env"])
+                configured = config["services"][service].get("environment", {})
+                for key in keys:
+                    if rendered_value(configured.get(key, "")) != running.get(key, ""):
+                        errors.append(f"{service}/{key} differs from the running credential")
     return errors
 
 
 def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in ("staging", "production"):
-        print("Usage: check-env.py staging|production", file=sys.stderr)
+    if (len(sys.argv) not in (2, 3) or sys.argv[1] not in ("staging", "production")
+            or len(sys.argv) == 3 and sys.argv[2] != "--verify-secrets"):
+        print("Usage: check-env.py staging|production [--verify-secrets]", file=sys.stderr)
         return 1
     mode = sys.argv[1]
     errors = input_errors(mode, os.environ)
     if not errors:
         try:
-            errors = check_running_database(mode)
+            errors = check_running_database(mode, verify_secrets=len(sys.argv) == 3)
         except (subprocess.SubprocessError, OSError, ValueError, KeyError, TypeError):
             # Exception text may contain a credential from a configuration.
             errors = ["Could not validate Compose and the running database configuration"]

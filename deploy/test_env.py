@@ -39,6 +39,15 @@ class DeploymentEnvTests(unittest.TestCase):
         self.assertEqual(CHECK.input_errors("staging", valid_env()), [])
         self.assertEqual(CHECK.input_errors("production", valid_env()), ["VPN_SUB_URL must be set"])
 
+    def test_redis_requires_password_unless_auth_is_explicitly_disabled(self):
+        env = valid_env()
+        env.pop("REDIS_PASSWORD")
+        self.assertIn("REDIS_PASSWORD must be set", CHECK.input_errors("staging", env))
+        env["REDIS_AUTH_ENABLED"] = "false"
+        self.assertEqual(CHECK.input_errors("staging", env), [])
+        env["REDIS_AUTH_ENABLED"] = "invalid"
+        self.assertIn("REDIS_AUTH_ENABLED must be true or false", CHECK.input_errors("staging", env))
+
     def test_partial_oauth_configuration_is_rejected(self):
         env = valid_env()
         env["GITHUB_CLIENT_ID"] = "fixture-public-id"
@@ -69,6 +78,11 @@ class DeploymentEnvTests(unittest.TestCase):
         self.assertNotIn(configured["DB_PASSWORD"], errors[0])
         self.assertEqual(CHECK.database_errors(running, running), [])
 
+    def test_rendered_dollar_escaping_preserves_the_actual_password(self):
+        running = dict(DB_USER="postgres", DB_NAME="realgo", DB_PASSWORD="fixture$one$$two")
+        configured = dict(running, DB_PASSWORD="fixture$$one$$$$two")
+        self.assertEqual(CHECK.database_errors(configured, running), [])
+
     def test_running_container_mismatch_is_checked_before_deploy(self):
         config = {"name": "realgo-staging", "services": {"api": {"environment": {
             "DB_USER": "postgres", "DB_NAME": "realgo", "DB_PASSWORD": "new-fixture",
@@ -80,6 +94,27 @@ class DeploymentEnvTests(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("DB_PASSWORD differs", errors[0])
 
+    def test_secret_verification_checks_jwt_without_logging_it(self):
+        configured = {"DB_USER": "postgres", "DB_NAME": "realgo", "DB_PASSWORD": "fixture-db",
+                      "AUTH_JWT_SECRET": "new-fixture-jwt"}
+        config = {"name": "realgo-staging", "services": {"api": {"environment": configured}}}
+        running = dict(configured, AUTH_JWT_SECRET="old-fixture-jwt")
+        container = [{"Config": {"Env": [key+"="+value for key,value in running.items()]}}]
+        with patch.object(CHECK, "command_json", side_effect=[config, container, container]), \
+                patch.object(CHECK.subprocess, "check_output", return_value="fixture-container\n"):
+            errors = CHECK.check_running_database("staging", verify_secrets=True)
+        self.assertEqual(errors, ["api/AUTH_JWT_SECRET differs from the running credential"])
+
+    def test_redis_auth_mismatch_is_rejected_before_restart(self):
+        config = {"name": "realgo-staging", "services": {"api": {"environment": {
+            "DB_USER": "postgres", "DB_NAME": "realgo", "DB_PASSWORD": "fixture-db", "REDIS_PASSWORD": "",
+        }}}}
+        container = [{"Config": {"Env": ["DB_USER=postgres", "DB_NAME=realgo", "DB_PASSWORD=fixture-db", "REDIS_PASSWORD=fixture-redis"]}}]
+        with patch.object(CHECK, "command_json", side_effect=[config, container]), \
+                patch.object(CHECK.subprocess, "check_output", return_value="fixture-container\n"):
+            errors = CHECK.check_running_database("staging")
+        self.assertEqual(errors, ["REDIS_PASSWORD differs from the running API; migrate Redis auth explicitly"])
+
     def test_docker_failure_does_not_leak_exception_details(self):
         output = io.StringIO()
         with patch.object(CHECK.sys, "argv", ["check-env.py", "staging"]), \
@@ -90,25 +125,36 @@ class DeploymentEnvTests(unittest.TestCase):
         self.assertNotIn("fixture-sensitive-value", output.getvalue())
         self.assertIn("Could not validate", output.getvalue())
 
-    def test_github_overrides_runner_and_missing_optional_input_preserves_it(self):
+    def test_github_overrides_runner_and_missing_optional_input_clears_it(self):
         # Stub only preflight; exercise the sourced shell with quoting-sensitive
         # fixtures without exposing credentials in stdout.
         script = '''
 python3() { return 0; }
 source deploy/prepare-env.sh staging
-[[ "$GOADMIN_PASSWORD" == "$EXPECTED_PASSWORD" ]]
+[[ "$GOADMIN_PASSWORD" == "" ]]
 [[ "$DB_PASSWORD" == "$EXPECTED_DB_PASSWORD" ]]
 [[ "$MAIL_ENABLED" == "false" ]]
 [[ ! ${DEPLOY_DB_PASSWORD+x} ]]
 '''
         env = dict(os.environ, GOADMIN_PASSWORD="fixture runner $value 'quoted'",
-                   DEPLOY_GOADMIN_PASSWORD="", EXPECTED_PASSWORD="fixture runner $value 'quoted'",
+                   DEPLOY_GOADMIN_PASSWORD="",
                    DB_PASSWORD="old fixture", DEPLOY_DB_PASSWORD="new fixture $value 'quoted'",
                    EXPECTED_DB_PASSWORD="new fixture $value 'quoted'",
                    MAIL_ENABLED="true", DEPLOY_MAIL_ENABLED="false")
         env.pop("GITHUB_ENV", None)
         result = subprocess.run(["bash", "-euc", script], cwd=ROOT, env=env,
                                 capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "")
+
+    def test_disabled_redis_auth_clears_legacy_repository_password(self):
+        env = dict(os.environ, DEPLOY_REDIS_AUTH_ENABLED="false", DEPLOY_REDIS_PASSWORD="legacy-fixture-password")
+        env.pop("GITHUB_ENV", None)
+        result = subprocess.run(["bash", "-euc", '''
+python3() { return 0; }
+source deploy/prepare-env.sh production
+[[ "$REDIS_PASSWORD" == "" ]]
+'''], cwd=ROOT, env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "")
 

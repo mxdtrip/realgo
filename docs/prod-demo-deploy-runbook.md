@@ -46,11 +46,12 @@ Variables и порядок миграции: [github-deploy-settings.md](github
 не меняет пароль существующего volume. Preflight отклоняет несовпадение с
 работающим API до перезапуска контейнеров.
 
-Незаданные GitHub настройки временно сохраняют значения из environment процесса
-self-hosted runner, чтобы перенос не отключил действующий OAuth или GoAdmin.
-Compose не читает ignored `.env` из checkout. После проверенной миграции старые
-значения runner можно удалить. Используйте отдельные credentials окружений;
-общий `FRP_TOKEN` должен совпадать с VPS endpoint.
+Все действующие значения перенесены в Secrets/Variables окружения `production`.
+Незаданные опциональные настройки явно очищаются. Compose не читает ignored
+`.env` из checkout, а переменные runner не служат резервным источником.
+`REDIS_AUTH_ENABLED=false` сохраняет существующий production Redis без пароля;
+смену режима аутентификации выполняйте отдельно от переноса настроек.
+Общий `FRP_TOKEN` должен совпадать с VPS endpoint.
 
 `APP_ENV=production` задаёт overlay; `MAIL_BASE_URL` — Variable окружения с
 дефолтом `https://realgo.dev`. Общий repository secret `MAIL_BASE_URL` здесь
