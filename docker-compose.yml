@@ -484,6 +484,10 @@ services:
       # shared 20 req/min bucket for ALL users, i.e. any single client can lock
       # everyone out of login/register/refresh.
       TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      FSRS_REQUEST_RETENTION: ${FSRS_REQUEST_RETENTION:-0.9}
+      FSRS_MAXIMUM_INTERVAL: ${FSRS_MAXIMUM_INTERVAL:-36500}
+      FSRS_ENABLE_SHORT_TERM: ${FSRS_ENABLE_SHORT_TERM:-true}
+      FSRS_ENABLE_FUZZ: ${FSRS_ENABLE_FUZZ:-false}
     # No `expose:` here on purpose: caddy reaches api:8080 over the compose
     # network regardless (expose is inert on user-defined networks), and the
     # prod overlay puts api into vpngw's netns (network_mode: service:vpngw) —

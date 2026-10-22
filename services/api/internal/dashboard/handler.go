@@ -27,6 +27,20 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Get("/me/dashboard", h.Get)
 }
 
+// swagger:operation GET /api/v1/me/dashboard Dashboard get_api_v1_me_dashboard
+//
+// ---
+// summary: "Получить данные главной страницы кабинета"
+// description: "Получить данные главной страницы кабинета."
+// security:
+// - BearerAuth: []
+// responses:
+//   "200": {$ref: "#/responses/dashboard"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

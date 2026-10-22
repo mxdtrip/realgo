@@ -49,8 +49,26 @@ export default function Home() {
   const dictionary = getDictionary();
   const copy = dictionary.marketing;
 
+  // FAQPage schema mirrors LandingFAQ's own copy 1:1 — no separate source of
+  // truth to keep in sync, and eligible for a rich result if Google decides
+  // to grant one to this domain.
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: copy.sections.faq.items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <ScrollVideoBackground />
       <ScrollReveal />
       <SortingMemoryHero />

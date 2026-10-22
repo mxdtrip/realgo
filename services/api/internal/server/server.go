@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/mxdtrip/realgo/services/api/internal/ai"
+	"github.com/mxdtrip/realgo/services/api/internal/apidocs"
 	"github.com/mxdtrip/realgo/services/api/internal/auth"
 	"github.com/mxdtrip/realgo/services/api/internal/cards"
 	"github.com/mxdtrip/realgo/services/api/internal/companies"
@@ -81,6 +82,7 @@ func New(deps Deps) *chi.Mux {
 	r.Use(requestLogger(deps.Logger))
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(requestTimeout))
+	r.Mount("/api/docs", apidocs.Handler())
 
 	health := &healthHandler{pg: deps.Postgres, redis: deps.Redis}
 	r.Get("/healthz", health.live)

@@ -12,7 +12,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/", "/presentation/", "/checkout", "/login", "/register"],
+      allow: ["/"],
       disallow: [
         "/dashboard",
         "/reviews",
@@ -22,6 +22,15 @@ export default function robots(): MetadataRoute.Robots {
         "/cards",
         "/extension",
         "/settings",
+        "/onboarding",
+        // Hackathon pitch deck and its legacy standalone copy: real content
+        // for humans following the footer/changelog link, but not something
+        // people search for and not worth indexing — see /presentation and
+        // /pitch-deck.html noindex meta tags for the belt-and-suspenders half
+        // of this (robots.txt disallow alone can still leave a URL indexed
+        // with no snippet if it's linked from elsewhere).
+        "/presentation",
+        "/pitch-deck.html",
       ],
     },
     sitemap: new URL("/sitemap.xml", siteUrl).toString(),
