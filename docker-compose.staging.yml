@@ -92,6 +92,9 @@ services:
   seed-users:
     profiles: ["seeds"]
 
+  # sync-learning-materials stays enabled: it publishes only editorial MD,
+  # preserves legacy fields and never writes to user progress or demo tables.
+
   postgres:
     ports: !override
       - "127.0.0.1:5433:5432"

@@ -19,6 +19,7 @@ import { ApiError } from "../../../../_api/types";
 import { useToast } from "../../../../_toast";
 import { CabinetPanel } from "../../../_components";
 import { ProfileSection } from "./PatternProfile";
+import { MarkdownMaterial } from "./MarkdownMaterial";
 import type { getDictionary } from "../../../../_content/i18n";
 
 type NodeCopy = ReturnType<typeof getDictionary>["cabinet"]["pages"]["atlasNode"];
@@ -306,7 +307,16 @@ function SubpatternProfile({
         </div>
       </header>
 
-      {material ? (
+      {material?.content_md?.trim() ? (
+        <ProfileSection
+          title={copy.learn.title}
+          empty={false}
+          pendingNote={copy.learn.preparing}
+          pendingBadge={copy.profile.pendingBadge}
+        >
+          <MarkdownMaterial content={material.content_md} />
+        </ProfileSection>
+      ) : material ? (
         <>
           <ProfileSection
             title={copy.learn.whatItIs}

@@ -64,6 +64,7 @@ type promptUserData struct {
 // splitPrompt separates a prompt document into its system and user sections,
 // delimited by the <!-- system --> / <!-- user --> markers.
 func splitPrompt(doc string) (system, user string, err error) {
+	doc = strings.ReplaceAll(doc, "\r\n", "\n")
 	si := strings.Index(doc, promptSystemMarker)
 	ui := strings.Index(doc, promptUserMarker)
 	if si == -1 || ui == -1 || ui < si {

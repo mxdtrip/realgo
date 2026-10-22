@@ -157,6 +157,7 @@ type ContrastPair struct {
 
 // LearningMaterial is the compact methodology unit of a subpattern.
 type LearningMaterial struct {
+	ContentMD         string         `json:"content_md,omitempty"`
 	WhatItIs          string         `json:"what_it_is"`
 	MentalModel       string         `json:"mental_model"`
 	RecognitionCues   []string       `json:"recognition_cues"`

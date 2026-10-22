@@ -11,6 +11,51 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestPatternAtlasMarkdownMaterial checks both material formats through the API.
+func TestPatternAtlasMarkdownMaterial(t *testing.T) {
+	h := newContractHarness(t)
+	email := fmt.Sprintf("atlas-md-%d@integration.test", time.Now().UnixNano())
+	tokens := h.register(t, email, "atlas-password-123")
+	t.Cleanup(func() { h.cleanupUser(email) })
+
+	code := fmt.Sprintf("markdown_it_%d", time.Now().UnixNano())
+	var patternID int64
+	require.NoError(t, h.pg.Pool.QueryRow(h.ctx,
+		`INSERT INTO patterns (code, name, kind) VALUES ($1, 'Markdown test', 'subpattern') RETURNING id`,
+		code).Scan(&patternID))
+	t.Cleanup(func() { _, _ = h.pg.Pool.Exec(h.ctx, `DELETE FROM patterns WHERE id = $1`, patternID) })
+	_, err := h.pg.Pool.Exec(h.ctx, `
+		INSERT INTO pattern_learning_materials (pattern_id, what_it_is, recognition_cues)
+		VALUES ($1, 'Legacy explanation', ARRAY['Legacy cue'])
+	`, patternID)
+	require.NoError(t, err)
+
+	path := "/api/v1/me/patterns/atlas/" + code
+	readMaterial := func() map[string]any {
+		t.Helper()
+		resp := h.request(t, http.MethodGet, path, tokens.access, nil)
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		return resp.body["data"].(map[string]any)["material"].(map[string]any)
+	}
+	legacy := readMaterial()
+	require.Equal(t, "Legacy explanation", legacy["what_it_is"])
+	require.NotContains(t, legacy, "content_md")
+
+	article := "## Теория\n\nПроверяем `set`.\n\n```python\nseen = set()\n```\n"
+	_, err = h.pg.Pool.Exec(h.ctx,
+		`UPDATE pattern_learning_materials SET content_md = $1 WHERE pattern_id = $2`, article, patternID)
+	require.NoError(t, err)
+	material := readMaterial()
+	require.Equal(t, article, material["content_md"])
+	require.Equal(t, legacy["what_it_is"], material["what_it_is"])
+	require.Equal(t, legacy["recognition_cues"], material["recognition_cues"])
+
+	_, err = h.pg.Pool.Exec(h.ctx,
+		`UPDATE pattern_learning_materials SET content_md = '' WHERE pattern_id = $1`, patternID)
+	require.NoError(t, err)
+	require.Equal(t, legacy, readMaterial(), "clearing Markdown restores the original payload")
+}
+
 // TestPatternAtlasTaxonomyIntegrity is the acceptance criterion for
 // Realgo Taxonomy v2: exactly 13 tools, 22 pattern families and 111
 // subpatterns, with every subpattern attached to at least one family and at

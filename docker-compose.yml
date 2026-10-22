@@ -86,6 +86,23 @@ services:
     command: python -c "import bcrypt, psycopg, yaml"
     restart: "no"
 
+  # Editorial articles are published separately from demo fixtures. This job
+  # only updates Markdown for the named subpatterns and also runs on staging.
+  sync-learning-materials:
+    image: freeburger-seeds:local
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      seed-image:
+        condition: service_completed_successfully
+    working_dir: /seeds
+    volumes:
+      - ./services/api/seeds:/seeds:ro
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-freeburger}?sslmode=disable
+    command: python seed_markdown.py
+    restart: "no"
+
   seed-roadmap:
     image: freeburger-seeds:local
     depends_on:
@@ -423,6 +440,8 @@ services:
       redis:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      sync-learning-materials:
         condition: service_completed_successfully
     environment:
       CONFIG_PATH: /app/config.yaml
