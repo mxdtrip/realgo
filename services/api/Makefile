@@ -1,11 +1,13 @@
 GO ?= go
+SWAGGER_VERSION := v0.36.4
+SWAGGER = $(GO) run github.com/go-swagger/go-swagger/cmd/swagger@$(SWAGGER_VERSION)
 COMPOSE ?= docker compose -f ../../docker-compose.yml
 STAGING_COMPOSE ?= docker compose --env-file ../../.env.staging -f ../../docker-compose.yml -f ../../docker-compose.staging.yml --profile prod-demo
 # Server stack = base + prod overlay (vpngw, api netns, prod Caddyfile) + the
 # prod-demo profile for frpc. See docker-compose.prod.yml.
 PROD_COMPOSE ?= docker compose -f ../../docker-compose.yml -f ../../docker-compose.prod.yml --profile prod-demo
 
-.PHONY: help build run test test-integration vet fmt tidy sqlc up up-api staging-up staging-down prod-demo-up down migrate seed-roadmap seed-cards seed-users reset-demo logs
+.PHONY: help build run test test-integration vet fmt tidy sqlc swagger swagger-validate swagger-check up up-api staging-up staging-down prod-demo-up down migrate seed-roadmap seed-cards seed-users reset-demo logs
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -33,6 +35,15 @@ tidy: ## Sync go.mod and go.sum
 
 sqlc: ## Generate sqlc code from queries/
 	$(GO) tool sqlc generate
+
+swagger: ## Generate Swagger 2.0 from annotated Go handlers and DTOs
+	$(GO) generate ./internal/apidocs
+
+swagger-validate: ## Validate the generated Swagger specification
+	$(SWAGGER) validate internal/apidocs/swagger.json
+
+swagger-check: swagger swagger-validate ## Verify that the committed Swagger is current
+	git diff --exit-code -- internal/apidocs/swagger.json
 
 up: ## Build and start the full stack in the background
 	$(COMPOSE) up -d --build

@@ -9,20 +9,46 @@ type QueueResponse struct {
 }
 
 // ReviewItem для элемента очереди
+// ReviewItem documents the ReviewsReviewItem JSON shape.
+//
+// swagger:model ReviewsReviewItem
 type ReviewItem struct {
-	ID         int64     `json:"id"`
-	EntityType string    `json:"entityType"` // problem, card, pattern
-	EntityID   int64     `json:"entityId"`
-	Title      string    `json:"title"`
-	Meta       string    `json:"meta"`
-	TypeLabel  string    `json:"typeLabel"`
-	DueAt      time.Time `json:"dueAt"`
-	Status     string    `json:"status"` // due, upcoming, completed
-	LastRating *string   `json:"lastRating"`
-	Attempts   int       `json:"attempts"`
+	// Required: true
+	ID int64 `json:"id"`
+	// problem, card, pattern
+	//
+	// Required: true
+	EntityType string `json:"entityType"` // problem, card, pattern
+	// Required: true
+	EntityID int64 `json:"entityId"`
+	// Required: true
+	Title string `json:"title"`
+	// Required: true
+	Meta string `json:"meta"`
+	// Required: true
+	TypeLabel string `json:"typeLabel"`
+	// swagger:name dueAt
+	// Required: true
+	// swagger:strfmt date-time
+	DueAt time.Time `json:"dueAt"`
+	// due, upcoming, completed
+	//
+	// Required: true
+	Status string `json:"status"` // due, upcoming, completed
+	// Required: true
+	// Enum: ["hard", "normal", "easy"]
+	// Extensions:
+	// ---
+	// x-nullable: true
+	// ---
+	LastRating *string `json:"lastRating"`
+	// Required: true
+	Attempts int `json:"attempts"`
 	// EntityURL — внешняя ссылка «перерешать на платформе» (для problem-элементов).
+	// Required: true
 	EntityURL string `json:"entityUrl"`
 	// PatternCode — код паттерна для ссылки на /patterns/{code}/session.
+	// Required: true
 	PatternCode string `json:"patternCode"`
 }
 
@@ -39,23 +65,49 @@ type RateReviewResponse struct {
 
 // RateReviewData — данные ответа
 // Обёрнут в data согласно контракту
+// RateReviewData documents the ReviewsRateReviewData JSON shape.
+//
+// swagger:model ReviewsRateReviewData
 type RateReviewData struct {
-	ReviewID     int64     `json:"reviewId"`
-	Rating       string    `json:"rating"`
+	// Required: true
+	ReviewID int64 `json:"reviewId"`
+	// Required: true
+	Rating string `json:"rating"`
+	// swagger:name nextReviewAt
+	// Required: true
+	// swagger:strfmt date-time
 	NextReviewAt time.Time `json:"nextReviewAt"`
-	Status       string    `json:"status"` // completed
+	// completed
+	//
+	// Required: true
+	Status string `json:"status"` // completed
 }
 
+// ProblemAttemptData documents the ReviewsProblemAttemptData JSON shape.
+//
+// swagger:model ReviewsProblemAttemptData
 type ProblemAttemptData struct {
-	ProblemID int64  `json:"problemId"`
-	Outcome   string `json:"outcome"`
-	Status    string `json:"status"` // in_progress or reviewing
+	// Required: true
+	ProblemID int64 `json:"problemId"`
+	// Required: true
+	Outcome string `json:"outcome"`
+	// in_progress or reviewing
+	//
+	// Required: true
+	Status string `json:"status"` // in_progress or reviewing
 }
 
 // StatsResponse для GET /me/reviews/stats
+// StatsResponse documents the ReviewsStatsResponse JSON shape.
+//
+// swagger:model ReviewsStatsResponse
 type StatsResponse struct {
-	TotalReviews  int `json:"totalReviews"`
-	NewCards      int `json:"newCards"`
+	// Required: true
+	TotalReviews int `json:"totalReviews"`
+	// Required: true
+	NewCards int `json:"newCards"`
+	// Required: true
 	LearningCards int `json:"learningCards"`
-	ReviewCards   int `json:"reviewCards"`
+	// Required: true
+	ReviewCards int `json:"reviewCards"`
 }

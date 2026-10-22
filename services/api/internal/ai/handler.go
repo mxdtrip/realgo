@@ -70,6 +70,26 @@ func validateTarget(problemID, patternID *int64) string {
 //	the result.
 //
 // 404 when problem_id does not exist. 503 when no AI provider is configured.
+// swagger:operation POST /api/v1/me/cards/generate AI post_api_v1_me_cards_generate
+//
+// ---
+// summary: "Запустить AI-генерацию карточек по задаче"
+// description: "Только problem_id. Ответ 202 при запуске/ожидании; 200 когда статус уже ready. Если AI не настроен: 503 AI_UNAVAILABLE. card_type принимается, но сейчас handler его не использует. Лимит: 10 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis. Запуск генерации не проверяет прогресс пользователя; доступ к результату при поллинге ограничен отдельно. Генерация сама по себе не добавляет задачу в user_problem_progress."
+// security:
+// - BearerAuth: []
+// x-rate-limit: {"identity": "ID пользователя из контекста после requireAuth.", "requests": 10, "separatePerMethodAndPath": true, "windowSeconds": 60}
+// responses:
+//   "200": {$ref: "#/responses/cardsReady"}
+//   "202": {$ref: "#/responses/cardsGenerating"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "404": {$ref: "#/responses/notFound"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/aiGenerationUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) GenerateCard(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
@@ -122,6 +142,24 @@ func (h *Handler) GenerateCard(w http.ResponseWriter, r *http.Request) {
 }
 
 // GenerateQuiz handles POST /me/quiz/generate.
+// swagger:operation POST /api/v1/me/quiz/generate AI post_api_v1_me_quiz_generate
+//
+// ---
+// summary: "Запросить AI-квиз (заглушка)"
+// description: "Заглушка: сохраняет AI request log и возвращает 202 queued с request_id и пояснением, что генерация ещё недоступна. Готовые вопросы этим handler не создаются. Лимит: 10 запросов за 60 секунд на метод/путь и identity; зависит от наличия Redis."
+// security:
+// - BearerAuth: []
+// x-rate-limit: {"identity": "ID пользователя из контекста после requireAuth.", "requests": 10, "separatePerMethodAndPath": true, "windowSeconds": 60}
+// responses:
+//   "202": {$ref: "#/responses/quizQueued"}
+//   "400": {$ref: "#/responses/validationError"}
+//   "401": {$ref: "#/responses/unauthorized"}
+//   "413": {$ref: "#/responses/requestTooLarge"}
+//   "429": {$ref: "#/responses/rateLimited"}
+//   "500": {$ref: "#/responses/internalError"}
+//   "503": {$ref: "#/responses/authRateLimitUnavailable"}
+//   "504": {$ref: "#/responses/gatewayTimeout"}
+
 func (h *Handler) GenerateQuiz(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {

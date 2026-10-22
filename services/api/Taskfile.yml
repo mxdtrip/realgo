@@ -54,6 +54,16 @@ tasks:
     cmds:
       - "{{.GO}} tool sqlc generate"
 
+  swagger:
+    desc: Generate Swagger from Go annotations
+    cmds:
+      - "{{.GO}} generate ./internal/apidocs"
+
+  swagger-validate:
+    desc: Validate the generated Swagger specification
+    cmds:
+      - "{{.GO}} run github.com/go-swagger/go-swagger/cmd/swagger@v0.36.4 validate internal/apidocs/swagger.json"
+
   up:
     desc: Build and start the full stack in the background
     cmds:
