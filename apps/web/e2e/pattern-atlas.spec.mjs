@@ -1,4 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+
+const membershipArticle = readFileSync(
+  new URL("../../../services/api/seeds/materials/membership_deduplication.md", import.meta.url),
+  "utf8",
+);
 
 // Pattern Atlas UI: taxonomy tree with progressive disclosure, company
 // relevance overlay, companies view and the subpattern educational detail.
@@ -186,6 +192,81 @@ test.describe("pattern atlas tree", () => {
 });
 
 test.describe("subpattern detail", () => {
+  test("renders the Markdown article while preserving practice and hiding legacy theory", async ({ page }) => {
+    await page.route("**/api/v1/me/patterns/atlas/binary_search_on_answer*", async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      body.data.material.content_md = membershipArticle;
+      await route.fulfill({ response, json: body });
+    });
+    await openAtlas(page);
+    await page.goto("/patterns/binary_search_on_answer");
+
+    const article = page.locator(".pattern-markdown");
+    await expect(article.getByRole("heading", { name: "Постановка задачи" })).toBeVisible();
+    await expect(article.getByRole("heading", { name: "Пример решения на Python" })).toBeVisible();
+    await expect(article.getByRole("link", { name: "Contains Duplicate" })).toHaveAttribute(
+      "href", "https://leetcode.com/problems/contains-duplicate/description/",
+    );
+    await expect(article.locator("pre code.language-python")).toContainText("class Solution:");
+    const python = article.locator("pre code.language-python");
+    await expect(python.locator(".hljs-keyword").first()).toHaveText("class");
+    await expect(python.locator(".hljs-comment").first()).toContainText("Создаём пустое хэш-множество");
+    expect(await python.locator(".hljs-keyword").first().evaluate((token) =>
+      getComputedStyle(token).color !== getComputedStyle(token.closest("code")).color,
+    )).toBe(true);
+    await expect(article.locator("pre code.language-text span")).toHaveCount(0);
+    await expect(article.locator("p code span")).toHaveCount(0);
+    await expect(article.locator("ol")).toHaveCount(2);
+    await expect(page.locator(".atlas-skeleton")).toHaveCount(0);
+    await expect(page.locator(".atlas-contrast")).toHaveCount(0);
+    await expect(page.locator(".pattern-profile__subs")).toContainText("Koko Eating Bananas");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(article).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
+  test("blank Markdown falls back to the legacy material", async ({ page }) => {
+    await page.route("**/api/v1/me/patterns/atlas/binary_search_on_answer*", async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      body.data.material.content_md = " \n ";
+      await route.fulfill({ response, json: body });
+    });
+    await openAtlas(page);
+    await page.goto("/patterns/binary_search_on_answer");
+    await expect(page.locator(".pattern-markdown")).toHaveCount(0);
+    await expect(page.locator(".atlas-skeleton")).toContainText("while lo < hi");
+    await expect(page.locator(".atlas-contrast")).toContainText("Exact Binary Search");
+  });
+
+  test("Markdown ignores raw HTML and unsafe link protocols", async ({ page }) => {
+    await page.route("**/api/v1/me/patterns/atlas/binary_search_on_answer*", async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      body.data.material.content_md = [
+        "## Safe heading", "", '<script>window.markdownExecuted = true</script>', "",
+        '<img src="invalid" onerror="window.markdownExecuted = true">', "",
+        "[Unsafe link](javascript:alert(1))", "",
+        "| Value | Seen |", "| --- | --- |", "| 1 | yes |",
+        "", "```javascript", "const found = true;", "```",
+        "", "```unknown-language", "keep this code readable", "```",
+      ].join("\n");
+      await route.fulfill({ response, json: body });
+    });
+    await openAtlas(page);
+    await page.goto("/patterns/binary_search_on_answer");
+    const article = page.locator(".pattern-markdown");
+    await expect(article.getByRole("heading", { name: "Safe heading" })).toBeVisible();
+    await expect(article.locator("script, img")).toHaveCount(0);
+    await expect(article.getByText("Unsafe link")).not.toHaveAttribute("href", /^javascript:/);
+    await expect(article.getByRole("cell", { name: "yes" })).toBeVisible();
+    await expect(article.locator("code.language-javascript .hljs-keyword")).toHaveText("const");
+    await expect(article.locator("code.language-unknown-language")).toHaveText("keep this code readable\n");
+    expect(await page.evaluate(() => window.markdownExecuted)).toBeUndefined();
+  });
+
   test("renders the profile canvas with methodology and problem cards", async ({ page }) => {
     await openAtlas(page);
     await page.goto("/patterns/binary_search_on_answer");

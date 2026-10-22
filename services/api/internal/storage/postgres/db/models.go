@@ -250,6 +250,8 @@ type PatternLearningMaterial struct {
 	DontConfuseWith []byte
 	UpdatedAt       pgtype.Timestamptz
 	MiniExample     string
+	// Optional full Markdown article. Empty content keeps the legacy structured material.
+	ContentMd string
 }
 
 type PendingRegistration struct {

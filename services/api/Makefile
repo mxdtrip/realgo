@@ -7,7 +7,7 @@ STAGING_COMPOSE ?= docker compose --env-file ../../.env.staging -f ../../docker-
 # prod-demo profile for frpc. See docker-compose.prod.yml.
 PROD_COMPOSE ?= docker compose -f ../../docker-compose.yml -f ../../docker-compose.prod.yml --profile prod-demo
 
-.PHONY: help build run test test-integration vet fmt tidy sqlc swagger swagger-validate swagger-check up up-api staging-up staging-down prod-demo-up down migrate seed-roadmap seed-cards seed-users reset-demo logs
+.PHONY: help build run test test-integration vet fmt tidy sqlc swagger swagger-validate swagger-check up up-api staging-up staging-down prod-demo-up down migrate sync-learning-materials seed-roadmap seed-cards seed-users reset-demo logs
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -71,6 +71,9 @@ migrate: ## Apply database migrations inside the compose network
 
 seed-roadmap: ## Seed the NeetCode roadmap inside the compose network
 	$(COMPOSE) run --rm seed-roadmap
+
+sync-learning-materials: ## Publish Markdown articles without reloading demo fixtures
+	$(COMPOSE) run --rm sync-learning-materials
 
 seed-cards: ## Seed demo Anki-style cards inside the compose network
 	$(COMPOSE) run --rm seed-cards
