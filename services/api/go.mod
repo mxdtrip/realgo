@@ -3,7 +3,7 @@ module github.com/mxdtrip/realgo/services/api
 go 1.25.7
 
 require (
-	github.com/go-chi/chi/v5 v5.3.0
+	github.com/go-chi/chi/v5 v5.4.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/ilyakaznacheev/cleanenv v1.5.0
