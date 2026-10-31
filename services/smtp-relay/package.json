@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "nodemailer": "10.0.9",
+    "nodemailer": "10.1.4",
     "smtp-server": "3.19.12"
   }
 }
