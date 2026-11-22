@@ -373,6 +373,7 @@ func (r *pgRepository) learningMaterial(ctx context.Context, patternID int64) (*
 		}
 	}
 	return &LearningMaterial{
+		ContentMD:         row.ContentMd,
 		WhatItIs:          row.WhatItIs,
 		MentalModel:       row.MentalModel,
 		RecognitionCues:   orEmpty(row.RecognitionCues),

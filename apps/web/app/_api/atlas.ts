@@ -127,6 +127,7 @@ export type NodeRef = { code: string; name: string };
 export type ContrastPair = { title: string; note: string };
 
 export type LearningMaterial = {
+  content_md?: string;
   what_it_is: string;
   mental_model: string;
   recognition_cues: string[];

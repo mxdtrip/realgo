@@ -30,6 +30,15 @@
   --success-bright: #2ea043;
   --success-fg: #3fb950;
 
+  /* Syntax colors for Markdown code blocks, based on GitHub Dark. */
+  --syntax-keyword: #ff7b72;
+  --syntax-title: #d2a8ff;
+  --syntax-constant: #79c0ff;
+  --syntax-string: #a5d6ff;
+  --syntax-builtin: #ffa657;
+  --syntax-comment: #8b949e;
+  --syntax-tag: #7ee787;
+
   /* fonts (variables injected by next/font in layout.tsx) */
   --font-stack-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --font-stack-display: var(--font-display), var(--font-sans), system-ui, sans-serif;
@@ -12776,6 +12785,146 @@ a.roadmap-step__practice-card:hover {
 .pattern-profile__body > p + ul,
 .pattern-profile__body > ul + p {
   margin-top: 12px;
+}
+
+.pattern-markdown {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.pattern-markdown > :first-child {
+  margin-top: 0;
+}
+
+.pattern-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.pattern-markdown :is(h1, h2, h3, h4, h5, h6) {
+  margin: 28px 0 12px;
+  line-height: 1.35;
+  font-weight: 600;
+  scroll-margin-top: 24px;
+}
+
+.pattern-markdown :is(h1, h2) {
+  font-size: 20px;
+}
+
+.pattern-markdown :is(h3, h4, h5, h6) {
+  font-size: 16px;
+}
+
+.pattern-markdown :is(p, ul, ol, blockquote, pre) {
+  margin: 12px 0;
+}
+
+.pattern-markdown :is(ul, ol) {
+  padding-left: 24px;
+}
+
+.pattern-markdown li + li {
+  margin-top: 6px;
+}
+
+.pattern-markdown a {
+  color: var(--accent-bright);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pattern-markdown code {
+  font-family: var(--font-stack-mono);
+  font-size: 0.9em;
+}
+
+.pattern-markdown :not(pre) > code {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--bg-2);
+}
+
+.pattern-markdown pre {
+  max-width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-2);
+  overflow-x: auto;
+  overflow-wrap: normal;
+}
+
+.pattern-markdown pre code {
+  white-space: pre;
+}
+
+.pattern-markdown :is(.hljs-keyword, .hljs-doctag, .hljs-type, .hljs-template-tag, .hljs-template-variable, .hljs-variable.language_) {
+  color: var(--syntax-keyword);
+}
+
+.pattern-markdown .hljs-title {
+  color: var(--syntax-title);
+}
+
+.pattern-markdown :is(.hljs-attr, .hljs-attribute, .hljs-literal, .hljs-meta, .hljs-number, .hljs-operator, .hljs-variable, .hljs-selector-attr, .hljs-selector-class, .hljs-selector-id) {
+  color: var(--syntax-constant);
+}
+
+.pattern-markdown :is(.hljs-string, .hljs-regexp) {
+  color: var(--syntax-string);
+}
+
+.pattern-markdown :is(.hljs-built_in, .hljs-symbol) {
+  color: var(--syntax-builtin);
+}
+
+.pattern-markdown :is(.hljs-comment, .hljs-code, .hljs-formula) {
+  color: var(--syntax-comment);
+}
+
+.pattern-markdown :is(.hljs-name, .hljs-quote, .hljs-selector-tag, .hljs-selector-pseudo) {
+  color: var(--syntax-tag);
+}
+
+.pattern-markdown .hljs-subst {
+  color: var(--text);
+}
+
+.pattern-markdown .hljs-emphasis {
+  font-style: italic;
+}
+
+.pattern-markdown :is(.hljs-strong, .hljs-section) {
+  font-weight: 600;
+}
+
+.pattern-markdown blockquote {
+  padding-left: 16px;
+  border-left: 3px solid var(--border);
+  color: var(--text-dim);
+}
+
+.pattern-markdown table {
+  display: block;
+  max-width: 100%;
+  margin: 16px 0;
+  border-collapse: collapse;
+  overflow-x: auto;
+}
+
+.pattern-markdown :is(th, td) {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.pattern-markdown img {
+  max-width: 100%;
+  height: auto;
 }
 
 .pattern-profile__list {

@@ -99,7 +99,8 @@ SELECT
     canonical_skeleton,
     common_mistakes,
     dont_confuse_with,
-    mini_example
+    mini_example,
+    content_md
 FROM pattern_learning_materials
 WHERE pattern_id = $1
 `
@@ -115,6 +116,7 @@ type GetPatternLearningMaterialRow struct {
 	CommonMistakes    []string
 	DontConfuseWith   []byte
 	MiniExample       string
+	ContentMd         string
 }
 
 func (q *Queries) GetPatternLearningMaterial(ctx context.Context, patternID int64) (GetPatternLearningMaterialRow, error) {
@@ -131,6 +133,7 @@ func (q *Queries) GetPatternLearningMaterial(ctx context.Context, patternID int6
 		&i.CommonMistakes,
 		&i.DontConfuseWith,
 		&i.MiniExample,
+		&i.ContentMd,
 	)
 	return i, err
 }

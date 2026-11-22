@@ -2990,6 +2990,11 @@
           "x-go-name": "CommonMistakes",
           "x-nullable": true
         },
+        "content_md": {
+          "description": "Full Markdown article; empty content keeps the legacy structured material.",
+          "type": "string",
+          "x-go-name": "ContentMD"
+        },
         "core_invariant": {
           "type": "string",
           "x-go-name": "CoreInvariant"

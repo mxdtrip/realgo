@@ -329,6 +329,9 @@ type ContrastPair struct {
 //
 // swagger:model PatternsLearningMaterial
 type LearningMaterial struct {
+	// Full Markdown article; empty content keeps the legacy structured material.
+	// Required: false
+	ContentMD string `json:"content_md,omitempty"`
 	// Required: true
 	WhatItIs string `json:"what_it_is"`
 	// Required: true
