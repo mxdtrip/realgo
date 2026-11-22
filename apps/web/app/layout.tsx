@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono, Manrope } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { AuthProvider } from "./_api/AuthProvider";
 import { getDictionary } from "./_content/i18n";
 import { DiagnosticsCollector } from "./_diagnostics/DiagnosticsCollector";
@@ -17,10 +18,10 @@ const inter = Inter({
 
 // Manrope covers both Latin and Cyrillic, so mixed RU/EN headings render in a
 // single typeface instead of falling back to Inter for Russian glyphs.
-const manrope = Manrope({
-  subsets: ["latin", "cyrillic"],
+const manrope = localFont({
+  src: "./fonts/manrope/Manrope.ttf",
   variable: "--font-display",
-  weight: ["500", "600", "700"],
+  weight: "200 800",
   display: "swap",
 });
 
